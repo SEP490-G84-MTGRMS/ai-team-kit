@@ -10,14 +10,14 @@ context: |
   Nghiệp vụ: sản phẩm, lô hàng + FEFO, tồn kho & kiểm kê, nhà cung cấp, đặt hàng (PO) & nhận hàng,
   hao hụt nội bộ, bán hàng POS, báo cáo.
 
-  Backend (repo SEP490-Repo-Backend, solution SGMS.sln):
-  - .NET 8 LTS, ASP.NET Core Web API, Clean Architecture:
-    SGMS.Domain (entity, value object) → SGMS.Application (use case, DTO, FluentValidation)
-    → SGMS.Infrastructure (EF Core 8 + SQL Server, repository) → SGMS.API (controller, JWT auth, Swagger).
-  - Test: xUnit (SGMS.UnitTests, SGMS.IntegrationTests).
+  Backend (repo MT_GRMS_BACKEND, solution MT_GRMS_BACKEND.sln):
+  - .NET 8 LTS, ASP.NET Core Web API, Clean Architecture 4 tầng:
+    MT_GRMS.Domain (entity, value object, enums) → MT_GRMS.Application (use case, DTO, FluentValidation)
+    → MT_GRMS.Infrastructure (EF Core 8 + SQL Server Code-First, repository) → MT_GRMS.Api (controller, JWT auth, Swagger).
+  - Test: xUnit (MT_GRMS.UnitTests, MT_GRMS.IntegrationTests).
 
-  Frontend (repo SEP490-Repo-Frontend):
-  - Vite + React 19 + TypeScript, antd v6, TanStack Query, Zustand, Tailwind CSS v4.
+  Frontend (repo MT_GRMS_FRONTEND):
+  - Vite + React 19 + TypeScript, antd, TanStack Query, Zustand, Tailwind CSS v4.
   - Lint: oxlint. Code theo feature: src/features/<feature>/{pages,components,lib,types}.
 
 rules:
