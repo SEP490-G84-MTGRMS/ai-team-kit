@@ -16,10 +16,10 @@
 
 ## Frontend Tasks
 
-- [ ] FE-01: Login form component (email + password + submit)
-- [ ] FE-02: API integration AuthService.ts
-- [ ] FE-03: Zustand auth store (token, user, isAuthenticated)
-- [ ] FE-04: Axios interceptor tự động refresh token
+- [x] FE-01: Login form component (email + password + submit)
+- [x] FE-02: API integration AuthService.ts
+- [x] FE-03: Zustand auth store (token, user, isAuthenticated)
+- [x] FE-04: Axios interceptor tự động refresh token
 - [ ] FE-05: Protected route HOC
 - [ ] FE-06: Logout button
 
