@@ -8,10 +8,12 @@ flowchart TD
     B -->|2. Lọc / Tìm kiếm| C[Query API GET /suppliers]
     B -->|3. Thêm mới NCC| D[SupplierFormModal]
     D -->|Validate & Submit| E[API POST /suppliers]
-    B -->|4. Xem chi tiết / Nợ AP| F[SupplierDetailDrawer]
-    F -->|Tab AP Ledger| G[API GET /suppliers/{id}/ap/ledger]
-    F -->|Thao tác đổi trạng thái| H[API PATCH /suppliers/{id}/status]
-    F -->|Gán Khách hàng liên kết| I[API POST /suppliers/{id}/link-customer]
+    B -->|4. Xem chi tiết toàn màn hình| F[SupplierDetailPage]
+    F -->|Tab 1: Hồ sơ chung| G1[Thông tin pháp lý & Liên kết khách hàng]
+    F -->|Tab 2: Giao hàng & Cutoff| G2[API GET/PUT /suppliers/{id}/delivery-config]
+    F -->|Tab 3: Ngày nghỉ lễ| G3[Cấu hình Blackout Dates & Holidays]
+    F -->|Tab 4: Công nợ & Sổ cái AP| G4[API GET /suppliers/{id}/ap/ledger]
+    F -->|Tab 5: Lịch sử giao dịch| G5[Lịch sử đơn nhập hàng & thanh toán]
 ```
 
 ---
@@ -26,6 +28,8 @@ flowchart TD
 | `PUT` | `/api/v1/suppliers/{id}` | Cập nhật Hồ sơ NCC | `UpdateSupplierCommand` | `SupplierDetailDto` | `400 (BR-S07 Type Narrowing Violation), 404` |
 | `PATCH` | `/api/v1/suppliers/{id}/status` | Đổi trạng thái Active/Inactive | `UpdateSupplierStatusRequest` | `SupplierDetailDto` | `400 (BR-S03 Inactivation Guard), 404` |
 | `DELETE` | `/api/v1/suppliers/{id}` | Thử xóa NCC (Chỉ xóa mềm nếu chưa phát sinh GD) | — | `204 No Content` | `400 (BR-S03 Has Transactions Guard)` |
+| `GET` | `/api/v1/suppliers/{id}/delivery-config` | Lấy cấu hình lịch giao hàng & cutoff & ngày nghỉ | — | `SupplierDeliveryConfigDto` | `404` |
+| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | Cập nhật cấu hình lịch giao hàng & ngày nghỉ lễ | `UpdateSupplierDeliveryConfigCommand` | `SupplierDeliveryConfigDto` | `400, 404` |
 | `GET` | `/api/v1/suppliers/{id}/ap/ledger` | Xem sổ cái biến động nợ AP | `FromDate`, `ToDate`, `PageIndex`, `PageSize` | `PagedResult<SupplierAPLedgerDto>` | `404` |
 | `POST` | `/api/v1/suppliers/{id}/ap/transactions` | Ghi nhận biến động công nợ AP (Internal/PO/GRN/Payment) | `RecordAPTransactionCommand` | `SupplierAPLedgerDto` | `400, 409 (Duplicate IdempotencyKey)` |
 | `POST` | `/api/v1/suppliers/{id}/link-customer` | Liên kết hồ sơ Khách hàng (Dual-role) | `LinkCustomerRequest` | `SupplierDetailDto` | `400, 404` |
@@ -45,21 +49,24 @@ Thành phần giao diện được xây dựng chuẩn **KiotViet Brand Blue** (
    - **Filter & Search Bar**: Input tìm kiếm (Tên, Mã, SĐT, MST), Select lọc Loại NCC (Goods / Service / Both), Select Nhóm NCC, Select Trạng thái.
    - **Data Table**:
      - Cột: Mã NCC (`font-mono`), Tên NCC, Loại NCC (Pill Badge), Số điện thoại, Công nợ hiện tại (VND format `tabular-nums`), Trạng thái (Active Pill `#00C853`, Inactive Pill Gray), Hành động (Xem chi tiết, Sửa).
-   - **Trạng thái UI**:
-     - *Loading*: Skeleton table 5 dòng.
-     - *Empty*: Placeholder minh họa "Chưa có nhà cung cấp nào. Tạo ngay!" kèm nút bấm.
-     - *Error*: Banner cảnh báo sự cố kèm nút "Tải lại".
+   - **Trạng thái UI**: Loading skeleton, Empty state, Error banner.
 
 2. **`SupplierFormModal`**:
-   - Modal bo góc 24px, bao gồm 3 Tabs:
-     - *Thông tin chung*: Mã NCC (Tự sinh/Nhập tay), Tên NCC (*), Nhóm NCC, Loại NCC (*), Mã số thuế, Số điện thoại (*), Email, Địa chỉ.
+   - Modal bo góc 24px, 3 Tabs:
+     - *Thông tin chung*: Mã NCC, Tên NCC (*), Nhóm NCC, Loại NCC (*), MST, SĐT (*), Email, Địa chỉ.
      - *Điều khoản thanh toán*: Hạn mức nợ (`CreditLimit`), Thời hạn nợ ngày (`PaymentTermDays`).
      - *Tài khoản ngân hàng*: Tên ngân hàng, Số tài khoản, Chủ tài khoản.
 
-3. **`SupplierDetailDrawer`**:
-   - Drawer bên phải hiển thị tổng quan thông tin NCC.
-   - Tab 1: Thông tin hồ sơ & Nút liên kết Hồ sơ Khách hàng.
-   - Tab 2: Sổ cái công nợ AP Ledger (Bảng lịch sử tăng/giảm nợ, dư nợ sau mỗi GD).
+3. **`SupplierDetailPage` (Full-page View - thay thế Drawer cũ)**:
+   - Giao diện chi tiết toàn màn hình chuẩn Admin Layout với Breadcrumbs và Header Actions.
+   - **Stat Cards Header** (Bo góc 24px): Công nợ hiện tại, Hạn mức tín dụng, Thời hạn thanh toán, Trạng thái & Đánh giá sao.
+   - **Tabs Navigation (5 Tabs)**:
+     - Tab 1: **Hồ sơ chung** (`SupplierGeneralInfoTab`): Thông tin liên hệ, thuế, ngân hàng, liên kết khách hàng.
+     - Tab 2: **🚚 Giao hàng & Cutoff** (`SupplierDeliveryConfigTab`): Lead time (giờ/ngày), Giờ chốt đơn (Cutoff Time), Các thứ trong tuần nhận giao (Thứ 2 đến CN), Quy định đơn tối thiểu (MOQ / MOV), Mô phỏng tính toán ngày giao hàng tự động.
+     - Tab 3: **📅 Ngày nghỉ lễ** (`SupplierHolidaysTab`): Quản lý kỳ nghỉ lễ / ngày tạm ngưng giao hàng (Blackout dates), form thêm kỳ nghỉ, danh sách hiển thị với trạng thái hiệu lực.
+     - Tab 4: **Công nợ & thanh toán** (`SupplierAPLedgerTab`): Sổ cái nợ AP, lịch sử tăng/giảm nợ và số dư luỹ kế.
+     - Tab 5: **Lịch sử giao dịch** (`SupplierTransactionsTab`): Lịch sử phiếu nhập (GRN), đơn đặt hàng (PO).
+   *(Lưu ý: Tab Quản lý sản phẩm đã được tách thành màn hình danh mục sản phẩm riêng biệt)*.
 
 ---
 
@@ -114,6 +121,41 @@ CREATE UNIQUE INDEX [IX_Suppliers_TenantId_Code] ON [Suppliers]([TenantId], [Cod
 CREATE INDEX [IX_Suppliers_TenantId_Status] ON [Suppliers]([TenantId], [Status]);
 ```
 
+### Bảng `SupplierDeliveryConfigs`
+```sql
+CREATE TABLE [SupplierDeliveryConfigs] (
+    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+    [SupplierId] UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Suppliers]([Id]),
+    [LeadTimeHours] INT NOT NULL DEFAULT 24,
+    [CutoffTime] NVARCHAR(5) NOT NULL DEFAULT '17:00', -- HH:mm (24h)
+    [DeliveryDaysMask] INT NOT NULL DEFAULT 127, -- Bitmask 7 ngày (Mon-Sun)
+    [MinOrderValue] DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    [MinOrderQuantity] INT NOT NULL DEFAULT 0,
+    [AllowUrgentDelivery] BIT NOT NULL DEFAULT 0,
+    [UrgentLeadTimeHours] INT NULL,
+    [UrgentSurchargePercent] DECIMAL(5,2) NULL,
+    [CreatedAtUtc] DATETIME2 NOT NULL,
+    [UpdatedAtUtc] DATETIME2 NULL
+);
+CREATE UNIQUE INDEX [IX_SupplierDeliveryConfigs_TenantId_SupplierId] ON [SupplierDeliveryConfigs]([TenantId], [SupplierId]);
+```
+
+### Bảng `SupplierBlackoutDates`
+```sql
+CREATE TABLE [SupplierBlackoutDates] (
+    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+    [TenantId] UNIQUEIDENTIFIER NOT NULL,
+    [SupplierId] UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Suppliers]([Id]),
+    [StartDate] DATE NOT NULL,
+    [EndDate] DATE NOT NULL,
+    [Reason] NVARCHAR(255) NOT NULL,
+    [IsRecurringAnnual] BIT NOT NULL DEFAULT 0,
+    [CreatedAtUtc] DATETIME2 NOT NULL
+);
+CREATE INDEX [IX_SupplierBlackoutDates_TenantId_SupplierId_Dates] ON [SupplierBlackoutDates]([TenantId], [SupplierId], [StartDate], [EndDate]);
+```
+
 ### Bảng `SupplierAPLedgers`
 ```sql
 CREATE TABLE [SupplierAPLedgers] (
@@ -147,8 +189,10 @@ CREATE INDEX [IX_SupplierAPLedgers_TenantId_SupplierId_PostingDateUtc] ON [Suppl
 - **BR-S07**: Không cho phép thu hẹp `SupplierType` (ví dụ: chuyển từ `Both` về `Goods` nếu NCC đã từng có giao dịch thanh toán Dịch vụ `Service`).
 - **BR-S08**: Ghi nhận biến động công nợ AP phải đảm bảo tính `Idempotent`. Không chấp nhận ghi trùng giao dịch có cùng `IdempotencyKey`.
 - **BR-S11**: Khi liên kết Hồ sơ Khách hàng (Dual-role), nợ AR và nợ AP độc lập tuyệt đối, không tự động offset.
+- **BR-S12**: Cấu hình thời gian giao hàng và Cutoff Time quyết định ngày hẹn giao sớm nhất (`EarliestDeliveryDate`) của đơn PO. Đặt hàng sau Cutoff Time tự động dời sang chu kỳ giao tiếp theo.
+- **BR-S13**: Ngày giao hàng tự động bỏ qua các ngày nghỉ lễ/nghỉ ngơi trong bảng `SupplierBlackoutDates` và các thứ trong tuần không nhận giao.
 
 ### Phân quyền (RBAC):
-- `Owner` / `Admin`: Toàn quyền CRUD NCC, xem/điều chỉnh Sổ cái AP Ledger, đổi trạng thái.
-- `StoreManager` / `Accountant`: Xem danh sách, tạo mới, sửa thông tin hành chính, ghi nhận giao dịch thanh toán.
-- `InventoryStaff`: Chỉ xem danh sách NCC loại `Goods` hoặc `Both` để lập đơn PO/GRN.
+- `Owner` / `Admin`: Toàn quyền CRUD NCC, cấu hình lịch giao hàng/ngày nghỉ, xem/điều chỉnh Sổ cái AP Ledger, đổi trạng thái.
+- `StoreManager` / `Accountant`: Xem danh sách, tạo mới, sửa thông tin hành chính, cấu hình giao hàng, ghi nhận giao dịch thanh toán.
+- `InventoryStaff`: Xem danh sách NCC loại `Goods` hoặc `Both`, tra cứu lịch giao & cutoff để lập đơn PO/GRN.
