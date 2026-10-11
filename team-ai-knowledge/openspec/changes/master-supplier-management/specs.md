@@ -9,6 +9,8 @@
 | `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` | `SupplierDetailDto` | `201 Created`, `400 Bad Request (Duplicate Code/TaxCode)` |
 | `PUT` | `/api/v1/suppliers/{id}` | Route `id`, `UpdateSupplierCommand` | `SupplierDetailDto` | `200 OK`, `400 Bad Request (BR-S07 Violation)`, `404 Not Found` |
 | `PATCH` | `/api/v1/suppliers/{id}/status` | Route `id`, `UpdateSupplierStatusRequest` | `SupplierDetailDto` | `200 OK`, `400 Bad Request (BR-S03 Guard)`, `404 Not Found` |
+| `GET` | `/api/v1/suppliers/{id}/delivery-config` | Route `id (Guid)` | `SupplierDeliveryConfigDto` | `200 OK`, `404 Not Found` |
+| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | Route `id`, `UpdateSupplierDeliveryConfigCommand` | `SupplierDeliveryConfigDto` | `200 OK`, `400 Bad Request`, `404 Not Found` |
 | `GET` | `/api/v1/suppliers/{id}/ap/ledger` | Route `id`, `FromDate`, `ToDate`, `PageIndex`, `PageSize` | `PagedResult<SupplierAPLedgerDto>` | `200 OK`, `404 Not Found` |
 | `POST` | `/api/v1/suppliers/{id}/ap/transactions` | Route `id`, `RecordAPTransactionCommand` | `SupplierAPLedgerDto` | `201 Created`, `400 Bad Request`, `409 Conflict (IdempotencyKey Exists)` |
 | `POST` | `/api/v1/suppliers/{id}/link-customer` | Route `id`, `LinkCustomerRequest` | `SupplierDetailDto` | `200 OK`, `400 Bad Request`, `404 Not Found` |
@@ -102,6 +104,41 @@ Hệ thống MUST đảm bảo dữ liệu Nhà cung cấp, Danh mục NCC, và 
 
 ---
 
+### Requirement: REQ-DEL01 Delivery Schedule & Cutoff Time Configuration (BR-S12)
+Hệ thống MUST cho phép cấu hình lịch giao hàng chi tiết cho từng Nhà cung cấp hàng hoá (`Goods` hoặc `Both`):
+1. **Thời gian chuẩn bị (Lead Time)**: Tính theo giờ hoặc ngày.
+2. **Thời gian chốt đơn (Cutoff Time)**: Định dạng `HH:mm` (mặc định 17:00).
+3. **Các ngày nhận giao hàng trong tuần (Delivery Weekdays)**: Cho phép chọn Thứ 2 đến Chủ nhật (lưu dưới dạng bitmask).
+4. **Quy định đơn hàng tối thiểu**: Giá trị đơn tối thiểu (MOV) và số lượng tối thiểu (MOQ).
+5. **Giao hàng hoả tốc (Urgent Delivery)**: Cho phép bật/tắt, cấu hình Lead time hoả tốc và phụ phí % nếu áp dụng.
+
+#### Scenario: Cập nhật lịch giao hàng và Cutoff Time thành công
+- **GIVEN** Nhà cung cấp "Công ty Thực phẩm Xanh" (ID: `Supp-Fresh-01`).
+- **WHEN** Quản lý kho gửi request `PUT /api/v1/suppliers/Supp-Fresh-01/delivery-config` với `LeadTimeHours` = 24, `CutoffTime` = "16:00", `DeliveryDays` = [Mon, Tue, Wed, Thu, Fri, Sat], `MinOrderValue` = 1,000,000 VND.
+- **THEN** Hệ thống lưu cấu hình và trả về `200 OK` kèm `SupplierDeliveryConfigDto`.
+
+#### Scenario: Đơn đặt hàng (PO) tạo sau Cutoff Time tự động tính dời ngày giao
+- **GIVEN** NCC có `CutoffTime` = "16:00", `LeadTimeHours` = 24, nhận giao Thứ 2 - Thứ 7 (Nghỉ Chủ nhật).
+- **WHEN** Nhân viên tạo đơn PO vào Thứ 6 lúc 16:30 (sau Cutoff Time).
+- **THEN** Hệ thống tự động tính ngày giao hàng sớm nhất là Thứ 2 tuần kế tiếp (bỏ qua ngày Chủ nhật không nhận giao).
+
+---
+
+### Requirement: REQ-DEL02 Holidays & Blackout Dates Management (BR-S13)
+Hệ thống MUST cho phép quản lý danh sách các kỳ nghỉ lễ, ngày tạm ngưng giao hàng (`Blackout Dates`) của từng Nhà cung cấp trong tab riêng biệt. Các ngày này MUST được tự động loại trừ khi hệ thống tính toán ngày giao hàng khả dụng cho Đơn đặt hàng (PO).
+
+#### Scenario: Thêm kỳ nghỉ lễ cho Nhà cung cấp thành công
+- **GIVEN** Nhà cung cấp "Công ty Hải sản Miền Nam".
+- **WHEN** Người dùng thêm kỳ nghỉ lễ: `StartDate` = "2026-12-31", `EndDate` = "2027-01-02", `Reason` = "Nghỉ Tết Dương Lịch 2027", `IsRecurringAnnual` = true.
+- **THEN** Hệ thống lưu bản ghi vào `SupplierBlackoutDates` và trả về `200 OK`.
+
+#### Scenario: Hệ thống tự động bỏ qua Blackout Date khi tính ngày giao hàng sớm nhất
+- **GIVEN** NCC có Blackout Date từ 2026-09-01 đến 2026-09-03 (Nghỉ lễ Quốc khánh).
+- **WHEN** Nhân viên tạo đơn PO vào ngày 2026-08-31 với `LeadTimeHours` = 24.
+- **THEN** Hệ thống xác định ngày giao hàng sớm nhất là ngày 2026-09-04 (ngày đầu tiên sau kỳ nghỉ lễ mà NCC có nhận giao).
+
+---
+
 ## Acceptance checklist
 
 - [ ] **REQ-01**: Tạo mới NCC thành công, tự động sinh mã `SUP-...` khi để trống, bắt lỗi trùng `Code` cùng Tenant.
@@ -110,3 +147,5 @@ Hệ thống MUST đảm bảo dữ liệu Nhà cung cấp, Danh mục NCC, và 
 - [ ] **REQ-04**: Ghi nhận biến động AP Ledger chính xác `BalanceAfter`, cập nhật `CurrentDebt`; chống trùng lặp bằng `IdempotencyKey` (BR-S08).
 - [ ] **REQ-05**: Liên kết Dual-role `LinkedCustomerId` (BR-S11); giữ công nợ AP và AR độc lập.
 - [ ] **REQ-06**: Cô lập tuyệt đối theo `TenantId` trên tất cả API (Query Filter & Authorization).
+- [ ] **REQ-DEL01**: Quản lý cấu hình giao hàng (Lead Time, Cutoff Time, Weekdays mask, MOQ/MOV, Urgent Delivery); tự động tính ngày giao hàng khả dụng.
+- [ ] **REQ-DEL02**: Quản lý kỳ nghỉ lễ / Blackout dates riêng biệt; tự động bỏ qua ngày nghỉ lễ khi lập kế hoạch giao hàng PO.
