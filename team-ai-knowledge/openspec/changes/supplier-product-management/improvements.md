@@ -7,3 +7,7 @@ Chuẩn hóa phân tích từ prototype HTML sang cấu trúc dữ liệu N-N v�
 ## Brainstorm · 2026-10-11 15:08
 
 Đã chuẩn hóa toàn diện giao diện từ prototype HTML sang React 19 + TypeScript KiotViet UI và thiết kế schema N-N SupplierProducts chặt chẽ.
+
+## Verify Spec · 2026-10-11 15:15
+
+Đảm bảo Query Handler kiểm tra đồng thời trạng thái Active của cả Supplier và SupplierProduct khi lập đơn PO.
