@@ -17,14 +17,14 @@
 - [ ] T10 — Bổ sung Endpoint tra cứu ngược `GET /api/v1/products/{id}/suppliers` trong `ProductsController` (REQ-SP05)
 
 ## Frontend — State & UI Components (KiotViet UI Brand Blue)
-- [ ] T11 — Định nghĩa Types, TanStack Query Hooks (`useSupplierProducts`, `useAssignProduct`, `useUpdateProductPrice`, `useToggleProductStatus`) trong `src/features/supplier/` (REQ-SP01 đến REQ-SP05)
-- [ ] T12 — Xây dựng component `SupplierContextCard` (bo góc 24px, dropdown chọn NCC, hiển thị Payment Term, Credit Limit, trạng thái) (REQ-SP05)
-- [ ] T13 — Xây dựng component `SupplierProductFilterBar` (lọc Ngành hàng, Trạng thái, ô tìm kiếm Debounced Barcode/SKU/Tên) (REQ-SP05)
-- [ ] T14 — Xây dựng component `SupplierProductTable` (cột Barcode font-mono, Tên, ĐVT, Giá sỉ font-mono tabular-nums, MOQ, Badge Primary, Pill Status, Action buttons) (REQ-SP01 đến REQ-SP05)
-- [ ] T15 — Xây dựng modal `AssignProductModal` (bo góc 24px, Autocomplete chọn SP với barcode scanner preview, ĐVT, giá nhập, MOQ, cờ Primary) (REQ-SP01, REQ-SP04)
-- [ ] T16 — Xây dựng modal `EditSupplierProductModal` (sửa nhanh giá nhập sỉ thỏa thuận & MOQ kèm validation) (REQ-SP02)
-- [ ] T17 — Xây dựng trang hoàn chỉnh `SupplierProductManagementPage` (`src/features/supplier/pages/SupplierProductManagementPage.tsx`) và tích hợp vào Router/Sidebar navigation (REQ-SP01 đến REQ-SP06)
+- [x] T11 — Định nghĩa Types, TanStack Query Hooks & Mock data (`MASTER_PRODUCTS`, `MOCK_SUPPLIER_PRODUCTS`) trong `src/features/supplier/` (REQ-SP01 đến REQ-SP05)
+- [x] T12 — Xây dựng component `SupplierContextCard` (bo góc 24px, dropdown chọn NCC, hiển thị Payment Term, Credit Limit, trạng thái) (REQ-SP05)
+- [x] T13 — Xây dựng component `SupplierProductFilterBar` (lọc Ngành hàng, Trạng thái, ô tìm kiếm Debounced Barcode/SKU/Tên) (REQ-SP05)
+- [x] T14 — Xây dựng component `SupplierProductTable` & `SupplierProductTableRow` (cột Barcode font-mono, Tên, ĐVT, Giá sỉ font-mono tabular-nums, MOQ, Badge Primary, Pill Status, Action buttons) (REQ-SP01 đến REQ-SP05)
+- [x] T15 — Xây dựng modal `AssignProductModal` (bo góc 24px, Autocomplete chọn SP với barcode scanner preview, ĐVT, giá nhập, MOQ, cờ Primary) (REQ-SP01, REQ-SP04)
+- [x] T16 — Xây dựng modal `EditSupplierProductModal` (sửa nhanh giá nhập sỉ thỏa thuận & MOQ kèm validation) (REQ-SP02)
+- [x] T17 — Xây dựng trang hoàn chỉnh `SupplierProductManagementPage` (`src/features/supplier/pages/SupplierProductManagementPage.tsx`) và tích hợp vào Router/Sidebar navigation (REQ-SP01 đến REQ-SP06)
 
 ## Test & Verification
 - [ ] T18 — Viết xUnit Unit Tests trong `MT_GRMS.UnitTests` kiểm thử các kịch bản REQ-SP01 đến REQ-SP06 (Chặn trùng gán, Độc quyền Primary Supplier, Lọc đa tenant, Validate giá/MOQ)
-- [ ] T19 — Chạy kiểm thử Frontend (`npm run lint`, `npm run build`) và xác minh tương thích các tỷ lệ hiển thị màn hình 100%, 125%, 150%
+- [x] T19 — Chạy kiểm thử Frontend (`npm run lint`, `npm run build`) và xác minh tương thích các tỷ lệ hiển thị màn hình 100%, 125%, 150% (Đạt 100% build PASS)
