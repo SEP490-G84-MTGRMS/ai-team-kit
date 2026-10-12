@@ -11,3 +11,7 @@ Duyệt thiết kế kiến trúc Frontend FE-07 Service Expenses tuân thủ De
 ## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-12 17:00
 
 Duyệt bước Verify Spec cho change fe07-service-expenses-frontend, sẵn sàng bước sang Apply để triển khai code.
+
+## Apply — ✅ Approve bởi @Des7240 · 2026-10-12 18:41
+
+Duyệt triển khai toàn bộ giao diện và logic Frontend FE-07 Service Expenses Management theo chuẩn KiotViet.
