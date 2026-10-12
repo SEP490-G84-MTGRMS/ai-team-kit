@@ -14,8 +14,8 @@
 
 ## Frontend Tasks (React 19 / TypeScript / Vite)
 
-- [x] FE-01: Login form component (email/SĐT + password + tên miền + submit + tab QR)
-- [x] FE-02: API integration AuthService.ts với fallback demo accounts
+- [x] FE-01: Tinh giản Login form (Phone-First trực diện: chỉ SĐT + Mật khẩu, bỏ hoàn toàn tabs và trường mã chuỗi tenant)
+- [x] FE-02: API integration AuthService.ts với fallback demo accounts (hỗ trợ khớp SĐT/email)
 - [x] FE-03: Zustand auth store (token, user, isAuthenticated, setAuth, logout)
 - [x] FE-04: Axios httpClient interceptor tự động đính kèm token
 - [x] FE-05: Protected route guard (ProtectedRoute.tsx)
@@ -26,4 +26,4 @@
 
 ## Estimate & Verification
 - BE: Hoàn tất (Build 0 warnings, test PASS)
-- FE: Hoàn tất (Build 0 errors, Browser subagent xác nhận Zero-Scroll)
+- FE: Hoàn tất (Build 0 errors, Browser subagent xác nhận Zero-Scroll & UI tinh gọn)
