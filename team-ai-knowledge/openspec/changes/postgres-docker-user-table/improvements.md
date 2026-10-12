@@ -11,3 +11,7 @@ Thiết kế tối giản bảng User theo đúng nhu cầu thực tế giúp gi
 ## Verify Spec · 2026-10-12 17:42
 
 Bóc tách checklist 8 task rõ ràng giúp việc thực hiện code và chạy Docker diễn ra chính xác.
+
+## Apply · 2026-10-12 18:37
+
+Tạo init-db.sql gắn trực tiếp vào docker-compose giúp việc khởi tạo cơ sở dữ liệu và seed dữ liệu diễn ra hoàn toàn tự động ngay khi chạy container.
