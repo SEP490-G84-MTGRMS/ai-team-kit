@@ -17,7 +17,9 @@ Cài đặt
   uninstall [--ide=...]
   init <repo> [--remove]
                       Sinh rules (.cursor/rules, .agents/rules), workflows Antigravity và khối AGENTS.md cho một repo code
-  sync                Như init nhưng cho chính repo team-ai-knowledge
+  sync                Tự động kéo (git pull) các repo trong workspace, cập nhật rules và kiểm tra schema
+  db-sync [--check] [--backend=<path>]
+                      Quét C# Domain Entities từ MT_GRMS_BACKEND và cập nhật database-schema.md
   doctor              Kiểm tra cài đặt + chạy thử MCP server
 
 Theo dõi
@@ -39,7 +41,10 @@ async function main() {
     case 'init':
       return (await import('./sep/project.js')).initProject(positional[0], flags);
     case 'sync':
-      return (await import('./sep/project.js')).initProject(KB_ROOT, flags);
+    case 'pull':
+      return (await import('./sep/sync.js')).syncWorkspace(flags);
+    case 'db-sync':
+      return (await import('./sep/db-sync.js')).dbSync(flags);
     case 'doctor':
       return (await import('./sep/report.js')).doctor();
     case 'list':

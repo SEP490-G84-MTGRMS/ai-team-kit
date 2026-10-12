@@ -22,7 +22,11 @@ export interface ToolHandlerOptions {
   /** Written as `author` in generated docs (default: AI-Agent) */
   author?: string;
   /** Called after files are written/deleted (git commit in local mode). Paths are KB-relative. */
-  afterWrite?: (files: string[], message: string) => Promise<string | null>;
+  afterWrite?: (files: string[], message: string, forcePush?: boolean) => Promise<string | null>;
+  /** Optional callback to pull latest updates on session start */
+  onSessionStart?: () => Promise<string | null>;
+  /** Optional callback to run db-sync */
+  onDbSync?: () => Promise<void>;
 }
 
 /** Rejects project names that could change the target folder (`../x`, `a/b`) */
@@ -149,9 +153,80 @@ export function createToolHandlers(provider: DataProvider, options: ToolHandlerO
    * @returns Overview content string.
    */
   async function handleXemTongQuan(): Promise<string> {
+    let syncNotice = '';
+    if (options.onSessionStart) {
+      try {
+        const syncResult = await options.onSessionStart();
+        if (syncResult) syncNotice = `\n> 🔄 *Auto-Pull*: ${syncResult}\n`;
+      } catch {
+        // fail-open
+      }
+    }
     const mapDoc = await readMarkdown('KNOWLEDGE_MAP.md');
     const startDoc = await readMarkdown('START_HERE.md');
-    return `# Overview\n\n${startDoc?.content || 'START_HERE.md not found.'}\n\n# Navigation Map\n\n${mapDoc?.content || 'KNOWLEDGE_MAP.md not found.'}`;
+    return `# Overview${syncNotice}\n\n${startDoc?.content || 'START_HERE.md not found.'}\n\n# Navigation Map\n\n${mapDoc?.content || 'KNOWLEDGE_MAP.md not found.'}`;
+  }
+
+  /**
+   * Handles xem_thiet_ke — returns system design, ERD diagrams, or database schema.
+   * @param projectName - Target project name (default: MT-GRMS).
+   * @param type - Document type: 'all' | 'schema' | 'erd' | 'architecture'.
+   * @param tableName - Specific table name to lookup.
+   * @returns Markdown content of requested design docs.
+   */
+  async function handleXemThietKe(
+    projectName = 'MT-GRMS',
+    type: 'all' | 'schema' | 'erd' | 'architecture' = 'all',
+    tableName?: string,
+    autoSync = false
+  ): Promise<string> {
+    if (autoSync && options.onDbSync) {
+      try {
+        await options.onDbSync();
+      } catch {
+        // fail-open
+      }
+    }
+    const project = assertProjectName(projectName);
+    const baseDir = `projects/${project}/design`;
+
+    if (tableName) {
+      const schemaDoc = await readMarkdown(`${baseDir}/database-schema.md`);
+      if (!schemaDoc) return `Chưa có tài liệu thiết kế database cho dự án '${project}'.`;
+      const tableRegex = new RegExp(`###\\s+[^\\n]*\\b${tableName}\\b[\\s\\S]*?(?=(?:###|##\\s+[0-9]|$))`, 'i');
+      const match = schemaDoc.content.match(tableRegex);
+      if (match) {
+        return `# Thiết Kế Bảng: ${tableName} (Dự án: ${project})\n\n${match[0].trim()}`;
+      }
+      return `Không tìm thấy bảng '${tableName}' trong database-schema.md của '${project}'.\n\nToàn bộ Schema:\n\n${schemaDoc.content}`;
+    }
+
+    if (type === 'schema') {
+      const doc = await readMarkdown(`${baseDir}/database-schema.md`);
+      return doc ? doc.content : `Không tìm thấy database-schema.md cho '${project}'.`;
+    }
+    if (type === 'erd') {
+      const doc = await readMarkdown(`${baseDir}/erd-diagram.md`);
+      return doc ? doc.content : `Không tìm thấy erd-diagram.md cho '${project}'.`;
+    }
+    if (type === 'architecture') {
+      const doc = await readMarkdown(`${baseDir}/system-architecture.md`);
+      return doc ? doc.content : `Không tìm thấy system-architecture.md cho '${project}'.`;
+    }
+
+    const [schemaDoc, erdDoc, archDoc] = await Promise.all([
+      readMarkdown(`${baseDir}/database-schema.md`),
+      readMarkdown(`${baseDir}/erd-diagram.md`),
+      readMarkdown(`${baseDir}/system-architecture.md`),
+    ]);
+
+    return [
+      `# Ngữ Cảnh Thiết Kế Toàn Hệ Thống: ${project}`,
+      '',
+      erdDoc ? `## 1. Sơ đồ ERD Thực Thể\n\n${erdDoc.content}` : '',
+      schemaDoc ? `## 2. Từ Điển Dữ Liệu (Database Schema)\n\n${schemaDoc.content}` : '',
+      archDoc ? `## 3. Kiến Trúc & Luồng Nghiệp Vụ\n\n${archDoc.content}` : '',
+    ].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -498,6 +573,7 @@ export function createToolHandlers(provider: DataProvider, options: ToolHandlerO
     handleXemKhaoSat,
     handleXemDacTa,
     handleLuuDanhGia,
+    handleXemThietKe,
   };
 }
 

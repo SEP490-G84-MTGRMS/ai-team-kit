@@ -98,6 +98,26 @@ graph TD
 
 ---
 
+### 4. Quản Lý Thiết Kế Toàn Hệ Thống & Tự Động Hóa Chốt (Design Hub & Checkpoints)
+- **Quản lý thiết kế & Database tập trung**:
+  - Toàn bộ Data Dictionary và Mermaid ERD lưu tại [`projects/MT-GRMS/design/`](./team-ai-knowledge/projects/MT-GRMS/design/).
+  - Agent ở mọi repo có thể gọi MCP Tool `xem_thiet_ke` để tra cứu bảng, cột, kiểu dữ liệu và kiến trúc ngay trong chat.
+  - Tự động quét C# Entity từ Backend và cập nhật tài liệu thiết kế:
+    ```bash
+    npm run sep -- db-sync
+    ```
+- **Tự động kéo cập nhật đầu phiên (Auto-Pull)**:
+  - Khi bắt đầu phiên làm việc (Agent gọi `xem_tong_quan`), hệ thống tự động kiểm tra và kéo cập nhật mới nhất từ Git remote.
+  - Dev có thể chủ động kéo cập nhật toàn bộ repo trong workspace bằng lệnh:
+    ```bash
+    npm run sep -- sync
+    ```
+- **Tự động Commit & Push tại 2 chốt quan trọng**:
+  - **Chốt 1: Khi Chốt Spec** (`/sep-verify-spec` duyệt thành công): Tự động commit và push delta specs + tasks để toàn team nắm yêu cầu.
+  - **Chốt 2: Khi Nghiệm Thu Hoàn Tất** (`/sep-archive` sau khi test PASS): Tự động commit và push archive cùng spec gốc đã merge. PM thực hiện duyệt và bấm Merge PR trên GitHub theo quy chuẩn an toàn.
+
+---
+
 ## 🚀 Hướng Dẫn Bắt Đầu & Kết Nối Nhanh
 
 ### Bước 1: Cài đặt công cụ môi trường
@@ -117,9 +137,15 @@ npm run sep -- init ../MT_GRMS_FRONTEND
 
 ### Bước 3: Phát triển tính năng mới
 Trong chat IDE (Cursor / Antigravity / Claude Code):
-```bash
-/sep-spec <Mô tả chức năng/lỗi cần làm>
-```
+- **Cách 1 (Khuyên dùng - Auto-Pilot & Grill-Me Mode)**:
+  ```bash
+  /sep-pilot <Mô tả chức năng/lỗi cần làm>
+  ```
+  AI sẽ tự động nhận diện bước, phỏng vấn chốt giải pháp (grill-me) và dắt qua từng bước. Khi cần sửa lại: `/sep-back`.
+- **Cách 2 (Thủ công từng lệnh)**:
+  ```bash
+  /sep-spec <Mô tả chức năng/lỗi cần làm>
+  ```
 
 ---
 
@@ -130,7 +156,7 @@ Trong chat IDE (Cursor / Antigravity / Claude Code):
 | [`team-ai-knowledge/`](./team-ai-knowledge/) | Toàn bộ Knowledge Base, OpenSpec, MCP Server `sep`, bộ công cụ CLI |
 | ├── [`openspec/`](./team-ai-knowledge/openspec/) | Quản lý vòng đời tính năng (changes, specs, tasks, reviews) |
 | ├── [`projects/MT-GRMS/`](./team-ai-knowledge/projects/MT-GRMS/) | Ngữ cảnh nghiệp vụ, lịch sử phiên làm việc, báo cáo đánh giá dự án MT-GRMS |
-| ├── [`sep-kit/`](./team-ai-knowledge/sep-kit/) | 7 Skills `/sep-*`, 4 Persona Review, Rules mẫu và Git hooks |
+| ├── [`sep-kit/`](./team-ai-knowledge/sep-kit/) | 9 Skills `/sep-*` (thêm `/sep-pilot`, `/sep-back`), 4 Persona Review, Rules mẫu và Git hooks |
 | └── [`docs/`](./team-ai-knowledge/docs/) | Tài liệu hướng dẫn chi tiết dành cho Admin và thành viên |
 
 ---

@@ -194,5 +194,38 @@ await test('sep_chon_change đổi change đang làm', async () => {
   await rejects(sep.handleChonChange({ tenChange: 'khong-ton-tai' }), /Không tìm thấy/);
 });
 
+await test('sep_lui_buoc lùi về bước trước và reset cổng duyệt', async () => {
+  // Tạo change thử nghiệm rollback
+  await sep.handleTaoChange({ moTa: 'Test rollback feature', tenChange: 'rollback-demo' });
+  await save('proposal.md', '# Proposal', 'rollback-demo');
+  await sep.handleDuyetBuoc({ tenChange: 'rollback-demo', buoc: 'spec', quyetDinh: 'approve', tomTat: 'Duyệt spec' });
+
+  // Đang ở bước brainstorm
+  let info = await sep.inspectChange('rollback-demo');
+  assert.equal(info.next.step.key, 'brainstorm');
+  assert.equal(Boolean(info.state.approvals['spec']), true);
+
+  // Lùi về spec
+  const out = await sep.handleLuiBuoc({ tenChange: 'rollback-demo', lyDo: 'Sửa lại proposal' });
+  assert.match(out, /Đã lùi change `rollback-demo` từ \*\*Brainstorm\*\* \(`brainstorm`\) về \*\*Spec\*\* \(`spec`\)/);
+
+  info = await sep.inspectChange('rollback-demo');
+  assert.equal(info.next.step.key, 'spec');
+  // Cổng duyệt spec đã được reset
+  assert.equal(Boolean(info.state.approvals['spec']), false);
+
+  // Thử lùi khi đang ở spec -> chặn
+  await rejects(
+    sep.handleLuiBuoc({ tenChange: 'rollback-demo' }),
+    /đang ở bước đầu tiên/
+  );
+
+  // Thử lùi về bước không nằm trước -> chặn
+  await rejects(
+    sep.handleLuiBuoc({ tenChange: 'rollback-demo', buocMoi: 'brainstorm' }),
+    /không nằm trước bước hiện tại/
+  );
+});
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${process.exitCode ? '❌' : '✅'} ${passed} test pass · ${commits.length} commit giả lập\n`);

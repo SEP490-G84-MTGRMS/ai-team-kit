@@ -18,6 +18,7 @@ team-ai-knowledge/
 ├── projects/                   ← Riêng từng project
 │   └── {project-name}/
 │       ├── context/overview.md ← Thông tin nền dự án (tool xem_ngu_canh_du_an)
+│       ├── design/             ← Thiết kế hệ thống, Database Schema & ERD (tool xem_thiet_ke)
 │       ├── decisions/          ← ADR riêng project
 │       ├── lessons/            ← Lessons riêng project
 │       ├── sessions/           ← Lịch sử phiên làm việc
@@ -76,6 +77,12 @@ team-ai-knowledge/
 ### Tôi đang gặp bug, muốn biết team đã gặp chưa
 1. Tìm trong `projects/{project}/lessons/` — lessons riêng project
 2. Tìm trong `_global/lessons/` — lessons chung
+
+### Tôi cần nắm cấu trúc database và thiết kế hệ thống
+1. Dùng tool MCP `xem_thiet_ke` để tra cứu nhanh bảng/cột/ERD
+2. Đọc `projects/{project}/design/database-schema.md` (Từ điển dữ liệu)
+3. Đọc `projects/{project}/design/erd-diagram.md` (Sơ đồ ERD Mermaid)
+4. Chạy `npm run sep -- db-sync` để cập nhật bảng mới nhất từ C# Backend
 
 ### Tôi muốn biết team đã làm gì tuần qua
 1. Xem `projects/{project}/sessions/` — sắp xếp theo ngày

@@ -202,10 +202,10 @@ await test('HTTP auth: token → user, sai token/thiếu token bị từ chối'
   assert.equal(authenticate(undefined, anon), null);
 });
 
-await test('prompts: 7 skill /sep-* từ sep-kit, chèn đầu vào của user', async () => {
+await test('prompts: 9 skill /sep-* từ sep-kit, chèn đầu vào của user', async () => {
   const prompts = await loadSepPrompts(new LocalProvider(KB));
   const names = prompts.map(p => p.name).sort();
-  assert.deepEqual(names, ['sep-apply', 'sep-archive', 'sep-brainstorm', 'sep-spec', 'sep-status', 'sep-test', 'sep-verify-spec']);
+  assert.deepEqual(names, ['sep-apply', 'sep-archive', 'sep-back', 'sep-brainstorm', 'sep-pilot', 'sep-spec', 'sep-status', 'sep-test', 'sep-verify-spec']);
   const spec = prompts.find(p => p.name === 'sep-spec');
   assert.ok(spec.description.length > 10);
   assert.match(renderPrompt(spec, 'quản lý kho'), /Đầu vào của user: quản lý kho$/);
@@ -227,6 +227,8 @@ await test('stdio thật: annotations, lỗi tham số rõ ràng, prompts, chặ
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map(t => [t.name, t]));
     assert.equal(byName.xem_tong_quan.annotations.readOnlyHint, true);
+    assert.equal(byName.xem_thiet_ke.annotations.readOnlyHint, true);
+    assert.equal(byName.sep_lui_buoc.annotations.readOnlyHint, false);
     assert.equal(byName.luu_tru_kien_thuc.annotations.destructiveHint, true);
     assert.equal(byName.sep_luu_artifact.annotations.readOnlyHint, false);
     assert.equal(byName.sep_luu_artifact.annotations.idempotentHint, true);
@@ -246,7 +248,7 @@ await test('stdio thật: annotations, lỗi tham số rõ ràng, prompts, chặ
     assert.equal(evil.isError, true);
 
     const { prompts } = await client.listPrompts();
-    assert.equal(prompts.length, 7);
+    assert.equal(prompts.length, 9);
     const got = await client.getPrompt({ name: 'sep-status', arguments: { input: 'supplier' } });
     assert.match(got.messages[0].content.text, /Đầu vào của user: supplier/);
   } finally {

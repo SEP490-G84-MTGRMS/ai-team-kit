@@ -17,6 +17,8 @@ Mọi chức năng mới, sửa lỗi hoặc refactor đáng kể đi qua 6 bư�
 | 6 | `/sep-archive` | archive + merge specs vào `openspec/specs/` |
 
 `/sep-status` xem tiến độ và chọn change đang làm.
+`/sep-pilot` điều phối tự động toàn bộ quy trình và phỏng vấn tương tác (grill-me mode) qua từng bước.
+`/sep-back` quay lại bước trước (rollback) an toàn khi cần sửa lại spec/task mà không mất file.
 
 ## Luật
 - User yêu cầu code một chức năng / sửa lỗi mà **chưa có change** → đề nghị bắt đầu bằng `/sep-spec` trước khi code.

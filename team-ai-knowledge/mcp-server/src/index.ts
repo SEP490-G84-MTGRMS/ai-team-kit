@@ -36,7 +36,7 @@ import {
   type SepWorkflow,
   type StepKey,
 } from './tools/sepWorkflow.js';
-import { createGitSync } from './tools/gitSync.js';
+import { createGitSync, autoPull } from './tools/gitSync.js';
 import { createActiveStore, logTelemetry } from './tools/localState.js';
 
 const SERVER_VERSION = '2.2.0';
@@ -273,6 +273,23 @@ const BASE_TOOL_DEFINITIONS = [
       required: ['chatContext'],
     },
   },
+  {
+    name: 'xem_thiet_ke',
+    description: 'Kiến trúc sư: Tra cứu thiết kế hệ thống, sơ đồ quan hệ ERD và từ điển dữ liệu (Database Schema) toàn dự án.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        projectName: { type: 'string', description: 'Tên dự án (mặc định: MT-GRMS)' },
+        type: {
+          type: 'string',
+          enum: ['all', 'schema', 'erd', 'architecture'],
+          description: 'Loại tài liệu cần xem: schema (bảng/cột), erd (sơ đồ quan hệ), architecture (kiến trúc), all (tổng quan)',
+        },
+        tableName: { type: 'string', description: 'Tên bảng cụ thể cần tra cứu chi tiết (VD: Product, Batch, Order...)' },
+        autoSync: { type: 'boolean', description: 'Tự động quét C# Backend Entities và cập nhật schema trước khi đọc' },
+      },
+    },
+  },
   ...SEP_TOOL_DEFINITIONS,
 ];
 
@@ -288,6 +305,7 @@ const TOOL_KIND: Record<string, 'read' | 'write' | 'destructive'> = {
   sep_chon_change: 'write',
   sep_duyet_buoc: 'write',
   sep_chuyen_trang_thai: 'destructive',
+  sep_lui_buoc: 'write',
 };
 const IDEMPOTENT = new Set(['sep_luu_artifact', 'sep_chon_change']);
 
@@ -518,6 +536,16 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
           };
         }
 
+        case 'xem_thiet_ke': {
+          const { projectName, type, tableName, autoSync } = (args ?? {}) as {
+            projectName?: string;
+            type?: 'all' | 'schema' | 'erd' | 'architecture';
+            tableName?: string;
+            autoSync?: boolean;
+          };
+          return { content: [{ type: 'text' as const, text: await handlers.handleXemThietKe(projectName, type, tableName, autoSync) }] };
+        }
+
         case 'sep_tao_change': {
           const p = args as {
             moTa: string; tenChange?: string; assignee?: string; mode?: SepMode;
@@ -557,6 +585,11 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         case 'sep_chuyen_trang_thai': {
           const p = args as { tenChange?: string; trangThai: LifecycleStatus };
           return { content: [{ type: 'text' as const, text: await sep.handleChuyenTrangThai(p) }] };
+        }
+
+        case 'sep_lui_buoc': {
+          const p = (args ?? {}) as { tenChange?: string; buocMoi?: StepKey; lyDo?: string };
+          return { content: [{ type: 'text' as const, text: await sep.handleLuiBuoc(p) }] };
         }
 
         case 'sep_xem_persona': {
@@ -641,14 +674,44 @@ async function startStdioMode(provider: DataProvider): Promise<void> {
   const kbRoot = localKbRoot();
   const user = process.env.SEP_ASSIGNEE?.trim() || undefined;
   const afterWrite = createGitSync(kbRoot);
+  const onSessionStart = () => autoPull(kbRoot);
+
+  const runDbSync = async () => {
+    const { pathToFileURL } = await import('node:url');
+    const dbSyncPath = path.resolve(kbRoot, 'scripts/sep/db-sync.js');
+    const mod = await import(pathToFileURL(dbSyncPath).href);
+    await mod.dbSync();
+  };
+
+  const onDbSync = async () => {
+    try {
+      await runDbSync();
+    } catch (err: any) {
+      console.error('[dbSync] Error:', err.message);
+    }
+  };
+
+  const onApplyApprove = async () => {
+    try {
+      await runDbSync();
+      return {
+        files: ['projects/MT-GRMS/design/database-schema.md'],
+        note: 'Đã tự động quét C# Entities và đồng bộ Database Schema.',
+      };
+    } catch (err: any) {
+      return { files: [], note: `db-sync: ${err.message}` };
+    }
+  };
+
   const server = createServer({
     provider,
-    handlers: createToolHandlers(provider, { author: user, afterWrite }),
+    handlers: createToolHandlers(provider, { author: user, afterWrite, onSessionStart, onDbSync }),
     sep: createSepWorkflow(provider, {
       defaultAssignee: user,
       defaultProject: process.env.SEP_PROJECT,
       activeStore: createActiveStore(kbRoot),
       afterWrite,
+      onApplyApprove,
     }),
     user,
     telemetry: true,

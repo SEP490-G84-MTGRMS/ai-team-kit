@@ -238,8 +238,10 @@ export interface SepWorkflowOptions {
   defaultProject?: string;
   /** Remembers the change the user is working on so tools can omit tenChange */
   activeStore?: ActiveChangeStore;
-  /** Called after files are written (e.g. git commit in local mode). Paths are KB-relative. Returns a status line. */
-  afterWrite?: (files: string[], message: string) => Promise<string | null>;
+  /** Called after files are written (e.g. git commit in local mode). Paths are KB-relative. forcePush is true at key checkpoints. */
+  afterWrite?: (files: string[], message: string, forcePush?: boolean) => Promise<string | null>;
+  /** Optional callback to trigger schema sync when apply step is approved */
+  onApplyApprove?: () => Promise<{ files: string[]; note: string } | null>;
 }
 
 export function toSlug(str: string): string {
@@ -498,8 +500,8 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     return lines.join('\n');
   }
 
-  async function commit(files: string[], message: string): Promise<string | null> {
-    return (await options.afterWrite?.(files, message)) ?? null;
+  async function commit(files: string[], message: string, forcePush = false): Promise<string | null> {
+    return (await options.afterWrite?.(files, message, forcePush)) ?? null;
   }
 
   function reply(head: string, git: string | null, body: string): string {
@@ -672,9 +674,23 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     }
     await appendLog(name, `${params.quyetDinh === 'approve' ? 'duyệt' : 'từ chối'} bước ${step.label} · @${by}`);
 
-    const git = await commit(rel(name, written), `sep(${name}): ${params.quyetDinh} ${key}`);
+    let autoDbSyncNote = '';
+    if (key === 'apply' && params.quyetDinh === 'approve' && options.onApplyApprove) {
+      try {
+        const syncRes = await options.onApplyApprove();
+        if (syncRes?.files?.length) {
+          written.push(...syncRes.files);
+          autoDbSyncNote = `\n${syncRes.note}`;
+        }
+      } catch (err: any) {
+        autoDbSyncNote = `\n⚠️ db-sync cảnh báo: ${err.message}`;
+      }
+    }
+
+    const isCheckpoint1 = key === 'verify-spec' && params.quyetDinh === 'approve';
+    const git = await commit(rel(name, written), `sep(${name}): ${params.quyetDinh} ${key}`, isCheckpoint1);
     const head = params.quyetDinh === 'approve'
-      ? `✅ Đã duyệt bước ${step.label}.`
+      ? `✅ Đã duyệt bước ${step.label}.${autoDbSyncNote}`
       : `❌ Bước ${step.label} bị từ chối — sửa artifact theo góp ý rồi hỏi duyệt lại.`;
     return reply(head, git, await summarize(name));
   }
@@ -718,8 +734,72 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       note = merged.note;
     }
     await appendLog(name, `chuyển bước → ${params.trangThai}`);
-    const git = await commit([...rel(name, ['.status', '.session.md']), ...extra], `sep(${name}): ${params.trangThai}`);
+    const isCheckpoint2 = params.trangThai === 'archived';
+    const git = await commit([...rel(name, ['.status', '.session.md']), ...extra], `sep(${name}): ${params.trangThai}`, isCheckpoint2);
     return reply([`✅ \`${name}\` → **${params.trangThai}**`, note].filter(Boolean).join('\n'), git, await summarize(name));
+  }
+
+  async function handleLuiBuoc(params: {
+    tenChange?: string;
+    buocMoi?: StepKey;
+    lyDo?: string;
+  }): Promise<string> {
+    const name = await resolveName(params.tenChange);
+    if (!(await changeExists(name))) throw new Error(`Không tìm thấy change \`${name}\`.`);
+
+    const st = await loadState(name);
+    if (st.status === 'archived') throw new Error(`Change \`${name}\` đã archive — không thể lùi bước.`);
+
+    const next = nextAction(st);
+    const currentKey = next ? next.step.key : st.status;
+    const currentStep = stepByKey(currentKey);
+    const currentIndex = stepIndex(currentKey);
+
+    let targetKey: StepKey;
+
+    if (params.buocMoi) {
+      const targetIndex = stepIndex(params.buocMoi);
+      if (targetIndex >= currentIndex) {
+        throw new Error(
+          `⛔ Không thể lùi: bước mục tiêu '${params.buocMoi}' không nằm trước bước hiện tại '${currentKey}'. ` +
+          `Các bước có thể lùi về: ${SEP_STEPS.slice(0, currentIndex).map(s => s.key).join(', ')}.`
+        );
+      }
+      targetKey = params.buocMoi;
+    } else {
+      if (currentIndex <= 0) {
+        throw new Error(`⛔ Change \`${name}\` đang ở bước đầu tiên ('${currentKey}'), không thể lùi thêm.`);
+      }
+      targetKey = SEP_STEPS[currentIndex - 1].key;
+    }
+
+    const targetStep = stepByKey(targetKey);
+
+    // 1. Cập nhật .status tương ứng với targetKey
+    const targetStatus: StepKey = stepIndex(targetKey) < stepIndex('apply') ? 'spec' : 'apply';
+    await write(`${base(name)}/.status`, `${targetStatus}\n`);
+
+    // 2. Reset approval gate cho các bước từ targetKey trở đi
+    const session = await readSession(name);
+    if (session) {
+      if (session.data.approvals && typeof session.data.approvals === 'object') {
+        for (const step of SEP_STEPS.slice(stepIndex(targetKey))) {
+          delete session.data.approvals[step.key];
+        }
+      }
+      const reason = params.lyDo?.trim() ? ` (lý do: ${params.lyDo.trim()})` : '';
+      await appendLog(name, `lùi bước: ${currentKey} ➔ ${targetKey}${reason}`);
+      await writeSession(name, session.data, session.content);
+    }
+
+    const git = await commit(rel(name, ['.status', '.session.md']), `sep(${name}): lui buoc ve ${targetKey}`);
+    const head = [
+      `⏪ Đã lùi change \`${name}\` từ **${currentStep.label}** (\`${currentKey}\`) về **${targetStep.label}** (\`${targetKey}\`).`,
+      `ℹ️ Toàn bộ artifact cũ vẫn được giữ nguyên để bạn chỉnh sửa tiếp.`,
+      `🔓 Cổng duyệt của bước ${targetStep.label} đã được mở lại để bạn duyệt sau khi cập nhật xong.`,
+    ].join('\n');
+
+    return reply(head, git, await summarize(name));
   }
 
   async function handleXemPersona(params: { ten?: string }): Promise<string> {
@@ -746,6 +826,7 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     handleDanhSachChange,
     handleDuyetBuoc,
     handleChuyenTrangThai,
+    handleLuiBuoc,
     handleXemPersona,
   };
 }
@@ -869,4 +950,23 @@ export const SEP_TOOL_DEFINITIONS = [
       properties: { ten: { type: 'string', description: 'Tên persona' } },
     },
   },
+  {
+    name: 'sep_lui_buoc',
+    description:
+      'SEP: Quay lại bước trước (Rollback) trong quy trình SEP khi cần sửa lại spec, brainstorm hoặc task. ' +
+      'Giữ nguyên toàn bộ artifact cũ để tiếp tục chỉnh sửa, reset cổng duyệt của bước được lùi về để duyệt lại sau đó.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        tenChange: TEN_CHANGE,
+        buocMoi: {
+          type: 'string',
+          enum: ['spec', 'brainstorm', 'verify-spec', 'apply', 'test'],
+          description: 'Bước muốn lùi về (mặc định: lùi 1 bước liền trước)',
+        },
+        lyDo: { type: 'string', description: 'Lý do lùi bước (lưu vào nhật ký)' },
+      },
+    },
+  },
 ];
+

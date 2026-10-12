@@ -49,9 +49,11 @@ Bước 2: Gọi danh_sach_phien_gan_day()
 
 Cài đặt: `npm run sep -- install --user=<github>` (Cursor / Claude Code / Antigravity — xem `sep-kit/README.md`).
 
-`/sep-spec` → `/sep-brainstorm` → `/sep-verify-spec` → `/sep-apply` → `/sep-test` → `/sep-archive` (`/sep-status` xem tiến độ)
+`/sep-pilot` (Auto-Pilot & Grill-Me) | `/sep-spec` → `/sep-brainstorm` → `/sep-verify-spec` → `/sep-apply` → `/sep-test` → `/sep-archive` (lùi bước: `/sep-back`, tiến độ: `/sep-status`)
 
-- Khi user yêu cầu làm **chức năng mới** mà chưa có change: đề nghị dùng `/sep-spec <mô tả>` thay vì code ngay.
+- Khuyên dùng: Dùng `/sep-pilot <mô tả>` để tự động điều phối, phỏng vấn chốt giải pháp qua từng bước.
+- Khi user yêu cầu làm **chức năng mới** mà chưa có change: đề nghị dùng `/sep-pilot` hoặc `/sep-spec <mô tả>` thay vì code ngay.
+- Muốn sửa lại phương án / bước trước: Dùng `/sep-back [bước]`.
 - Change nằm ở `openspec/changes/<tên>/`. **Chỉ ghi artifact qua tool `sep_*`** — không sửa file tay.
 - **Schema** (`sep_tao_change` tham số `schema`): `feature` (mặc định), `bug-fix`, `refactor` — hai loại sau không cần `design-brief.md`. Bối cảnh dự án: `openspec/config.yaml`.
 - **Cổng duyệt:** cuối mỗi bước trình bày kết quả và hỏi user Approve / Reject. Chỉ gọi `sep_duyet_buoc` **sau khi user trả lời** — không tự duyệt thay user. Reject → sửa theo lý do rồi hỏi lại.
@@ -156,7 +158,7 @@ Tầng 3 (chi tiết):    Nội dung file cụ thể
 
 Repo này làm theo quy trình SEP 6 bước: `/sep-spec` → `/sep-brainstorm` → `/sep-verify-spec` → `/sep-apply` → `/sep-test` → `/sep-archive`
 (xem tiến độ: `/sep-status`). Mỗi bước kết thúc bằng Approve/Reject của user. Artifact nằm trong
-`D:/FPT_University/Final/Grade/new/project/ai-team-kit/team-ai-knowledge/openspec/` và chỉ được ghi qua MCP server "sep".
+`D:/Sourse_code_Do_An/ai-team-kit/team-ai-knowledge/openspec/` và chỉ được ghi qua MCP server "sep".
 
 Rules chi tiết: `.cursor/rules/sep-kit-*.mdc` (Cursor), `.agents/rules/sep-kit-*.md` (Antigravity) —
 sinh từ `sep-kit/rules` (karpathy-coding, mt-grms-stack, multi-agent-review, sep-knowledge, sep-workflow). Cập nhật: `npm run sep -- init <repo>`.

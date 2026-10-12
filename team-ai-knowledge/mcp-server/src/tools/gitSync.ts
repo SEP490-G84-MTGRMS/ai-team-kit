@@ -29,13 +29,27 @@ export function isGitWorkTree(dir: string): boolean {
   }
 }
 
+/**
+ * Automatically pulls latest changes from remote using rebase and autostash.
+ * Safe and fail-open.
+ */
+export async function autoPull(kbRoot: string): Promise<string | null> {
+  if (!isGitWorkTree(kbRoot) || process.env.SEP_AUTO_PULL === 'false') return null;
+  try {
+    const res = await git(kbRoot, ['pull', '--rebase', '--autostash']);
+    return res.split('\n')[0];
+  } catch (err: any) {
+    return `pull lỗi: ${String(err.stderr || err.message).split('\n')[0]}`;
+  }
+}
+
 export function createGitSync(kbRoot: string) {
   const enabled = process.env.SEP_AUTO_COMMIT !== 'false' && isGitWorkTree(kbRoot);
-  const push = process.env.SEP_AUTO_PUSH === 'true';
+  const defaultPush = process.env.SEP_AUTO_PUSH === 'true';
   // Agents may call several write tools in parallel; git holds index.lock, so run one sync at a time
   let queue: Promise<unknown> = Promise.resolve();
 
-  async function sync(paths: string[], message: string): Promise<string | null> {
+  async function sync(paths: string[], message: string, forcePush = false): Promise<string | null> {
     try {
       // A deleted path only belongs in the commit if git tracks it (archive/restore moves)
       const tracked = new Set((await git(kbRoot, ['ls-files', '--', ...paths])).split('\n').filter(Boolean));
@@ -46,11 +60,13 @@ export function createGitSync(kbRoot: string) {
       const staged = await git(kbRoot, ['diff', '--cached', '--name-only', '--', ...targets]);
       if (!staged) return 'không có thay đổi để commit';
       await git(kbRoot, ['commit', '--no-verify', '-m', message, '--', ...targets]);
-      if (!push) return `đã commit "${message}" (chưa push — chạy git push trong team-ai-knowledge)`;
+
+      const shouldPush = forcePush || defaultPush;
+      if (!shouldPush) return `đã commit "${message}" (chưa push — chạy git push trong team-ai-knowledge)`;
       try {
         await git(kbRoot, ['pull', '--rebase', '--autostash']);
         await git(kbRoot, ['push']);
-        return `đã commit + push "${message}"`;
+        return `đã commit + push "${message}" lên remote`;
       } catch (err: any) {
         return `đã commit nhưng push lỗi: ${String(err.stderr || err.message).split('\n')[0]}`;
       }
@@ -60,9 +76,9 @@ export function createGitSync(kbRoot: string) {
   }
 
   /** @param paths KB-relative file paths */
-  return function afterWrite(paths: string[], message: string): Promise<string | null> {
+  return function afterWrite(paths: string[], message: string, forcePush = false): Promise<string | null> {
     if (!enabled) return Promise.resolve(null);
-    const next = queue.then(() => sync(paths, message));
+    const next = queue.then(() => sync(paths, message, forcePush));
     queue = next.catch(() => undefined);
     return next;
   };
