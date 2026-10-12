@@ -20,8 +20,10 @@
 - [x] FE-04: Axios httpClient interceptor tự động đính kèm token
 - [x] FE-05: Protected route guard (ProtectedRoute.tsx)
 - [x] FE-06: Logout button trên AdminTopbar với chuyển hướng /auth/login
-- [x] FE-07: Đồng bộ Design System KiotViet Blue Palette & 100% Monochrome SVG Icons
+- [x] FE-07: Loại bỏ trường Email trong Form Đăng ký (Phone-first UX cho tiểu thương tạp hóa)
+- [x] FE-08: Sắp xếp hàng mật khẩu 2 cột và tối ưu tỷ lệ Zero-Scroll (vừa vặn 100% không cần cuộn)
+- [x] FE-09: Đồng bộ Design System KiotViet Blue Palette & 100% Monochrome SVG Icons
 
 ## Estimate & Verification
 - BE: Hoàn tất (Build 0 warnings, test PASS)
-- FE: Hoàn tất (Build 0 errors, worklog created)
+- FE: Hoàn tất (Build 0 errors, Browser subagent xác nhận Zero-Scroll)
