@@ -1,39 +1,55 @@
-# Specs: Auth Login Feature
+# Specs: auth-login-feature
 
-## Endpoints
+## API / Contract
 
-### POST /api/auth/login
+### POST /api/auth/register
 **Request:**
 ```json
-{ "email": "user@example.com", "password": "secret123" }
+{
+  "fullName": "Trần Hoàng Long",
+  "storeName": "Siêu thị MT Mart Q1",
+  "phone": "0912345678",
+  "email": "0912345678@mtgrms.vn",
+  "password": "Password123#",
+  "agreeTerms": true
+}
 ```
 **Response 200:**
 ```json
 {
   "accessToken": "eyJ...",
   "refreshToken": "eyJ...",
-  "expiresIn": 900,
-  "user": { "id": 1, "email": "user@example.com", "tenantId": "T1" }
+  "expiresIn": 7200,
+  "user": {
+    "id": "usr_01",
+    "phone": "0912345678",
+    "fullName": "Trần Hoàng Long",
+    "tenantId": "TNT_Q1",
+    "role": "STORE_OWNER"
+  }
 }
 ```
-**Error 401:** Invalid credentials
 
-### POST /api/auth/refresh
-**Request:** `{ "refreshToken": "eyJ..." }`
-**Response:** New access token pair
+## ADDED Requirements
 
-### POST /api/auth/logout
-**Request:** Bearer token in header
-**Response 204:** No content (blacklists refresh token)
+### Requirement: REQ-REG-01 Đăng ký định danh qua Số điện thoại (Phone-First)
+Form đăng ký tài khoản mở cửa hàng MT-GRMS MUST NOT bắt buộc người dùng nhập địa chỉ email. Hệ thống MUST sử dụng Số điện thoại làm phương thức liên lạc và định danh chính của chủ cửa hàng.
 
-## Validation
-- email: valid format, max 255 chars
-- password: min 8 chars
+#### Scenario: Đăng ký thành công không cần Email
+- **GIVEN**: Khách hàng mở trang `/auth/register`.
+- **WHEN**: Khách hàng nhập Họ tên, Tên cửa hàng, Số điện thoại hợp lệ và Mật khẩu (không có trường Email).
+- **THEN**: Hệ thống tạo thành công tài khoản quản trị chuỗi, tự động gán phiên đăng nhập và chuyển hướng vào Dashboard.
 
-## Error Codes
-| Code | Message |
-|------|---------|
-| AUTH_001 | Invalid email or password |
-| AUTH_002 | Token expired |
-| AUTH_003 | Token invalid |
-| AUTH_004 | Too many attempts |
+### Requirement: REQ-REG-02 Giao diện Zero-Scroll vừa vặn màn hình
+Giao diện Auth Shell (`AuthLayout`) và Form Đăng ký (`RegisterPage`) MUST vừa vặn trong 1 màn hình tiêu chuẩn (chiều cao viewport từ 768px trở lên) mà không xuất hiện thanh cuộn dọc.
+
+#### Scenario: Hiển thị trọn vẹn không cuộn chuột
+- **GIVEN**: Khách hàng truy cập trang `/auth/register` trên màn hình laptop/desktop thông thường.
+- **WHEN**: Trang hoàn tất tải giao diện.
+- **THEN**: Toàn bộ Header, Auth Card (tất cả các trường, nút bấm CTA) và Footer bản quyền hiển thị trọn vẹn trong một khung nhìn không bị cuộn.
+
+## Acceptance checklist
+- [x] Đã bỏ trường input Email trên giao diện RegisterPage.
+- [x] Đã cập nhật validate form chỉ kiểm tra Số điện thoại.
+- [x] Chiều cao toàn trang hiển thị gọn gàng trong 1 khung nhìn không bị cuộn.
+- [x] Build và kiểm thử giao diện đạt tiêu chuẩn.
