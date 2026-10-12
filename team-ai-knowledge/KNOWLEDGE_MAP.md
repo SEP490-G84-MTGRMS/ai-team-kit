@@ -67,8 +67,10 @@ team-ai-knowledge/
 ### Tôi là dev mới, cần hiểu tổng quan
 1. Đọc file này
 2. Đọc `_global/patterns/` — biết team code kiểu gì
-3. Đọc `projects/{project-của-tôi}/context/overview.md`
-4. Đọc `openspec/config.yaml` — stack và rule kỹ thuật
+3. Đọc `projects/{project-của-tôi}/context/overview.md` — tổng quan dự án & 23 FEs
+4. Đọc `projects/{project-của-tôi}/context/business-flows.md` — 8 luồng nghiệp vụ chuẩn & quy tắc FEFO
+5. Đọc `projects/{project-của-tôi}/context/actors-and-permissions.md` — 5 tác tử & ma trận quyền RBAC
+6. Đọc `openspec/config.yaml` — stack và rule kỹ thuật
 
 ### Tôi cần biết team đã quyết định gì về X
 1. Tìm trong `_global/decisions/` — quyết định cấp team

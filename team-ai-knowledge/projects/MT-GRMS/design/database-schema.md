@@ -1,173 +1,267 @@
-# MT-GRMS — Database Schema & Data Dictionary (Từ điển dữ liệu toàn hệ thống)
+---
+id: DES-MT-GRMS-001
+title: "MT-GRMS — Từ Điển Dữ Liệu & Thiết Kế Thực Thể Toàn Hệ Thống (Master Database Schema & Data Dictionary)"
+date: "2026-10-12"
+author: "SEP490-G84"
+project: "MT-GRMS"
+tags: [design, database, schema, entities, erd, multi-tenancy]
+---
+
+# 🗄️ MT-GRMS — Từ Điển Dữ Liệu & Thiết Kế Thực Thể Toàn Hệ Thống
 
 > **Dự án**: Multi-Tenant Grocery Retail Management System (MT-GRMS / SGMS)  
-> **Cập nhật lần cuối**: 2026-10-11  
-> **Nguồn sự thật (Single Source of Truth)**: `MT_GRMS_BACKEND/src/MT_GRMS.Domain/Entities` & `AppDbContext.cs`  
-> **Lệnh đồng bộ tự động**: `npm run sep -- db-sync`
+> **Cập nhật chuẩn**: Khớp 100% với Báo cáo SRS (Report-3) và Sơ đồ Conceptual ERD (Draw.io XML)  
+> **Backend Implementation**: .NET 8 Clean Architecture (`MT_GRMS_BACKEND`), Entity Framework Core 8, SQL Server  
 
 ---
 
-## 1. Quy Chuẩn Chung Của Database (Global Conventions)
+## 1. Nguyên Tắc Thiết Kế Cơ Sở Dữ Liệu Bất Biến
 
-- **Đa người thuê (Multi-Tenancy)**: Mọi bảng nghiệp vụ kế thừa từ `BaseTenantEntity` bắt buộc chứa trường `TenantId (varchar/nvarchar)`. Mọi câu truy vấn EF Core được tự động áp dụng `Global Query Filter: e => !e.IsDeleted && e.TenantId == _tenantContext.CurrentTenantId`.
-- **Xóa mềm (Soft Delete)**: Cột `IsDeleted (boolean)` đánh dấu bản ghi bị xóa, không xóa vật lý khỏi database để phục vụ Audit Trail.
-- **Khóa chính**: `Id (Guid / UUID)` sinh tự động tại Application (`Guid.NewGuid()`).
-- **Tiền tệ**: Mọi trường tiền tệ lưu kiểu `decimal(18,2)` tính theo VND.
-- **Thời gian**: Lưu thời gian chuẩn UTC (`DateTime.UtcNow`), hiển thị ở Frontend theo múi giờ `Asia/Ho_Chi_Minh` (GMT+7).
-
----
-
-## 2. Bảng Kế Thừa Gốc: `BaseTenantEntity`
-
-Tất cả Entity kế thừa các trường cơ bản sau:
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Mô Tả Nghiệp Vụ |
-|---|---|:---:|---|
-| `Id` | `Guid` | ❌ | Khóa chính của thực thể (Primary Key). |
-| `TenantId` | `string` | ❌ | Mã định danh người thuê / chuỗi cửa hàng (Multi-tenant partition key). |
-| `CreatedAt` | `DateTime` | ❌ | Thời điểm tạo bản ghi (UTC). |
-| `UpdatedAt` | `DateTime` | ✔️ | Thời điểm cập nhật gần nhất (UTC). |
-| `CreatedBy` | `Guid` | ✔️ | ID người dùng thực hiện tạo bản ghi. |
-| `IsDeleted` | `bool` | ❌ | Trạng thái xóa mềm (mặc định: `false`). |
+1. **Phân lập Đa Người Thuê Tuyệt Đối (Multi-Tenancy Partitioning)**:
+   - Tất cả các bảng nghiệp vụ kế thừa từ `BaseTenantEntity` **bắt buộc chứa cột `TenantId (varchar(50))`**.
+   - EF Core cấu hình tự động: `HasQueryFilter(e => !e.IsDeleted && e.TenantId == _currentTenantId)`.
+2. **Khóa chính & Khóa ngoại**:
+   - Sử dụng kiểu `Guid (UUID)` sinh tại Application (`Guid.NewGuid()`) để đảm bảo không trùng lặp và tương thích đồng bộ phân tán.
+3. **Audit Trail & Xóa Mềm (Soft Delete)**:
+   - Mọi bảng có: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`, `IsDeleted (bit)`. Tuyệt đối không xóa cứng (Hard Delete) dữ liệu giao dịch tài chính và kho.
+4. **Tiền tệ & Số Lượng**:
+   - Tiền tệ: `decimal(18,2)` tính theo VND.
+   - Số lượng: `decimal(18,3)` để hỗ trợ cả sản phẩm cân ký (Kg, Gram) và đơn vị đóng gói (Lon, Chai, Thùng).
+5. **Múi giờ**:
+   - Lưu trữ chuẩn UTC (`DateTime.UtcNow`) trong cơ sở dữ liệu.
 
 ---
 
-## 3. Danh Mục Các Bảng Dữ Liệu (Data Dictionary)
+## 2. Bảng Cơ Sở Kế Thừa: `BaseTenantEntity`
 
-### 3.1 Bảng `Product` (Sản phẩm)
-Quản lý thông tin hàng hóa trong chuỗi siêu thị/tạp hóa.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+| Tên Cột | Kiểu Dữ Liệu | Nullable | Ràng Buộc | Ý Nghĩa Nghiệp Vụ |
 |---|---|:---:|:---:|---|
-| `SKU` | `string` | ❌ | Unique / Tenant | Mã quản lý nội bộ của sản phẩm (VD: `SP-00123`). |
-| `Barcode` | `string` | ❌ | Index | Mã vạch quét tại quầy thu ngân (EAN-13, Code-128). |
-| `ProductName` | `string` | ❌ | | Tên hiển thị của sản phẩm. |
-| `CategoryId` | `Guid` | ✔️ | FK -> `Category.Id` | Danh mục hàng hóa cha. |
+| `Id` | `Guid` | ❌ | PK | Khóa chính duy nhất của bản ghi. |
+| `TenantId` | `varchar(50)` | ❌ | Index | Khóa phân vùng Multi-Tenant (Tenant Code). |
+| `CreatedAt` | `datetime2` | ❌ | | Thời điểm tạo bản ghi (UTC). |
+| `CreatedBy` | `Guid` | ✔️ | | ID người tạo bản ghi. |
+| `UpdatedAt` | `datetime2` | ✔️ | | Thời điểm cập nhật cuối cùng (UTC). |
+| `UpdatedBy` | `Guid` | ✔️ | | ID người sửa bản ghi cuối cùng. |
+| `IsDeleted` | `bit` | ❌ | Def: 0 | Cờ đánh dấu xóa mềm. |
+
+---
+
+## 3. Chi Tiết Các Bảng Theo Phân Hệ (Data Dictionary)
+
+### 3.1 Phân Hệ Nền Tảng & Tổ Chức (Identity & Organization)
+
+#### Bảng `Tenants` (Quản lý Khách thuê / Chủ chuỗi)
+*Bảng cấp nền tảng quản lý bởi SaaS Master Admin.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `Id` | `varchar(50)` | ❌ | PK | Mã định danh Tenant (Slug/Code duy nhất, VD: `taphoa-hoangmai`). |
+| `StoreName` | `nvarchar(200)` | ❌ | | Tên thương hiệu chuỗi cửa hàng. |
+| `OwnerEmail` | `varchar(150)` | ❌ | Unique | Email đăng ký của chủ sở hữu. |
+| `OwnerPhone` | `varchar(20)` | ❌ | | Số điện thoại liên hệ chính. |
+| `TaxNumber` | `varchar(50)` | ✔️ | | Mã số thuế hộ kinh doanh / công ty. |
+| `SubscriptionPlanId` | `Guid` | ❌ | FK -> Plans | Gói dịch vụ SaaS hiện tại. |
+| `SubscriptionExpiredAt` | `datetime2` | ❌ | | Hạn sử dụng gói dịch vụ SaaS. |
+| `IsActive` | `bit` | ❌ | Def: 1 | Trạng thái hoạt động (1: Hoạt động, 0: Đang bị khóa). |
+
+#### Bảng `Branches` (Chi nhánh cửa hàng)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã chi nhánh (VD: `CN-01`, `CN-CAUGIAY`). |
+| `BranchName` | `nvarchar(200)` | ❌ | | Tên chi nhánh hiển thị. |
+| `Address` | `nvarchar(300)` | ❌ | | Địa chỉ mặt bằng cửa hàng. |
+| `PhoneNumber` | `varchar(20)` | ✔️ | | Điện thoại liên hệ của chi nhánh. |
+| `IsMainBranch` | `bit` | ❌ | Def: 0 | Đánh dấu chi nhánh trung tâm / kho tổng. |
+
+#### Bảng `Users` & `Employees` (Người dùng & Hồ sơ nhân viên)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `EmployeeCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã nhân viên (VD: `NV-001`). |
+| `FullName` | `nvarchar(150)` | ❌ | | Họ và tên nhân viên. |
+| `Email` | `varchar(150)` | ✔️ | | Email đăng nhập. |
+| `PasswordHash` | `varchar(255)` | ✔️ | | Mật khẩu băm (BCrypt / Argon2). |
+| `GoogleId` | `varchar(100)` | ✔️ | | ID tài khoản Google liên kết (OAuth 2.0). |
+| `Role` | `varchar(50)` | ❌ | | Vai trò (`StoreOwner`, `StoreManager`, `Cashier`, `InventoryStaff`). |
+| `AssignedBranchId` | `Guid` | ✔️ | FK -> Branches | Chi nhánh được phân công làm việc. |
+| `HourlyRate` | `decimal(18,2)` | ✔️ | | Đơn giá lương theo giờ (VNĐ/giờ). |
+| `BaseSalary` | `decimal(18,2)` | ✔️ | | Lương cứng hàng tháng (nếu có). |
+| `IsActive` | `bit` | ❌ | Def: 1 | Trạng thái tài khoản (1: Đang làm, 0: Đã nghỉ việc). |
+
+---
+
+### 3.2 Phân Hệ Hàng Hóa & Lô Hạn FEFO (Catalog & Inventory)
+
+#### Bảng `Categories` (Danh mục sản phẩm)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `CategoryCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã nhóm hàng (VD: `CAT-BEV`). |
+| `CategoryName` | `nvarchar(150)` | ❌ | | Tên nhóm hàng (Đồ uống, Bánh kẹo, Sữa...). |
+| `ParentCategoryId` | `Guid` | ✔️ | FK -> Self | Danh mục cha (nếu có cây phân cấp). |
+
+#### Bảng `Products` (Sản phẩm)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `SKU` | `varchar(50)` | ❌ | Unique/Tenant | Mã quản lý nội bộ sản phẩm. |
+| `Barcode` | `varchar(50)` | ❌ | Index | Mã vạch quét tại quầy (EAN-13, Code-128). |
+| `ProductName` | `nvarchar(250)` | ❌ | | Tên sản phẩm hiển thị. |
+| `CategoryId` | `Guid` | ✔️ | FK -> Categories | Nhóm hàng hóa. |
+| `BaseUnit` | `nvarchar(50)` | ❌ | Def: 'Cái' | Đơn vị tính cơ bản nhỏ nhất (Lon, Gói, Chai, Kg). |
 | `BasePrice` | `decimal(18,2)` | ❌ | | Giá niêm yết bán lẻ lẻ tại quầy. |
-| `CostPrice` | `decimal(18,2)` | ❌ | | Giá vốn bình quân / giá nhập gần nhất. |
-| `UnitName` | `string` | ❌ | | Đơn vị tính (Lon, Chai, Gói, Hộp, Kg...). Mặc định: `Cái`. |
-| `HasBatches` | `bool` | ❌ | | Đánh dấu sản phẩm có quản lý theo lô & hạn sử dụng hay không. |
-| `IsActive` | `bool` | ❌ | | Trạng thái kinh doanh (Đang bán / Ngừng bán). |
+| `CostPrice` | `decimal(18,2)` | ❌ | | Giá vốn nhập hàng bình quân gia quyền. |
+| `HasBatches` | `bit` | ❌ | Def: 1 | Bật/Tắt quản lý theo Lô và Hạn sử dụng (FEFO). |
+| `NearExpiryDaysThreshold` | `int` | ❌ | Def: 30 | Số ngày tính là cận date để bắn cờ cảnh báo. |
+| `IsActive` | `bit` | ❌ | Def: 1 | Trạng thái kinh doanh (1: Đang bán, 0: Ngừng bán). |
+
+#### Bảng `ProductUnits` (Quy đổi đơn vị tính sản phẩm)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm quy đổi. |
+| `UnitName` | `nvarchar(50)` | ❌ | | Tên đơn vị quy đổi (VD: `Thùng`, `Lốc`). |
+| `ConversionFactor` | `decimal(18,3)` | ❌ | | Hệ số quy đổi ra đơn vị cơ bản (VD: 1 Thùng = 24 Lon -> `24.0`). |
+| `SellingPrice` | `decimal(18,2)` | ❌ | | Giá bán lẻ áp dụng cho đơn vị này. |
+| `Barcode` | `varchar(50)` | ✔️ | | Mã vạch riêng của đơn vị quy đổi (Mã thùng). |
+
+#### Bảng `Batches` (Lô hàng & Hạn sử dụng - Trái tim FEFO)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm thuộc lô. |
+| `BatchCode` | `varchar(100)` | ❌ | | Số lô sản xuất từ nhà sản xuất (VD: `LOT20261012`). |
+| `ManufacturingDate` | `date` | ✔️ | | Ngày sản xuất (MFG). |
+| `ExpiryDate` | `date` | ❌ | Index | Hạn sử dụng (EXP) — Dùng để sort ưu tiên xuất FEFO. |
+| `SupplierId` | `Guid` | ✔️ | FK -> Suppliers | Nhà cung cấp lô hàng. |
+
+#### Bảng `Inventory` (Tồn kho vật lý theo Chi nhánh + Lô)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh lưu kho. |
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm tồn. |
+| `BatchId` | `Guid` | ✔️ | FK -> Batches | Lô hàng cụ thể (nếu `HasBatches = true`). |
+| `QuantityOnHand` | `decimal(18,3)` | ❌ | Def: 0 | Số lượng tồn kho thực tế khả dụng. |
+| `MinStockAlert` | `decimal(18,3)` | ✔️ | | Ngưỡng tồn tối thiểu cần báo động nhập hàng. |
+| `MaxStockAlert` | `decimal(18,3)` | ✔️ | | Ngưỡng tồn tối đa tránh đọng vốn. |
 
 ---
 
-### 3.2 Bảng `Category` (Danh mục sản phẩm)
-Phân loại hàng hóa theo cây danh mục cha - con.
+### 3.3 Phân Hệ Bán Hàng POS & Thanh Toán (POS & Orders)
 
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `Customers` (Khách hàng & CRM)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `CategoryCode` | `string` | ❌ | Unique / Tenant | Mã định danh danh mục (VD: `CAT-BEV`). |
-| `CategoryName` | `string` | ❌ | | Tên nhóm hàng (Đồ uống, Bánh kẹo, Gia vị...). |
-| `ParentCategoryId` | `Guid` | ✔️ | Self-FK | ID danh mục cha (dùng cho phân cấp danh mục). |
+| `PhoneNumber` | `varchar(20)` | ❌ | Index | Số điện thoại khách hàng (Khóa tìm kiếm chính). |
+| `FullName` | `nvarchar(150)` | ❌ | | Họ tên khách hàng. |
+| `LoyaltyPoints` | `int` | ❌ | Def: 0 | Số điểm thưởng tích lũy khả dụng. |
+| `MembershipTier` | `varchar(50)` | ❌ | Def: 'Standard' | Hạng thẻ: `Standard`, `Silver`, `Gold`, `VIP`. |
+| `CurrentDebtAR` | `decimal(18,2)` | ❌ | Def: 0 | Tổng công nợ khách đang nợ cửa hàng (Phải thu AR). |
+| `DebtLimit` | `decimal(18,2)` | ❌ | Def: 0 | Hạn mức cho phép mua nợ tối đa. |
 
----
-
-### 3.3 Bảng `Batch` (Lô hàng & Hạn sử dụng - FEFO Engine)
-Theo dõi từng lô hàng nhập kho phục vụ thuật toán xuất kho cận hạn trước (First-Expired, First-Out).
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `Orders` (Hóa đơn bán lẻ POS)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `ProductId` | `Guid` | ❌ | FK -> `Product.Id` | Sản phẩm thuộc lô hàng. |
-| `BranchId` | `Guid` | ❌ | | Chi nhánh / Cửa hàng đang giữ lô hàng này. |
-| `BatchCode` | `string` | ❌ | Index | Số lô do nhà sản xuất hoặc hệ thống in (VD: `LOT-202610-01`). |
-| `ManufactureDate`| `DateTime` | ❌ | | Ngày sản xuất (MFG). |
-| `ExpiryDate` | `DateTime` | ❌ | Index (ASC) | Hạn sử dụng (EXP) — dùng sắp xếp FEFO khi bán hàng. |
-| `InitialQuantity`| `decimal(18,2)` | ❌ | | Số lượng nhập ban đầu theo chứng từ PO. |
-| `LandedCostPerUnit`| `decimal(18,2)`| ❌ | | Giá nhập thực tế trên từng đơn vị sau thuế & phí vận chuyển. |
-| *DaysUntilExpiry*| `int` | - | Computed | Số ngày còn lại đến hạn sử dụng (`ExpiryDate - UtcNow`). |
-| *IsExpired* | `bool` | - | Computed | Cờ xác định lô đã quá hạn (`UtcNow > ExpiryDate`). |
+| `OrderCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã hóa đơn duy nhất (VD: `HD-20261012-0001`). |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh bán hàng. |
+| `CashierId` | `Guid` | ❌ | FK -> Employees | Thu ngân thực hiện giao dịch. |
+| `ShiftId` | `Guid` | ✔️ | FK -> Shifts | Ca làm việc gắn với giao dịch. |
+| `CustomerId` | `Guid` | ✔️ | FK -> Customers | Khách hàng (NULL nếu khách vãng lai). |
+| `TotalAmount` | `decimal(18,2)` | ❌ | | Tổng tiền hàng trước chiết khấu. |
+| `DiscountAmount` | `decimal(18,2)` | ❌ | Def: 0 | Tổng số tiền giảm giá/khuyến mãi/voucher. |
+| `FinalAmount` | `decimal(18,2)` | ❌ | | Số tiền thực thu sau chiết khấu. |
+| `PaymentMethod` | `varchar(50)` | ❌ | | Hình thức: `Cash`, `VietQR`, `Split`, `Debt`. |
+| `PaymentStatus` | `varchar(50)` | ❌ | | Trạng thái: `Pending`, `Paid`, `Cancelled`, `Refunded`. |
 
----
-
-### 3.4 Bảng `StockOnHand` (Tồn kho tức thời)
-Quản lý tồn kho thực tế, tồn kho giữ chỗ (khách đang chờ thanh toán) và ngưỡng cảnh báo.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `OrderItems` (Dòng chi tiết hóa đơn)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `BranchId` | `Guid` | ❌ | | Chi nhánh / Kho hàng lưu trữ. |
-| `ProductId` | `Guid` | ❌ | FK -> `Product.Id` | Sản phẩm được kiểm soát tồn. |
-| `BatchId` | `Guid` | ✔️ | FK -> `Batch.Id` | Lô hàng cụ thể (nếu sản phẩm có quản lý lô). |
-| `Quantity` | `decimal(18,2)` | ❌ | | Tổng số lượng vật lý thực tế trong kho. |
-| `ReservedQuantity`| `decimal(18,2)`| ❌ | | Số lượng tạm giữ (cho đơn hàng đang tạo / đang chuyển kho). |
-| *AvailableQuantity*| `decimal(18,2)`| - | Computed | Số lượng thực tế có thể bán (`Quantity - ReservedQuantity`). |
-| `MinAlertThreshold`| `decimal(18,2)`| ❌ | | Ngưỡng tồn tối thiểu để kích hoạt cảnh báo hết hàng (mặc định: `10`). |
-
----
-
-### 3.5 Bảng `Order` (Đơn hàng bán lẻ / POS)
-Lưu trữ hóa đơn thanh toán tại quầy POS hoặc đơn online.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
-|---|---|:---:|:---:|---|
-| `OrderCode` | `string` | ❌ | Unique / Tenant | Mã hóa đơn bán lẻ (VD: `HD-20261011-001`). |
-| `StoreId` | `Guid` | ❌ | | Cửa hàng phát sinh giao dịch. |
-| `SubTotal` | `decimal(18,2)` | ❌ | | Tổng tiền hàng trước chiết khấu. |
-| `DiscountAmount` | `decimal(18,2)` | ❌ | | Số tiền giảm giá / khuyến mãi. |
-| `TotalAmount` | `decimal(18,2)` | ❌ | | Số tiền thực thu của khách (`SubTotal - DiscountAmount`). |
-| `PaymentMethod` | `PaymentMethod` | ❌ | Enum | Phương thức thanh toán: `Cash` (1), `Banking` (2), `VietQR` (3). |
-| `PaymentStatus` | `PaymentStatus` | ❌ | Enum | Trạng thái: `Pending` (1), `Paid` (2), `Failed` (3), `Refunded` (4). |
-| `Note` | `string` | ✔️ | | Ghi chú thêm của thu ngân hoặc yêu cầu của khách. |
-
----
-
-### 3.6 Bảng `OrderItem` (Chi tiết dòng hóa đơn)
-Lưu chi tiết từng sản phẩm, đơn giá và số lượng trong đơn hàng.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
-|---|---|:---:|:---:|---|
-| `OrderId` | `Guid` | ❌ | FK -> `Order.Id` | Đơn hàng cha. |
-| `ProductId` | `Guid` | ❌ | FK -> `Product.Id` | Sản phẩm được mua. |
-| `ProductName` | `string` | ❌ | | Tên sản phẩm lưu tại thời điểm xuất hóa đơn (Snapshot). |
+| `OrderId` | `Guid` | ❌ | FK -> Orders | Hóa đơn mẹ. |
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm bán. |
+| `BatchId` | `Guid` | ✔️ | FK -> Batches | Lô hàng xuất bán (theo thuật toán FEFO). |
+| `UnitName` | `nvarchar(50)` | ❌ | | Đơn vị bán (Lon, Thùng...). |
+| `Quantity` | `decimal(18,3)` | ❌ | | Số lượng bán (theo đơn vị bán). |
+| `BaseQuantity` | `decimal(18,3)` | ❌ | | Số lượng quy đổi chuẩn để trừ kho. |
 | `UnitPrice` | `decimal(18,2)` | ❌ | | Đơn giá bán tại thời điểm giao dịch. |
-| `Quantity` | `decimal(18,2)` | ❌ | | Số lượng sản phẩm bán ra. |
-| `TotalLineAmount`| `decimal(18,2)` | ❌ | | Thành tiền của dòng (`UnitPrice * Quantity`). |
+| `CostPrice` | `decimal(18,2)` | ❌ | | Giá vốn tại thời điểm bán để tính lãi gộp. |
+| `LineTotal` | `decimal(18,2)` | ❌ | | Thành tiền dòng sản phẩm. |
 
----
-
-### 3.7 Bảng `User` (Người dùng hệ thống)
-Tài khoản đăng nhập của nhân viên, thu ngân, chủ cửa hàng và quản trị viên.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `PaymentTransactions` (Giao dịch thanh toán VietQR / Ngân hàng)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `Username` | `string` | ❌ | Unique / Tenant | Tên đăng nhập của người dùng. |
-| `Email` | `string` | ❌ | Index | Địa chỉ email liên hệ và nhận thông báo. |
-| `PasswordHash` | `string` | ❌ | | Chuỗi mật khẩu băm bảo mật (BCrypt / PBKDF2). |
-| `FullName` | `string` | ❌ | | Họ và tên đầy đủ của nhân viên. |
-| `Phone` | `string` | ❌ | | Số điện thoại di động. |
-| `RoleId` | `Guid` | ❌ | FK -> `Role.Id` | Vai trò và nhóm quyền hạn được gán. |
-| `BranchId` | `Guid` | ✔️ | | Chi nhánh nhân viên đang làm việc (null nếu là Quản trị chuỗi). |
-| `IsActive` | `bool` | ❌ | | Trạng thái tài khoản (Đang kích hoạt / Khóa). |
+| `OrderId` | `Guid` | ❌ | FK -> Orders | Hóa đơn thanh toán. |
+| `TransactionReference` | `varchar(100)` | ❌ | Index | Mã giao dịch phía ngân hàng / VietQR. |
+| `Amount` | `decimal(18,2)` | ❌ | | Số tiền giao dịch thực tế. |
+| `BankAccountNumber` | `varchar(50)` | ❌ | | Số tài khoản thụ hưởng của cửa hàng. |
+| `BankCode` | `varchar(50)` | ❌ | | Mã ngân hàng (VD: `MB`, `VCB`, `ICB`). |
+| `WebhookPayload` | `nvarchar(max)`| ✔️ | | Toàn bộ nội dung JSON Webhook ngân hàng bắn về. |
+| `ConfirmedAt` | `datetime2` | ✔️ | | Thời điểm nhận xác nhận tiền vào. |
 
 ---
 
-### 3.8 Bảng `Role` (Vai trò & Phân quyền RBAC)
-Định nghĩa vai trò và danh sách các quyền hạn được cấp trong tenant.
+### 3.4 Phân Hệ Mua Hàng & Nhà Cung Cấp (Purchasing & Supply Chain)
 
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `Suppliers` (Nhà cung cấp)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `RoleName` | `string` | ❌ | Unique / Tenant | Tên vai trò (Owner, StoreManager, Cashier, StockKeeper). |
-| `Description` | `string` | ❌ | | Diễn giải trách nhiệm của vai trò. |
-| `PermissionsJson`| `string` | ❌ | | Mảng JSON chứa danh sách permission codes (VD: `["catalog:read", "pos:checkout"]`). |
+| `SupplierCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã nhà cung cấp (VD: `NCC-UNILEVER`). |
+| `SupplierName` | `nvarchar(200)` | ❌ | | Tên nhà cung cấp / Công ty phân phối. |
+| `TaxNumber` | `varchar(50)` | ✔️ | | Mã số thuế NCC. |
+| `PhoneNumber` | `varchar(20)` | ✔️ | | Điện thoại liên hệ đặt hàng. |
+| `CurrentDebtAP` | `decimal(18,2)` | ❌ | Def: 0 | Công nợ hiện tại cửa hàng đang nợ NCC (Phải trả AP). |
 
----
-
-### 3.9 Bảng `CashbookTransaction` (Sổ quỹ tiền mặt & Ngân hàng)
-Quản lý dòng tiền thu / chi phát sinh từ bán hàng, nhập hàng và các chi phí vận hành.
-
-| Tên Cột | Kiểu Dữ Liệu | Nullable | Khóa / Quan Hệ | Mô Tả Nghiệp Vụ |
+#### Bảng `PurchaseOrders` (Đơn đặt mua hàng NCC)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `TransactionCode`| `string` | ❌ | Unique / Tenant | Mã phiếu thu / chi (VD: `PT-001`, `PC-002`). |
-| `BranchId` | `Guid` | ❌ | | Chi nhánh phát sinh khoản tiền. |
-| `Type` | `CashbookType` | ❌ | Enum | Loại phiếu: `Receipt` = 1 (Phiếu thu), `Payment` = 2 (Phiếu chi). |
-| `Category` | `string` | ❌ | | Hạng mục thu chi (Bán hàng, Nhập hàng, Điện nước, Lương...). |
-| `Amount` | `decimal(18,2)` | ❌ | | Số tiền phát sinh. |
-| `ReferenceCode` | `string` | ❌ | | Mã chứng từ liên quan (Mã đơn hàng POS hoặc mã phiếu nhập kho). |
-| `Description` | `string` | ❌ | | Ghi chú lý do phát sinh khoản thu chi. |
-| `CreatedByUserId`| `Guid` | ❌ | | Người tạo phiếu thu chi. |
+| `POCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã đơn đặt hàng (VD: `PO-20261012-001`). |
+| `SupplierId` | `Guid` | ❌ | FK -> Suppliers | Nhà cung cấp. |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh dự kiến nhận hàng. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái: `Draft`, `Approved`, `PartialReceived`, `Completed`, `Cancelled`. |
+| `TotalAmount` | `decimal(18,2)` | ❌ | | Tổng giá trị đơn đặt hàng. |
+
+#### Bảng `GoodsReceipts` (Phiếu nhập kho thực tế)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `ReceiptCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu nhập kho (VD: `PNK-20261012-001`). |
+| `PurchaseOrderId` | `Guid` | ✔️ | FK -> POs | Đơn PO tương ứng (nếu nhập theo PO). |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh nhập kho. |
+| `ReceiverId` | `Guid` | ❌ | FK -> Employees | Nhân viên kho nhận và kiểm đếm hàng. |
+| `FreightFee` | `decimal(18,2)` | ❌ | Def: 0 | Chi phí vận chuyển phát sinh (Landed cost). |
+| `TotalAmount` | `decimal(18,2)` | ❌ | | Tổng tiền hàng thực nhập. |
 
 ---
 
-## 4. Lịch Sử Thay Đổi Schema (Changelog)
+### 3.5 Phân Hệ Vận Hành, Ca Kíp & Sổ Quỹ (Operations, Shifts & Cashbook)
 
-- **2026-10-11**: Khởi tạo Schema Dictionary toàn hệ thống phiên bản v1.0. Quét 9 thực thể Domain cơ bản từ `MT_GRMS_BACKEND`.
-- **2026-10-11**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
+#### Bảng `CashierShifts` (Ca làm việc & Kiểm soát két tiền)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh ca làm. |
+| `CashierId` | `Guid` | ❌ | FK -> Employees | Thu ngân phụ trách ca. |
+| `OpenedAt` | `datetime2` | ❌ | | Thời điểm mở ca. |
+| `StartingCash` | `decimal(18,2)` | ❌ | | Số tiền mặt lẻ đầu ca có trong két. |
+| `ClosedAt` | `datetime2` | ✔️ | | Thời điểm đóng ca kết sổ. |
+| `ExpectedCash` | `decimal(18,2)` | ✔️ | | Tiền mặt lý thuyết theo hệ thống tính toán. |
+| `ActualCash` | `decimal(18,2)` | ✔️ | | Tiền mặt thu ngân thực đếm khi kết ca. |
+| `CashDifference` | `decimal(18,2)` | ✔️ | | Chênh lệch ca (`ActualCash - ExpectedCash`). |
+| `ZReportSummary` | `nvarchar(max)`| ✔️ | | Dữ liệu tóm tắt doanh số ca (Z-Report). |
+
+#### Bảng `Cashbooks` & `CashbookEntries` (Sổ quỹ & Bút toán thu chi)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh quản lý quỹ. |
+| `EntryCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu thu/chi (VD: `PT-001`, `PC-001`). |
+| `EntryType` | `varchar(20)` | ❌ | | Loại phiếu: `RECEIPT` (Thu) / `PAYMENT` (Chi). |
+| `Amount` | `decimal(18,2)` | ❌ | | Số tiền giao dịch quỹ. |
+| `Category` | `varchar(50)` | ❌ | | Danh mục thu/chi: `Sales`, `SupplierPayment`, `Salary`, `Electricity`, `Rent`. |
+| `ReferenceCode` | `varchar(100)` | ✔️ | | Mã chứng từ liên kết (Mã đơn hàng, Mã phiếu nhập...). |
