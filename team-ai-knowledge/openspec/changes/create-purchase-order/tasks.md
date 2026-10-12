@@ -12,11 +12,11 @@
 
 ## Frontend
 - [x] T7 — Khởi tạo cấu trúc thư mục feature `src/features/purchase-order/` gồm `types/po.types.ts`, `lib/mockData.ts` và API service (REQ-PO-01)
-- [x] T8 — Xây dựng component `OrderMatrixFilterBar` cho phép chọn Nhà cung cấp (*), Chi nhánh (*), khoảng ngày và chế độ xem 7/14 ngày kèm kiểm tra thay đổi chưa lưu (REQ-PO-01, REQ-PO-02)
-- [x] T9 — Tối ưu màn hình: loại bỏ các khối text hạn mức tín dụng và quy tắc giao hàng rườm rà theo phản hồi UI từ người dùng (REQ-PO-03)
+- [x] T8 — Refactor toàn bộ bộ lọc thành 1 hàng ngang duy nhất (Single Compact Row 48–54px) với 13 controls theo đúng thứ tự nghiệp vụ (REQ-PO-01, REQ-PO-02)
+- [x] T9 — Tối ưu màn hình: loại bỏ các khối text rườm rà, giải phóng tối đa không gian hiển thị cho bảng ma trận lưới (REQ-PO-03)
 - [x] T10 — Cấu hình hiển thị theo nhóm Nhà Cung Cấp thay vì ngành hàng trên toàn bộ ma trận (REQ-PO-02)
-- [x] T11 — Xây dựng component `OrderMatrixToolbar` hỗ trợ Copy Prev Week, Shift tuần (Prev/This/Next Week), Excel Download/Upload, bộ lọc MOQ/Ordered/SOH (REQ-PO-04, REQ-PO-05, REQ-PO-08)
-- [x] T12 — Xây dựng component `OrderMatrixTable` hiển thị bảng ma trận lưới gom nhóm theo NCC, xử lý ô ngày Off (`—`), ngày Khóa (🔒), cảnh báo viền đỏ vi phạm MOQ (`qty-bad`), phím tắt điều hướng ↑ ↓ ← → và Enter (REQ-PO-01, REQ-PO-02, REQ-PO-04, REQ-PO-08)
+- [x] T11 — Xây dựng Action Toolbar riêng biệt hỗ trợ Copy Prev Week, Shift tuần (Prev/This/Next Week), Excel Download/Upload, Tóm tắt Đơn (REQ-PO-04, REQ-PO-05, REQ-PO-08)
+- [x] T12 — Xây dựng component `OrderMatrixTable` hiển thị bảng ma trận lưới gom nhóm theo NCC, xử lý ô ngày Off (`—`), ngày Khóa (xám), ngày Mở (xanh), cảnh báo viền đỏ vi phạm MOQ (`qty-bad`), phím tắt điều hướng ↑ ↓ ← → và Enter (REQ-PO-01, REQ-PO-02, REQ-PO-04, REQ-PO-08)
 - [x] T13 — Xây dựng component `OrderMatrixFooter` tính Grand Total Qty, Total Amount và cơ chế Client-Side Auto PO Splitting khi bấm Submit tách 1 PO = 1 NCC + 1 Chi nhánh + 1 Ngày giao (REQ-PO-03, REQ-PO-06, REQ-PO-07)
 - [x] T14 — Tích hợp Page `OrderMatrixPage` vào hệ thống định tuyến `router.tsx` và gắn liên kết vào Topbar điều hướng (REQ-PO-01)
 
