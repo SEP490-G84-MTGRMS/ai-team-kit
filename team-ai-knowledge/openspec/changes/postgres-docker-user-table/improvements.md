@@ -15,3 +15,7 @@ Bóc tách checklist 8 task rõ ràng giúp việc thực hiện code và chạy
 ## Apply · 2026-10-12 18:37
 
 Tạo init-db.sql gắn trực tiếp vào docker-compose giúp việc khởi tạo cơ sở dữ liệu và seed dữ liệu diễn ra hoàn toàn tự động ngay khi chạy container.
+
+## Test · 2026-10-12 18:43
+
+Viết song song cả Unit Test và Integration Test giúp kiểm chứng độc lập cả tầng Application lẫn tầng DbContext.
