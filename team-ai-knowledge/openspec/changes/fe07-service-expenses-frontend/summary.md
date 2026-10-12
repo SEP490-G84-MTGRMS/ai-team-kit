@@ -7,3 +7,7 @@ User đã duyệt proposal.md xác định phạm vi 3 màn hình/modal cho FE-0
 ## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-12 16:56
 
 Duyệt thiết kế kiến trúc Frontend FE-07 Service Expenses tuân thủ Design System KiotViet, React Query và Zod.
+
+## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-12 17:00
+
+Duyệt bước Verify Spec cho change fe07-service-expenses-frontend, sẵn sàng bước sang Apply để triển khai code.
