@@ -7,3 +7,7 @@ Tối giản hóa bảng User chỉ gồm Id (string Uid), Username, Password đ
 ## Brainstorm · 2026-10-12 17:01
 
 Thiết kế tối giản bảng User theo đúng nhu cầu thực tế giúp giảm độ phức tạp và cô lập rủi ro trong giai đoạn đầu.
+
+## Verify Spec · 2026-10-12 17:42
+
+Bóc tách checklist 8 task rõ ràng giúp việc thực hiện code và chạy Docker diễn ra chính xác.
