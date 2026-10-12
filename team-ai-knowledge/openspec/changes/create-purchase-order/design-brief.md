@@ -19,8 +19,10 @@ flowchart TD
     
     B -->|7. Bấm Submit POs| K[Client-Side Auto PO Splitting]
     K -->|Tách N đơn PO cho N ngày có Qty > 0| L[API POST /api/v1/purchase-orders/batch-from-grid]
-    L -->|Store Owner tạo -> Status: APPROVED| M[Danh sách PO / Trang chi tiết]
-    L -->|Branch Staff tạo -> Status: PENDING_APPROVAL| M
+    L -->|Kiểm tra Concurrency & Credit Limit trong DB Transaction| M{Hợp lệ?}
+    M -->|Thành công & Store Owner tạo| N[PO Status: APPROVED]
+    M -->|Thành công & Branch Staff tạo| O[PO Status: PENDING_APPROVAL]
+    M -->|Thất bại: Vượt Credit Limit| P[Rollback & Trả mã lỗi 400]
 ```
 
 ---
@@ -30,7 +32,7 @@ flowchart TD
 | Method | Endpoint | Mô tả | Request Params / Body | Response Body | Mã lỗi |
 |---|---|---|---|---|---|
 | `GET` | `/api/v1/purchase-orders/matrix-metadata` | Lấy toàn bộ metadata dựng ma trận (Lịch giao NCC, Công nợ, Danh mục SP, SOH, Sales/Day) | `supplierId`, `branchId`, `fromDate`, `toDate`, `viewDays` | `OrderMatrixMetadataDto` | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `POST` | `/api/v1/purchase-orders/batch-from-grid` | Tiếp nhận ma trận đã bóc tách, tạo danh sách đơn PO độc lập theo từng ngày giao | `CreateBatchPurchaseOrdersCommand` | `BatchPurchaseOrdersResultDto` | `201 Created`, `400 CreditLimitExceeded`, `400 LockHourExceeded`, `409 Conflict` |
+| `POST` | `/api/v1/purchase-orders/batch-from-grid` | Tiếp nhận ma trận đã bóc tách, tạo danh sách đơn PO độc lập theo từng ngày giao (Transaction an toàn) | `CreateBatchPurchaseOrdersCommand` | `BatchPurchaseOrdersResultDto` | `201 Created`, `400 CreditLimitExceeded`, `400 LockHourExceeded`, `400 MoqViolation`, `409 Conflict` |
 | `GET` | `/api/v1/purchase-orders/draft-matrix` | Tải dữ liệu ma trận nháp đã lưu | `supplierId`, `branchId` | `DraftOrderMatrixDto` | `200 OK`, `404 Not Found` |
 | `POST` | `/api/v1/purchase-orders/draft-matrix` | Lưu tạm dữ liệu ma trận nháp | `SaveDraftOrderMatrixCommand` | `{ success: bool, updatedAtUtc: string }` | `200 OK`, `400 Bad Request` |
 
@@ -64,7 +66,7 @@ export interface OrderMatrixMetadataDto {
     category: string;
     deliveryUoM: string;
     agreedPrice: number;
-    moq: number;
+    moq: number; // Hỗ trợ cả số lẻ (VD: 2.5 kg)
     stockOnHand: number;
     salesPerDay: number;
   }>;
@@ -78,7 +80,7 @@ export interface CreateBatchPurchaseOrdersCommand {
     deliveryDate: string; // YYYY-MM-DD
     items: Array<{
       productId: string;
-      quantity: number;
+      quantity: number; // Hỗ trợ decimal(12,3) cho hàng kg/lít
       agreedPrice: number;
     }>;
   }>;
@@ -105,11 +107,11 @@ export interface BatchPurchaseOrdersResultDto {
 Phân tách các component độc lập theo quy tắc kiến trúc của dự án, đặt trong `src/features/purchase-order/`:
 
 1. **`OrderMatrixPage` (`src/features/purchase-order/pages/OrderMatrixPage.tsx`)**:
-   - Trang điều phối trung tâm: Quản lý state bộ lọc, state ma trận số lượng `qtyMap: Record<productId, Record<dateKey, number>>`, điều hướng và thông báo toast.
+   - Trang điều phối trung tâm: Quản lý state bộ lọc, state ma trận số lượng `qtyMap: Record<productId, Record<dateKey, number>>`, cảnh báo thay đổi chưa lưu (`dirty state`), điều hướng và toast.
 2. **`OrderMatrixHeader` (`src/features/purchase-order/components/matrix/OrderMatrixHeader.tsx`)**:
    - Tiêu đề trang "Đặt Hàng Theo Ma Trận (Order Matrix Grid)", trạng thái đơn (Draft / Safe), nút quay lại (Back).
 3. **`OrderMatrixFilterBar` (`src/features/purchase-order/components/matrix/OrderMatrixFilterBar.tsx`)**:
-   - Bộ chọn bắt buộc: Nhà cung cấp (*), Chi nhánh (*), Từ ngày, Đến ngày, Nút Áp dụng (Apply).
+   - Bộ chọn bắt buộc: Nhà cung cấp (*), Chi nhánh (*), Từ ngày, Đến ngày, Nút Áp dụng (Apply). Kiểm tra xác nhận nếu có dữ liệu chưa lưu trước khi đổi NCC/Chi nhánh.
 4. **`OrderMatrixCreditSummary` (`src/features/purchase-order/components/matrix/OrderMatrixCreditSummary.tsx`)**:
    - Hiển thị công thức trực quan: $\text{Dư nợ AP} + \text{Đơn mới} = \text{Tổng nợ} / \text{Hạn mức nợ NCC}$.
    - Badge trạng thái: Xanh lục `(Safe — Hợp lệ)` hoặc Đỏ rực `(⚠️ Vượt hạn mức nợ NCC — Bị chặn đặt đơn)`.
@@ -122,7 +124,7 @@ Phân tách các component độc lập theo quy tắc kiến trúc của dự �
 7. **`OrderMatrixTable` (`src/features/purchase-order/components/matrix/OrderMatrixTable.tsx`)**:
    - Khung cuộn `max-height: 520px` với tiêu đề `sticky`.
    - Cột ngày hiển thị Thứ, Ngày/Tháng và trạng thái: `— Off`, `(Khóa)`, `(Mở)`.
-   - Các ô nhập liệu: Ô ngày Off hiển thị `—`, ô khóa hiển thị input disabled, ô hợp lệ cho phép nhập số lượng.
+   - Các ô nhập liệu: Ô ngày Off hiển thị `—`, ô khóa hiển thị input disabled, ô hợp lệ cho phép nhập số lượng (hỗ trợ số lẻ cho hàng cân ký).
    - Nếu $0 < Qty < MOQ$: Áp dụng class `qty-bad` (viền đỏ nổi bật) + tooltip chỉ dẫn.
    - Hỗ trợ phím tắt bàn phím: Di chuyển mượt mà giữa các ô bằng phím mũi tên (↑ ↓ ← →) và phím Enter.
    - Tính toán trực tiếp hàng Subtotal theo ngành hàng và hàng Daily Total Qty theo cột ngày.
@@ -143,8 +145,8 @@ CREATE TABLE [SupplierDeliveryConfigs] (
     [LeadTimeDays] INT NOT NULL DEFAULT 1,
     [CutoffHour] NVARCHAR(5) NOT NULL DEFAULT '13:00',
     [LockHour] NVARCHAR(5) NOT NULL DEFAULT '15:00',
-    [ActiveDeliveryDaysJson] NVARCHAR(50) NOT NULL DEFAULT '[1,2,3,4,5,6]', -- Mảng JSON ngày giao trong tuần
-    [HolidaysJson] NVARCHAR(MAX) NULL, -- Mảng JSON ngày nghỉ lễ YYYY-MM-DD
+    [ActiveDeliveryDaysJson] NVARCHAR(50) NOT NULL DEFAULT '[1,2,3,4,5,6]',
+    [HolidaysJson] NVARCHAR(MAX) NULL,
     [DeliveryNote] NVARCHAR(500) NULL,
     [CreatedAtUtc] DATETIME2 NOT NULL,
     [UpdatedAtUtc] DATETIME2 NULL,
@@ -166,7 +168,7 @@ CREATE TABLE [PurchaseOrders] (
     [BranchId] UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES [Branches]([Id]),
     [DeliveryDate] DATE NOT NULL,
     [OrderDate] DATETIME2 NOT NULL,
-    [TotalQuantity] INT NOT NULL,
+    [TotalQuantity] DECIMAL(12,3) NOT NULL, -- Hỗ trợ cả số nguyên lẫn số lượng lẻ (Kg, Tấn)
     [TotalAmount] DECIMAL(18,2) NOT NULL,
     [Status] INT NOT NULL DEFAULT 1, -- 1: Draft, 2: PendingApproval, 3: Approved, 4: Sent, 5: Completed, 6: Cancelled
     [CreatedByRole] NVARCHAR(50) NOT NULL, -- 'StoreOwner' | 'BranchStaff'
@@ -195,7 +197,7 @@ CREATE TABLE [PurchaseOrderDetails] (
     [ProductName] NVARCHAR(250) NOT NULL,
     [DeliveryUoM] NVARCHAR(50) NOT NULL,
     [AgreedPrice] DECIMAL(18,2) NOT NULL,
-    [OrderedQuantity] INT NOT NULL,
+    [OrderedQuantity] DECIMAL(12,3) NOT NULL, -- Hỗ trợ số lượng lẻ (Kg, Gram)
     [LineAmount] DECIMAL(18,2) NOT NULL, -- OrderedQuantity * AgreedPrice
     [CreatedAtUtc] DATETIME2 NOT NULL,
     [IsDeleted] BIT NOT NULL DEFAULT 0
@@ -213,6 +215,7 @@ CREATE TABLE [PurchaseOrderDetails] (
 2. **BR-2: Kiểm soát Hạn Mức Tín Dụng NCC (Credit Limit)**:
    - Điều kiện gửi đơn: $\text{Open AP} + \text{Tổng giá trị các đơn mới trong đợt phát hành} \le \text{CreditLimit}$.
    - Nếu vượt: Hiển thị cảnh báo màu đỏ, nút "Submit POs" bị vô hiệu hóa (`disabled = true`). Cung cấp chỉ dẫn thanh toán nợ cũ (FE-17) hoặc xin nâng hạn mức.
+   - Tại Backend: Bắt buộc xác thực lại hạn mức trong Database Transaction để chống Race Condition khi nhiều chi nhánh đặt hàng cùng lúc.
 3. **BR-3: Ràng buộc Số Lượng Đặt Tối Thiểu (MOQ)**:
    - Nếu người dùng nhập $0 < Qty < MOQ$: Ô nhập hiển thị viền đỏ nổi bật (`qty-bad`), kèm tooltip báo lỗi. Nút Submit POs bị khóa cho đến khi sửa đạt MOQ hoặc xóa về 0.
    - Cung cấp checkbox `[ ] MOQ Failures` để lọc ngay các dòng vi phạm.
