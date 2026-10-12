@@ -7,3 +7,7 @@ Bổ sung đầy đủ 5 business rules (BR-1 đến BR-5), cơ chế Auto PO Sp
 ## Brainstorm · 2026-10-12 15:55
 
 Thiết kế chi tiết 8 Requirements bám sát UI create_po_grid.html và cấu trúc 5 Business Rules giúp chuyển đổi sang khâu Verify Spec và Apply rất thuận lợi.
+
+## Verify Spec · 2026-10-12 16:00
+
+Hoàn thiện Skeptic review và 16 tasks rõ ràng theo 4 tầng kiến trúc (DB, Backend, Frontend, Test).
