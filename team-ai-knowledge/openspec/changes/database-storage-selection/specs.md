@@ -15,6 +15,11 @@ Hệ thống MUST kích hoạt `Npgsql.EntityFrameworkCore.PostgreSQL` làm cơ 
 - **WHEN** `AddInfrastructureServices` được gọi trong môi trường kiểm thử.
 - **THEN** `AppDbContext` MUST tự động cấu hình `UseInMemoryDatabase("MT_GRMS_Db")` để đảm bảo test chạy thành công mà không phụ thuộc hạ tầng mạng.
 
+#### Scenario: Tương thích kiểu DateTime UTC với Npgsql 8
+- **GIVEN** hệ thống thực thi lưu trữ các trường thời gian (`CreatedAt`, `UpdatedAt`, `ExpiryDate`).
+- **WHEN** dữ liệu được ánh xạ sang kiểu `timestamp with time zone` (timestamptz) trong PostgreSQL.
+- **THEN** hệ thống MUST đảm bảo các giá trị `DateTime` có `DateTimeKind.Utc` hoặc kích hoạt legacy timestamp behavior để tránh lỗi `Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone'`.
+
 ---
 
 ### Requirement: REQ-DB-02 Bảo toàn Bộ lọc Cô lập Đa người thuê (Multi-Tenant Invariant)
@@ -28,7 +33,7 @@ Hệ thống MUST bảo đảm cơ chế Global Query Filter trên 9 Domain Enti
 ---
 
 ### Requirement: REQ-DB-03 Định dạng Dữ liệu & Tiền tệ Chính xác
-Hệ thống MUST cấu hình kiểu dữ liệu cột tiền tệ VND là `decimal(18,2)` và ngày giờ dạng UTC trên PostgreSQL.
+Hệ thống MUST cấu hình kiểu dữ liệu cột tiền tệ VND là `decimal(18,2)` và các trường chuỗi có độ dài giới hạn rõ ràng trên PostgreSQL.
 
 #### Scenario: Lưu trữ giao dịch tiền tệ không làm tròn sai số
 - **GIVEN** một giao dịch thanh toán hoặc giá bán lẻ có giá trị tiền tệ cụ thể (ví dụ `56000.00`).
@@ -40,16 +45,16 @@ Hệ thống MUST cấu hình kiểu dữ liệu cột tiền tệ VND là `deci
 ### Requirement: REQ-DB-04 Chuẩn hóa Môi trường Local Docker Compose
 Hệ thống MUST cung cấp tệp `docker-compose.yml` tại thư mục backend để khởi chạy PostgreSQL 16 nhất quán trên mọi máy trạm.
 
-#### Scenario: Khởi chạy môi trường cơ sở dữ liệu qua Docker
+#### Scenario: Khởi chạy môi trường cơ sở dữ liệu qua Docker với Persistent Volume
 - **GIVEN** lập trình viên mới clone dự án và đã cài đặt Docker.
 - **WHEN** thực thi lệnh `docker compose up -d`.
-- **THEN** container PostgreSQL 16 MUST khởi động tại cổng 5432, tạo sẵn cơ sở dữ liệu `mtgrms_db` với user/password khớp với cấu hình trong `appsettings.json`.
+- **THEN** container PostgreSQL 16 MUST khởi động tại cổng 5432, tạo sẵn cơ sở dữ liệu `mtgrms_db` với user/password khớp với cấu hình trong `appsettings.json`, đồng thời dữ liệu MUST được gắn kết vào Docker Named Volume để không bị mất khi container restart.
 
 ---
 
 ## Acceptance Checklist
-- [ ] REQ-DB-01: `AppDbContext` kết nối thành công tới PostgreSQL với đầy đủ cấu hình retry logic.
+- [ ] REQ-DB-01: `AppDbContext` kết nối thành công tới PostgreSQL với đầy đủ cấu hình retry logic và xử lý DateTime UTC chuẩn mực.
 - [ ] REQ-DB-02: Bộ lọc cô lập `TenantId` và `IsDeleted` hoạt động thông suốt trên PostgreSQL.
 - [ ] REQ-DB-03: Cột tiền tệ lưu trữ `decimal(18,2)` và các trường thời gian lưu chuẩn UTC.
-- [ ] REQ-DB-04: Tệp `docker-compose.yml` được định nghĩa chuẩn xác và có thể khởi động ngay lập tức.
+- [ ] REQ-DB-04: Tệp `docker-compose.yml` được định nghĩa chuẩn xác với named volume và có thể khởi động ngay lập tức.
 - [ ] Mọi Unit Test và Integration Test hiện có đều vượt qua (100% PASS).
