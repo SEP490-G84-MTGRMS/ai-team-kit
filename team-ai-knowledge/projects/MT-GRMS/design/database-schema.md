@@ -156,6 +156,8 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 |---|---|:---:|:---:|---|
 | `PhoneNumber` | `varchar(20)` | ❌ | Index | Số điện thoại khách hàng (Khóa tìm kiếm chính). |
 | `FullName` | `nvarchar(150)` | ❌ | | Họ tên khách hàng. |
+| `Email` | `varchar(100)` | ✔️ | | Email nhận hóa đơn điện tử và thông báo điểm. |
+| `Address` | `nvarchar(255)` | ✔️ | | Địa chỉ giao hàng / cư trú. |
 | `LoyaltyPoints` | `int` | ❌ | Def: 0 | Số điểm thưởng tích lũy khả dụng. |
 | `MembershipTier` | `varchar(50)` | ❌ | Def: 'Standard' | Hạng thẻ: `Standard`, `Silver`, `Gold`, `VIP`. |
 | `CurrentDebtAR` | `decimal(18,2)` | ❌ | Def: 0 | Tổng công nợ khách đang nợ cửa hàng (Phải thu AR). |
@@ -260,8 +262,55 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
 | `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh quản lý quỹ. |
+| `AccountType` | `varchar(20)` | ❌ | Def: 'CASH' | Nguồn tiền: `CASH` (Tiền mặt két) / `BANK` (Tài khoản ngân hàng). |
 | `EntryCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu thu/chi (VD: `PT-001`, `PC-001`). |
 | `EntryType` | `varchar(20)` | ❌ | | Loại phiếu: `RECEIPT` (Thu) / `PAYMENT` (Chi). |
 | `Amount` | `decimal(18,2)` | ❌ | | Số tiền giao dịch quỹ. |
-| `Category` | `varchar(50)` | ❌ | | Danh mục thu/chi: `Sales`, `SupplierPayment`, `Salary`, `Electricity`, `Rent`. |
-| `ReferenceCode` | `varchar(100)` | ✔️ | | Mã chứng từ liên kết (Mã đơn hàng, Mã phiếu nhập...). |
+| `Category` | `varchar(50)` | ❌ | | Danh mục: `Sales`, `DebtCollection`, `SupplierPayment`, `ServiceExpense`, `Salary`. |
+| `ReferenceCode` | `varchar(100)` | ✔️ | | Mã chứng từ liên kết (Mã hóa đơn, Mã phiếu chi...). |
+| `CreatedByStaff` | `nvarchar(150)` | ✔️ | | Nhân viên lập phiếu thu/chi. |
+| `Note` | `nvarchar(255)` | ✔️ | | Diễn giải nội dung thu/chi. |
+
+#### Bảng `CashReconciliations` (Biên bản kiểm kê & đối soát quỹ tiền mặt)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh thực hiện kiểm kê quỹ. |
+| `ReconciledAt` | `datetime2` | ❌ | | Thời điểm chốt kiểm đếm tiền mặt. |
+| `SystemBalance` | `decimal(18,2)` | ❌ | | Số dư tiền mặt lý thuyết trên sổ quỹ. |
+| `ActualCountedBalance` | `decimal(18,2)` | ❌ | | Số tiền mặt thực tế đếm được trong két an toàn. |
+| `DifferenceAmount` | `decimal(18,2)` | ❌ | | Chênh lệch tiền mặt (`Actual - System`). |
+| `Reason` | `nvarchar(255)` | ✔️ | | Lý do chênh lệch (thừa/thiếu tiền). |
+| `CountedByStaff` | `nvarchar(150)` | ❌ | | Nhân viên kiểm đếm. |
+| `ApprovedByManager` | `nvarchar(150)` | ✔️ | | Quản lý hoặc Chủ cửa hàng phê duyệt chốt sổ. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Approved' | Trạng thái biên bản kiểm kê quỹ. |
+
+#### Bảng `ServiceExpenses` (Chi phí dịch vụ vận hành & Mua ngoài)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh phát sinh chi phí. |
+| `Category` | `nvarchar(100)` | ❌ | | Loại chi phí: Tiền điện, Tiền nước, Thuê mặt bằng, Internet, Sửa chữa... |
+| `Amount` | `decimal(18,2)` | ❌ | | Số tiền chi phí. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Pending' | Trạng thái: `Pending` (Chờ chi), `Paid` (Đã thanh toán), `Cancelled`. |
+| `ExpenseDate` | `date` | ❌ | | Ngày phát sinh hóa đơn chi phí. |
+| `DueDate` | `date` | ✔️ | | Hạn chót thanh toán để cảnh báo quá hạn. |
+| `VendorName` | `nvarchar(200)` | ✔️ | | Đơn vị cung cấp dịch vụ / Người thụ hưởng. |
+| `CashBookEntryId` | `Guid` | ✔️ | FK -> Cashbook | Bút toán phiếu chi tương ứng khi thanh toán xong. |
+| `AttachedBillUrl` | `nvarchar(500)` | ✔️ | | Link ảnh chụp hóa đơn / biên lai đỏ đính kèm. |
+| `Note` | `nvarchar(500)` | ✔️ | | Ghi chú chi tiết khoản chi. |
+
+#### Bảng `TaxSnapshots` (Kỳ kê khai & Báo cáo thuế Hộ kinh doanh)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `TaxYear` | `int` | ❌ | Index | Năm tính thuế (VD: 2026). |
+| `TaxQuarter` | `int` | ❌ | Index | Quý kê khai thuế (1, 2, 3, 4 theo Thông tư 40). |
+| `TotalRevenue` | `decimal(18,2)` | ❌ | | Tổng doanh thu bán hàng chịu thuế trong kỳ. |
+| `TaxRateVat` | `decimal(5,2)` | ❌ | Def: 1.00 | Tỷ lệ thuế GTGT ngành phân phối bán lẻ (1%). |
+| `VatAmount` | `decimal(18,2)` | ❌ | | Số thuế GTGT phải nộp (`TotalRevenue * 1%`). |
+| `TaxRatePit` | `decimal(5,2)` | ❌ | Def: 0.50 | Tỷ lệ thuế TNCN ngành phân phối bán lẻ (0.5%). |
+| `PitPayable` | `decimal(18,2)` | ❌ | | Số thuế TNCN phải nộp (`TotalRevenue * 0.5%`). |
+| `TaxMethod` | `varchar(50)` | ❌ | Def: 'RevenueRate' | Phương pháp tính thuế: Tỷ lệ trên doanh thu. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái tờ khai: `Draft`, `Finalized`, `Submitted`, `Paid`. |
+| `GeneratedAt` | `datetime2` | ❌ | | Thời điểm chốt số liệu tờ khai thuế. |

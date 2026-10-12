@@ -65,11 +65,16 @@ erDiagram
     ORDERS ||--o{ PAYMENT_TRANSACTIONS : "thanh toán qua (OrderId)"
 
     %% ==========================================
-    %% KHỐI 5: TÀI CHÍNH & DÒNG TIỀN (FINANCE)
+    %% KHỐI 5: TÀI CHÍNH, DÒNG TIỀN & THUẾ (FINANCE)
     %% ==========================================
     BRANCHES ||--o{ CASHBOOK_ENTRIES : "ghi sổ quỹ chi nhánh (BranchId)"
     ORDERS ||..o{ CASHBOOK_ENTRIES : "sinh phiếu thu tiền (ReferenceCode)"
     GOODS_RECEIPTS ||..o{ CASHBOOK_ENTRIES : "sinh phiếu chi tiền (ReferenceCode)"
+    CUSTOMERS ||--o{ CASHBOOK_ENTRIES : "thu tiền công nợ AR (CustomerId)"
+    BRANCHES ||--o{ SERVICE_EXPENSES : "phát sinh chi phí dịch vụ (BranchId)"
+    SERVICE_EXPENSES ||..o| CASHBOOK_ENTRIES : "sinh phiếu chi khi thanh toán (CashBookEntryId)"
+    BRANCHES ||--o{ CASH_RECONCILIATIONS : "biên bản đối soát két tiền (BranchId)"
+    TENANTS ||--o{ TAX_SNAPSHOTS : "tờ khai thuế hộ kinh doanh (TenantId)"
 
     %% ==========================================
     %% KHỐI 6: KIỂM KÊ & ĐIỀU CHUYỂN KHO (OPS)
