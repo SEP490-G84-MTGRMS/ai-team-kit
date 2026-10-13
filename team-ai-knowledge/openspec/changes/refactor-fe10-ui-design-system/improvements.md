@@ -11,3 +11,7 @@ Chuyển sang bước Verify-Spec: thực hiện phản biện persona skeptic v
 ## Verify Spec · 2026-10-13 15:41
 
 Bắt đầu triển khai code 7 tasks đồng bộ MT-GRMS Design System và tích hợp AdminToast, TablePagination
+
+## Apply · 2026-10-13 15:52
+
+Chuyển sang bước Test: lập test-report.md bảng 10 cột và đồng bộ lên Google Sheets kiểm thử
