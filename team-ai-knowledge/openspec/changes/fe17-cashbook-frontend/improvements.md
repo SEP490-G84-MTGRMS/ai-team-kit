@@ -11,3 +11,7 @@ Tiếp tục sang bước verify-spec với phản biện Skeptic về đa chi n
 ## Verify Spec · 2026-10-13 18:47
 
 Thực thi code frontend tuân thủ nghiêm ngặt 100% Vanilla CSS tokens, Deep Teal, bo góc 24px, tái sử dụng TablePagination và AdminToast.
+
+## Apply · 2026-10-13 18:57
+
+Tiến hành lập test-report.md và nghiệm thu kết quả kiểm thử ở Bước 5.
