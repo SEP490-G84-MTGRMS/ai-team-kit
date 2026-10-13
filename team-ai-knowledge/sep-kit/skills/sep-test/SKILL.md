@@ -26,24 +26,30 @@ Tên change = phần chữ user gõ sau `/sep-test`; bỏ trống = change đang
 3. Chạy test + build/lint (VD `dotnet test`, `npm run lint`, `npm run build`). Ghi lại lệnh và kết quả thật — **không bịa kết quả**.
    Scenario không tự động hoá được → hướng dẫn user test tay và hỏi kết quả.
 4. Kiểm tra đối chiếu (verify change): code có làm đủ mọi REQ? có thay đổi ngoài phạm vi specs? review HIGH đã xử lý hết?
-5. Lưu **test-report.md** bằng `sep_luu_artifact`. Frontmatter `verdict` là bắt buộc. Bảng test case nên bao gồm cột `Test Case ID` và `Report Type` (5.1 -> 5.5) để tự động ánh xạ lên 5 file Google Sheets báo cáo:
+5. Lưu **test-report.md** bằng `sep_luu_artifact`. Frontmatter `verdict` là bắt buộc.
+   Để đồng bộ chính xác và lấp đầy 100% thông tin lên 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5) mà **không bị cột nào là N/A**, bảng kịch bản phải tuân theo cấu trúc **Unified Test Table** chuẩn BDD 10 cột sau:
 
 ```markdown
 ---
 verdict: PASS
-tested_at: 2026-01-01
+tested_at: 2026-10-13
+tester: '@username'
 ---
 # Test Report: <tên change>
 
-| REQ | Scenario | Test Case ID | Test | Report Type | Kết quả |
-|---|---|---|---|---|---|
-| REQ-01 | ... | TC-UT-FE01-01 | `src/...` | 5.1 | ✅ PASS |
-| REQ-02 | ... | TC-IT-FE01-01 | `src/...` | 5.2 | ✅ PASS |
-| REQ-03 | ... | TC-SYS-FE01-01 | `tests/...` | 5.3 | ✅ PASS |
-| REQ-04 | ... | TC-SEC-FE01-01 | `tests/...` | 5.4 | ✅ PASS |
-| REQ-05 | ... | SC-UAT-FE01-01 | `manual` | 5.5 | ✅ PASS |
+| Test Case ID | Tên kịch bản | Pre-conditions (GIVEN) | Procedure / Steps (WHEN) | Expected Results (THEN) | Role | Priority | Report Type | Kết quả | Ghi chú |
+|---|---|---|---|---|:---:|:---:|:---:|:---:|---|
+| TC-UT-FE01-01 | REQ-01: Kiểm tra tính hợp lệ của SĐT | Môi trường test sẵn sàng | Nhập số điện thoại 10 số hợp lệ và gọi validatePhone() | Hàm trả về true và không sinh lỗi | User | High | 5.1 | PASS | Unit test Vitest |
+| TC-IT-FE01-01 | REQ-02: Đồng bộ giao dịch với Sổ quỹ | Đã đăng nhập Cashier, sổ quỹ mở | Lập phiếu thu tiền mặt và submit | Giao dịch lưu vào DB và cập nhật số dư tức thì | Cashier | High | 5.2 | PASS | API integration |
+| TC-SYS-FE01-01 | REQ-03: Tìm kiếm và lọc danh sách | Dữ liệu khởi tạo có 50 bản ghi | Nhập từ khóa tìm kiếm và chọn bộ lọc VIP | Bảng dữ liệu lọc chính xác trong < 300ms | StoreManager | Medium | 5.3 | PASS | E2E browser |
+| TC-SEC-FE01-01 | REQ-04: Chặn sửa hạn mức nợ trái phép | Đang đăng nhập với vai trò Cashier | Cố tình gọi API cập nhật hạn mức nợ DebtLimit | Hệ thống trả về HTTP 403 Forbidden | Cashier | Critical | 5.4 | PASS | RBAC security |
+| SC-UAT-FE01-01 | REQ-05: Nghiệm thu quy trình thu nợ VietQR | Khách hàng có khoản nợ 500k | Tạo phiếu thu nợ và quét mã VietQR Napas 247 | Giao dịch ghi nhận thành công, giảm trừ nợ | StoreOwner | High | 5.5 | PASS | UAT acceptance |
 
 ## Lệnh đã chạy
+- `npm test`: PASS (x/x tests passed)
+- `npm run build`: PASS
+- `npm run lint`: PASS
+
 ## Đối chiếu specs ↔ code
 ## Lỗi còn tồn đọng
 ```

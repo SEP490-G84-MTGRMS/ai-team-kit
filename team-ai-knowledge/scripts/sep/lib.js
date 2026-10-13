@@ -52,9 +52,9 @@ export const IDE = {
 };
 export const IDE_KEYS = Object.keys(IDE);
 
-export const ok = msg => console.log(`  ✅ ${msg}`);
-export const warn = msg => console.log(`  ⚠️  ${msg}`);
-export const info = msg => console.log(`  • ${msg}`);
+export const ok = msg => (process.env.MCP_SERVER || !process.stdout.isTTY ? console.error(`  ✅ ${msg}`) : console.log(`  ✅ ${msg}`));
+export const warn = msg => (process.env.MCP_SERVER || !process.stdout.isTTY ? console.error(`  ⚠️  ${msg}`) : console.log(`  ⚠️  ${msg}`));
+export const info = msg => (process.env.MCP_SERVER || !process.stdout.isTTY ? console.error(`  • ${msg}`) : console.log(`  • ${msg}`));
 
 export function parseArgs(argv) {
   const positional = [];

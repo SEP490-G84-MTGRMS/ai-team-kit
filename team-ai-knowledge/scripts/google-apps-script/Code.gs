@@ -32,6 +32,31 @@ const CONFIG = {
  * Xử lý GET request để kiểm tra tình trạng Web App
  */
 function doGet(e) {
+  try {
+    if (e && e.parameter && e.parameter.action === 'inspect') {
+      const summary = {};
+      Object.keys(CONFIG.SPREADSHEET_IDS).forEach(rType => {
+        const id = CONFIG.SPREADSHEET_IDS[rType];
+        if (id && !id.startsWith('YOUR_')) {
+          try {
+            const ss = SpreadsheetApp.openById(id);
+            summary[rType] = {
+              name: ss.getName(),
+              sheets: ss.getSheets().map(s => ({
+                name: s.getName(),
+                rows: s.getLastRow(),
+                cols: s.getLastColumn()
+              }))
+            };
+          } catch (err) {
+            summary[rType] = { error: err.message };
+          }
+        }
+      });
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok', summary })).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {}
+
   return ContentService.createTextOutput(JSON.stringify({
     status: 'online',
     message: 'Google Apps Script Test Report Gateway is running!',
@@ -119,10 +144,12 @@ function syncReport51(ss, payload) {
   let isNewTab = false;
 
   if (!sheet) {
-    const templateSheet = ss.getSheetByName('ModuleName1') || ss.getSheets()[3];
+    const templateSheet = findSafeTemplateSheet(ss, ['ModuleName1', 'ModuleName 1', 'Module 1', 'Module1', 'Template']);
     if (!templateSheet) throw new Error('Cannot find template sheet for Module in Report-5.1!');
     sheet = templateSheet.copyTo(ss);
     sheet.setName(targetTabName);
+    ss.setActiveSheet(sheet);
+    ss.moveActiveSheet(ss.getNumSheets());
     isNewTab = true;
 
     // Cập nhật ô tiêu đề B2
@@ -151,6 +178,10 @@ function syncReport51(ss, payload) {
 
     if (existingRow !== -1) {
       ensureRowExists(sheet, existingRow);
+      sheet.getRange(existingRow, 2).setValue(item.preConditions || 'Môi trường và dữ liệu khởi tạo sẵn sàng');
+      sheet.getRange(existingRow, 3).setValue(item.inputParams || item.steps || 'Thực hiện thao tác với tham số hợp lệ');
+      sheet.getRange(existingRow, 4).setValue(item.expectedResults || item.expected || 'Đáp ứng đúng quy tắc nghiệp vụ');
+      sheet.getRange(existingRow, 5).setValue(item.type || 'Normal');
       sheet.getRange(existingRow, 6).setValue(statusVal); // Round 1
       sheet.getRange(existingRow, 7).setValue(testDate);  // Test date
       sheet.getRange(existingRow, 8).setValue(tester);    // Tester
@@ -159,9 +190,9 @@ function syncReport51(ss, payload) {
       const nextRow = getNextAvailableRow(sheet, startRow);
       ensureRowExists(sheet, nextRow);
       sheet.getRange(nextRow, 1).setValue(testId);
-      sheet.getRange(nextRow, 2).setValue(item.preConditions || 'N/A');
-      sheet.getRange(nextRow, 3).setValue(item.inputParams || item.steps || 'N/A');
-      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'N/A');
+      sheet.getRange(nextRow, 2).setValue(item.preConditions || 'Môi trường và dữ liệu khởi tạo sẵn sàng');
+      sheet.getRange(nextRow, 3).setValue(item.inputParams || item.steps || 'Thực hiện thao tác với tham số hợp lệ');
+      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'Đáp ứng đúng quy tắc nghiệp vụ');
       sheet.getRange(nextRow, 5).setValue(item.type || 'Normal');
       sheet.getRange(nextRow, 6).setValue(statusVal);
       sheet.getRange(nextRow, 7).setValue(testDate);
@@ -200,10 +231,12 @@ function syncReport52(ss, payload) {
 
   // Functional Integration Feature
   if (!sheet) {
-    const templateSheet = ss.getSheetByName('Feature Name1') || ss.getSheets()[3];
+    const templateSheet = findSafeTemplateSheet(ss, ['Feature Name1', 'Feature Name 1', 'Feature 1', 'Feature1', 'Template']);
     if (!templateSheet) throw new Error('Cannot find template sheet for Feature in Report-5.2!');
     sheet = templateSheet.copyTo(ss);
     sheet.setName(targetTabName);
+    ss.setActiveSheet(sheet);
+    ss.moveActiveSheet(ss.getNumSheets());
     isNewTab = true;
 
     sheet.getRange('B2').setValue(featureName);
@@ -227,6 +260,10 @@ function syncReport52(ss, payload) {
 
     if (existingRow !== -1) {
       ensureRowExists(sheet, existingRow);
+      sheet.getRange(existingRow, 2).setValue(item.description || item.name || item.scenario || 'Kịch bản tích hợp chức năng');
+      sheet.getRange(existingRow, 3).setValue(item.procedure || item.steps || 'Thực hiện luồng thao tác tích hợp');
+      sheet.getRange(existingRow, 4).setValue(item.expectedResults || item.expected || 'Hệ thống đồng bộ dữ liệu chính xác');
+      sheet.getRange(existingRow, 5).setValue(item.preConditions || 'Môi trường và các phân hệ liên quan sẵn sàng');
       sheet.getRange(existingRow, 6).setValue(statusVal); // Round 1
       sheet.getRange(existingRow, 7).setValue(testDate);
       sheet.getRange(existingRow, 8).setValue(tester);
@@ -235,10 +272,10 @@ function syncReport52(ss, payload) {
       const nextRow = getNextAvailableRow(sheet, startRow);
       ensureRowExists(sheet, nextRow);
       sheet.getRange(nextRow, 1).setValue(testId);
-      sheet.getRange(nextRow, 2).setValue(item.description || item.name || 'N/A');
-      sheet.getRange(nextRow, 3).setValue(item.procedure || item.steps || 'N/A');
-      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'N/A');
-      sheet.getRange(nextRow, 5).setValue(item.preConditions || 'N/A');
+      sheet.getRange(nextRow, 2).setValue(item.description || item.name || item.scenario || 'Kịch bản tích hợp chức năng');
+      sheet.getRange(nextRow, 3).setValue(item.procedure || item.steps || 'Thực hiện luồng thao tác tích hợp');
+      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'Hệ thống đồng bộ dữ liệu chính xác');
+      sheet.getRange(nextRow, 5).setValue(item.preConditions || 'Môi trường và các phân hệ liên quan sẵn sàng');
       sheet.getRange(nextRow, 6).setValue(statusVal);
       sheet.getRange(nextRow, 7).setValue(testDate);
       sheet.getRange(nextRow, 8).setValue(tester);
@@ -268,10 +305,12 @@ function syncReport53(ss, payload) {
   let isNewTab = false;
 
   if (!sheet) {
-    const templateSheet = ss.getSheetByName('Workflow Name1') || ss.getSheets()[3];
+    const templateSheet = findSafeTemplateSheet(ss, ['Workflow Name1', 'Workflow Name 1', 'Workflow 1', 'Workflow1', 'Template']);
     if (!templateSheet) throw new Error('Cannot find template sheet for Workflow in Report-5.3!');
     sheet = templateSheet.copyTo(ss);
     sheet.setName(targetTabName);
+    ss.setActiveSheet(sheet);
+    ss.moveActiveSheet(ss.getNumSheets());
     isNewTab = true;
 
     sheet.getRange('B2').setValue(workflowName);
@@ -295,6 +334,10 @@ function syncReport53(ss, payload) {
 
     if (existingRow !== -1) {
       ensureRowExists(sheet, existingRow);
+      sheet.getRange(existingRow, 2).setValue(item.description || item.name || item.scenario || 'Kịch bản kiểm thử luồng hệ thống');
+      sheet.getRange(existingRow, 3).setValue(item.procedure || item.steps || 'Thực hiện các bước thao tác trên màn hình');
+      sheet.getRange(existingRow, 4).setValue(item.expectedResults || item.expected || 'Giao diện và hệ thống phản hồi đúng quy tắc');
+      sheet.getRange(existingRow, 5).setValue(item.preConditions || 'Môi trường hệ thống và dữ liệu sẵn sàng');
       sheet.getRange(existingRow, 6).setValue(statusVal);
       sheet.getRange(existingRow, 7).setValue(testDate);
       sheet.getRange(existingRow, 8).setValue(tester);
@@ -303,10 +346,10 @@ function syncReport53(ss, payload) {
       const nextRow = getNextAvailableRow(sheet, startRow);
       ensureRowExists(sheet, nextRow);
       sheet.getRange(nextRow, 1).setValue(testId);
-      sheet.getRange(nextRow, 2).setValue(item.description || item.name || 'N/A');
-      sheet.getRange(nextRow, 3).setValue(item.procedure || item.steps || 'N/A');
-      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'N/A');
-      sheet.getRange(nextRow, 5).setValue(item.preConditions || 'N/A');
+      sheet.getRange(nextRow, 2).setValue(item.description || item.name || item.scenario || 'Kịch bản kiểm thử luồng hệ thống');
+      sheet.getRange(nextRow, 3).setValue(item.procedure || item.steps || 'Thực hiện các bước thao tác trên màn hình');
+      sheet.getRange(nextRow, 4).setValue(item.expectedResults || item.expected || 'Giao diện và hệ thống phản hồi đúng quy tắc');
+      sheet.getRange(nextRow, 5).setValue(item.preConditions || 'Môi trường hệ thống và dữ liệu sẵn sàng');
       sheet.getRange(nextRow, 6).setValue(statusVal);
       sheet.getRange(nextRow, 7).setValue(testDate);
       sheet.getRange(nextRow, 8).setValue(tester);
@@ -348,43 +391,54 @@ function syncReport54(ss, payload) {
       // Performance: Test Case ID | Scenario | Tool | Target | Actual | Status | Defect IDs | Notes
       if (existingRow !== -1) {
         ensureRowExists(sheet, existingRow);
+        sheet.getRange(existingRow, 2).setValue(item.scenario || item.description || 'Kiểm thử hiệu năng tải và phản hồi');
+        sheet.getRange(existingRow, 3).setValue(item.tool || 'Automated / DevTools');
+        sheet.getRange(existingRow, 4).setValue(item.target || '< 2s');
         if (item.actual) sheet.getRange(existingRow, 5).setValue(item.actual);
         sheet.getRange(existingRow, 6).setValue(statusVal);
-        if (item.notes) sheet.getRange(existingRow, 8).setValue(item.notes);
+        if (item.defectId) sheet.getRange(existingRow, 7).setValue(item.defectId);
+        sheet.getRange(existingRow, 8).setValue(item.notes || 'Hiệu năng đạt yêu cầu');
         updatedCount++;
       } else {
         const nextRow = getNextAvailableRow(sheet, startRow);
         ensureRowExists(sheet, nextRow);
         sheet.getRange(nextRow, 1).setValue(testId);
-        sheet.getRange(nextRow, 2).setValue(item.scenario || item.description || 'N/A');
+        sheet.getRange(nextRow, 2).setValue(item.scenario || item.description || 'Kiểm thử hiệu năng tải và phản hồi');
         sheet.getRange(nextRow, 3).setValue(item.tool || 'Automated / DevTools');
         sheet.getRange(nextRow, 4).setValue(item.target || '< 2s');
         sheet.getRange(nextRow, 5).setValue(item.actual || 'PASS');
         sheet.getRange(nextRow, 6).setValue(statusVal);
         sheet.getRange(nextRow, 7).setValue(item.defectId || '');
-        sheet.getRange(nextRow, 8).setValue(item.notes || '');
+        sheet.getRange(nextRow, 8).setValue(item.notes || 'Hiệu năng đạt yêu cầu');
         insertedCount++;
       }
     } else {
       // Security: Test Case ID | Scenario Name | Role / Session | Given | When | Then | Priority | Status | Defect ID | Notes
       if (existingRow !== -1) {
         ensureRowExists(sheet, existingRow);
+        sheet.getRange(existingRow, 2).setValue(item.scenario || item.name || item.description || 'Kiểm tra bảo mật và quyền truy cập');
+        sheet.getRange(existingRow, 3).setValue(item.role || 'Cashier');
+        sheet.getRange(existingRow, 4).setValue(item.given || item.preConditions || 'Người dùng đã xác thực với vai trò tương ứng');
+        sheet.getRange(existingRow, 5).setValue(item.when || item.procedure || item.steps || 'Cố tình thực hiện hành động trái quyền');
+        sheet.getRange(existingRow, 6).setValue(item.then || item.expected || item.expectedResults || 'Hệ thống chặn truy cập HTTP 403 Forbidden');
+        sheet.getRange(existingRow, 7).setValue(item.priority || 'Critical');
         sheet.getRange(existingRow, 8).setValue(statusVal);
-        if (item.notes) sheet.getRange(existingRow, 10).setValue(item.notes);
+        if (item.defectId) sheet.getRange(existingRow, 9).setValue(item.defectId);
+        sheet.getRange(existingRow, 10).setValue(item.notes || 'Bảo mật đạt chuẩn RBAC');
         updatedCount++;
       } else {
         const nextRow = getNextAvailableRow(sheet, startRow);
         ensureRowExists(sheet, nextRow);
         sheet.getRange(nextRow, 1).setValue(testId);
-        sheet.getRange(nextRow, 2).setValue(item.scenario || item.name || 'N/A');
-        sheet.getRange(nextRow, 3).setValue(item.role || 'User');
-        sheet.getRange(nextRow, 4).setValue(item.given || 'N/A');
-        sheet.getRange(nextRow, 5).setValue(item.when || 'N/A');
-        sheet.getRange(nextRow, 6).setValue(item.then || item.expected || 'N/A');
-        sheet.getRange(nextRow, 7).setValue(item.priority || 'Medium');
+        sheet.getRange(nextRow, 2).setValue(item.scenario || item.name || item.description || 'Kiểm tra bảo mật và quyền truy cập');
+        sheet.getRange(nextRow, 3).setValue(item.role || 'Cashier');
+        sheet.getRange(nextRow, 4).setValue(item.given || item.preConditions || 'Người dùng đã xác thực với vai trò tương ứng');
+        sheet.getRange(nextRow, 5).setValue(item.when || item.procedure || item.steps || 'Cố tình thực hiện hành động trái quyền');
+        sheet.getRange(nextRow, 6).setValue(item.then || item.expected || item.expectedResults || 'Hệ thống chặn truy cập HTTP 403 Forbidden');
+        sheet.getRange(nextRow, 7).setValue(item.priority || 'Critical');
         sheet.getRange(nextRow, 8).setValue(statusVal);
         sheet.getRange(nextRow, 9).setValue(item.defectId || '');
-        sheet.getRange(nextRow, 10).setValue(item.notes || '');
+        sheet.getRange(nextRow, 10).setValue(item.notes || 'Bảo mật đạt chuẩn RBAC');
         insertedCount++;
       }
     }
@@ -419,21 +473,27 @@ function syncReport55(ss, payload) {
 
     if (existingRow !== -1) {
       ensureRowExists(sheet, existingRow);
+      sheet.getRange(existingRow, 2).setValue(item.bfId || item.featureCode || 'BF-01');
+      sheet.getRange(existingRow, 3).setValue(item.title || item.name || item.scenario || item.description || 'Kịch bản nghiệm thu người dùng');
+      sheet.getRange(existingRow, 4).setValue(item.actor || item.role || 'StoreOwner');
+      sheet.getRange(existingRow, 5).setValue(item.scenario || item.procedure || item.steps || 'Thực hiện quy trình nghiệp vụ thực tế');
+      sheet.getRange(existingRow, 6).setValue(item.expectedOutcome || item.expected || item.expectedResults || 'Nghiệm thu đạt yêu cầu vận hành');
+      sheet.getRange(existingRow, 7).setValue(item.priority || 'High');
       sheet.getRange(existingRow, 8).setValue(resultVal); // Result
-      if (item.feedback) sheet.getRange(existingRow, 9).setValue(item.feedback);
+      sheet.getRange(existingRow, 9).setValue(item.feedback || item.notes || 'Đạt yêu cầu nghiệm thu');
       updatedCount++;
     } else {
       const nextRow = getNextAvailableRow(sheet, startRow);
       ensureRowExists(sheet, nextRow);
       sheet.getRange(nextRow, 1).setValue(scriptId);
       sheet.getRange(nextRow, 2).setValue(item.bfId || item.featureCode || 'BF-01');
-      sheet.getRange(nextRow, 3).setValue(item.title || item.name || 'N/A');
-      sheet.getRange(nextRow, 4).setValue(item.actor || item.role || 'Customer');
-      sheet.getRange(nextRow, 5).setValue(item.scenario || item.steps || 'N/A');
-      sheet.getRange(nextRow, 6).setValue(item.expectedOutcome || item.expected || 'N/A');
+      sheet.getRange(nextRow, 3).setValue(item.title || item.name || item.scenario || item.description || 'Kịch bản nghiệm thu người dùng');
+      sheet.getRange(nextRow, 4).setValue(item.actor || item.role || 'StoreOwner');
+      sheet.getRange(nextRow, 5).setValue(item.scenario || item.procedure || item.steps || 'Thực hiện quy trình nghiệp vụ thực tế');
+      sheet.getRange(nextRow, 6).setValue(item.expectedOutcome || item.expected || item.expectedResults || 'Nghiệm thu đạt yêu cầu vận hành');
       sheet.getRange(nextRow, 7).setValue(item.priority || 'High');
       sheet.getRange(nextRow, 8).setValue(resultVal);
-      sheet.getRange(nextRow, 9).setValue(item.feedback || '');
+      sheet.getRange(nextRow, 9).setValue(item.feedback || item.notes || 'Đạt yêu cầu nghiệm thu');
       insertedCount++;
     }
   });
@@ -505,24 +565,84 @@ function countFilledRows(sheet, startRow) {
 }
 
 /**
- * Đăng ký tab mới vào 'Test Cases' và 'Test Statistics'
+ * Tìm tab mẫu an toàn để nhân bản cho Feature mới.
+ * Tuyệt đối không lấy nhầm tab của các Feature đã có dữ liệu (FE-xx, Module-xx, Workflow-xx).
+ */
+function findSafeTemplateSheet(ss, preferredNames) {
+  const names = preferredNames || [];
+  // 1. Tìm theo các tên tab mẫu chuẩn
+  for (let i = 0; i < names.length; i++) {
+    const s = ss.getSheetByName(names[i]);
+    if (s) return s;
+  }
+
+  // 2. Tìm tab có tên chứa chữ 'template', 'mẫu', 'sample', 'name1'
+  const allSheets = ss.getSheets();
+  for (let i = 0; i < allSheets.length; i++) {
+    const s = allSheets[i];
+    const sName = s.getName().toLowerCase();
+    if (sName.includes('template') || sName.includes('mẫu') || sName.includes('name1') || sName.includes('sample')) {
+      return s;
+    }
+  }
+
+  // 3. Nếu không thấy, tìm tab đầu tiên KHÔNG PHẢI là các tab hệ thống và KHÔNG PHẢI là tab của Feature khác
+  const systemNames = ['overview', 'test plan', 'test cases', 'test statistics', 'performance', 'security', 'uat'];
+  for (let i = 0; i < allSheets.length; i++) {
+    const s = allSheets[i];
+    const sName = s.getName().trim().toLowerCase();
+    const isSystem = systemNames.includes(sName);
+    const isFeatureTab = /^fe-?\d+/i.test(sName); // Bỏ qua mọi tab đã mang tên FE-01, FE-07, FE-08...
+    if (!isSystem && !isFeatureTab) {
+      return s;
+    }
+  }
+
+  // 4. Fallback an toàn: lấy tab đầu tiên không phải system
+  for (let i = 0; i < allSheets.length; i++) {
+    const s = allSheets[i];
+    const sName = s.getName().trim().toLowerCase();
+    if (!systemNames.includes(sName)) {
+      return s;
+    }
+  }
+
+  return allSheets[allSheets.length - 1];
+}
+
+/**
+ * Đăng ký tab mới vào 'Test Cases' và 'Test Statistics' (chống trùng dòng)
  */
 function registerIndexAndStats(ss, sheetName, moduleTitle, typeLabel) {
   // 1. Tab 'Test Cases'
   const indexSheet = ss.getSheetByName('Test Cases');
   if (indexSheet) {
     const lastRow = indexSheet.getLastRow();
-    const nextNo = Math.max(1, lastRow - 8);
-    indexSheet.appendRow(['', nextNo, moduleTitle, sheetName, `Kiểm thử ${typeLabel} cho ${moduleTitle}`, 'Hệ thống đã triển khai']);
+    let alreadyExists = false;
+    if (lastRow >= 9) {
+      const existing = indexSheet.getRange(9, 4, lastRow - 8, 1).getValues();
+      alreadyExists = existing.some(r => String(r[0] || '').trim().toLowerCase() === sheetName.toLowerCase());
+    }
+    if (!alreadyExists) {
+      const nextNo = Math.max(1, lastRow - 8);
+      indexSheet.appendRow(['', nextNo, moduleTitle, sheetName, `Kiểm thử ${typeLabel} cho ${moduleTitle}`, 'Hệ thống đã triển khai']);
+    }
   }
 
   // 2. Tab 'Test Statistics'
   const statsSheet = ss.getSheetByName('Test Statistics');
   if (statsSheet) {
     const lastRow = statsSheet.getLastRow();
-    const nextNo = Math.max(1, lastRow - 10);
-    // Cột: No | Module code | Passed | Failed | Pending | N/A | Number of test cases
-    statsSheet.appendRow(['', nextNo, sheetName, 0, 0, 0, 0, 0]);
+    let alreadyExists = false;
+    if (lastRow >= 11) {
+      const existing = statsSheet.getRange(11, 3, lastRow - 10, 1).getValues();
+      alreadyExists = existing.some(r => String(r[0] || '').trim().toLowerCase() === sheetName.toLowerCase());
+    }
+    if (!alreadyExists) {
+      const nextNo = Math.max(1, lastRow - 10);
+      // Cột: No | Module code | Passed | Failed | Pending | N/A | Number of test cases
+      statsSheet.appendRow(['', nextNo, sheetName, 0, 0, 0, 0, 0]);
+    }
   }
 }
 

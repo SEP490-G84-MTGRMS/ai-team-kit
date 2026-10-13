@@ -315,3 +315,4 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái tờ khai: `Draft`, `Finalized`, `Submitted`, `Paid`. |
 | `GeneratedAt` | `datetime2` | ❌ | | Thời điểm chốt số liệu tờ khai thuế. |
 - **2026-10-12**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
+- **2026-10-13**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).

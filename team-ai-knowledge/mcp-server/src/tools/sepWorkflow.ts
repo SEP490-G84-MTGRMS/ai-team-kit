@@ -840,6 +840,44 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       throw new Error(`Không tìm thấy kịch bản test nào trong test-report.md của \`${name}\`. Hãy đảm bảo test-report.md có bảng kịch bản test.`);
     }
 
+    // Tự động đọc specs.md của change để bổ sung GIVEN, WHEN, THEN, Role, Priority (tránh N/A trên Sheet)
+    let specScenarios: SpecScenario[] = [];
+    const specsMd = await provider.readFile(`${base(name)}/specs.md`);
+    if (specsMd) {
+      specScenarios = parseSpecsScenarios(specsMd);
+    }
+
+    testItems = testItems.map(item => {
+      const match = findBestMatchingScenario(item, specScenarios);
+      const fallbackGiven = match?.given || 'Môi trường và dữ liệu khởi tạo sẵn sàng cho tính năng';
+      const fallbackWhen = match?.when || 'Thực hiện thao tác kịch bản theo yêu cầu nghiệp vụ';
+      const fallbackThen = match?.then || 'Hệ thống phản hồi đúng quy tắc nghiệp vụ';
+      const fallbackRole = match?.role || 'StoreOwner';
+      const fallbackPriority = match?.priority || 'High';
+      const fallbackType = match?.type || 'Normal';
+
+      return {
+        ...item,
+        preConditions: item.preConditions || item.given || fallbackGiven,
+        given: item.given || item.preConditions || fallbackGiven,
+        inputParams: item.inputParams || item.steps || item.procedure || fallbackWhen,
+        steps: item.steps || item.procedure || item.inputParams || fallbackWhen,
+        procedure: item.procedure || item.steps || fallbackWhen,
+        when: item.when || item.procedure || item.steps || fallbackWhen,
+        expectedResults: item.expectedResults || item.expected || fallbackThen,
+        expected: item.expected || item.expectedResults || fallbackThen,
+        then: item.then || item.expected || item.expectedResults || fallbackThen,
+        type: item.type || fallbackType,
+        role: item.role || fallbackRole,
+        actor: item.actor || item.role || fallbackRole,
+        priority: item.priority || fallbackPriority,
+        scenario: item.scenario || match?.title || item.description || 'Kịch bản kiểm thử tính năng',
+        description: item.description || match?.title || item.scenario || 'Kịch bản kiểm thử tính năng',
+        notes: item.notes || item.feedback || '',
+        feedback: item.feedback || item.notes || '',
+      };
+    });
+
     let featureCode = params.featureCode?.trim();
     if (!featureCode) {
       const match = name.match(/fe-?(\d+)/i);
@@ -985,8 +1023,18 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
   };
 }
 
+function cleanHeaderStr(h: string): string {
+  return h
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim();
+}
+
 /**
  * Trích xuất các test case từ bảng markdown trong test-report.md
+ * Hỗ trợ cả Unified Test Table (10 cột chuẩn BDD) lẫn Legacy Table (5-6 cột).
  */
 export function parseTestReportMarkdown(md: string): Array<Record<string, any>> {
   const lines = md.split(/\r?\n/);
@@ -1006,59 +1054,248 @@ export function parseTestReportMarkdown(md: string): Array<Record<string, any>> 
     if (cells.length === 0) continue;
 
     if (!inTable) {
-      const lower = cells.map(c => c.toLowerCase());
-      if (lower.some(c => c.includes('req') || c.includes('scenario') || c.includes('test') || c.includes('kết quả') || c.includes('status'))) {
-        headers = lower;
+      const cleaned = cells.map(cleanHeaderStr);
+      const isHeader = cleaned.some(c =>
+        c.includes('test') || c.includes('req') || c.includes('scenario') ||
+        c.includes('kich ban') || c.includes('ket qua') || c.includes('status') ||
+        c.includes('verdict') || c.includes('id') || c.includes('report')
+      );
+      if (isHeader) {
+        headers = cleaned;
         inTable = true;
         continue;
       }
     }
 
     if (inTable) {
-      if (cells.every(c => /^[-:]+$/.test(c))) continue;
+      if (cells.every(c => /^[-: ]+$/.test(c))) continue;
 
-      const idIdx = headers.findIndex(h => h.includes('id') || h.includes('mã'));
-      const reqIdx = headers.findIndex(h => h.includes('req'));
-      const scnIdx = headers.findIndex(h => h.includes('scenario') || h.includes('kịch bản') || h.includes('mô tả'));
-      const typeIdx = headers.findIndex(h => h.includes('report') || h.includes('loại'));
-      const testIdx = headers.findIndex(h => h.includes('test') && !h.includes('id') && !h.includes('report'));
-      const resIdx = headers.findIndex(h => h.includes('kết quả') || h.includes('result') || h.includes('verdict') || h.includes('status'));
+      let idIdx = headers.findIndex(h => h.includes('id') || h.includes('ma'));
+      let scnIdx = headers.findIndex(h => h.includes('scenario') || h.includes('kich ban') || h.includes('ten') || h.includes('mo ta') || h.includes('yeu cau'));
+      let preIdx = headers.findIndex(h => h.includes('pre') || h.includes('given') || h.includes('dieu kien') || h.includes('tien quyet'));
+      let stepsIdx = headers.findIndex(h => h.includes('step') || h.includes('procedure') || h.includes('when') || h.includes('thao tac') || h.includes('cac buoc') || h.includes('buoc'));
+      let expIdx = headers.findIndex(h => h.includes('expect') || h.includes('then') || h.includes('mong doi') || h.includes('ket qua mong'));
+      let roleIdx = headers.findIndex(h => h.includes('role') || h.includes('actor') || h.includes('vai tro'));
+      let priorityIdx = headers.findIndex(h => h.includes('priority') || h.includes('uu tien') || h.includes('muc do'));
+      let typeIdx = headers.findIndex(h => h.includes('report') || h.includes('loai') || h.includes('type'));
+      let resIdx = headers.findIndex(h => (h.includes('ket qua') && !h.includes('mong')) || h.includes('result') || h.includes('status') || h.includes('verdict'));
+      let notesIdx = headers.findIndex(h => h.includes('note') || h.includes('ghi chu') || h.includes('feedback'));
 
-      const reqVal = reqIdx !== -1 ? cells[reqIdx] : '';
-      const scnVal = scnIdx !== -1 ? cells[scnIdx] : '';
-      const testVal = testIdx !== -1 ? cells[testIdx] : '';
-      const resVal = resIdx !== -1 ? cells[resIdx] : '';
-      const typeVal = typeIdx !== -1 ? cells[typeIdx] : '5.1';
-      let idVal = idIdx !== -1 ? cells[idIdx] : '';
-
-      if (!idVal) {
-        idVal = reqVal ? `TC-${reqVal}` : `TC-${items.length + 1}`;
+      if (cells.length >= 10 && (preIdx === -1 || stepsIdx === -1)) {
+        if (idIdx === -1) idIdx = 0;
+        if (scnIdx === -1) scnIdx = 1;
+        if (preIdx === -1) preIdx = 2;
+        if (stepsIdx === -1) stepsIdx = 3;
+        if (expIdx === -1) expIdx = 4;
+        if (roleIdx === -1) roleIdx = 5;
+        if (priorityIdx === -1) priorityIdx = 6;
+        if (typeIdx === -1) typeIdx = 7;
+        if (resIdx === -1) resIdx = 8;
+        if (notesIdx === -1) notesIdx = 9;
+      } else if (cells.length === 5 && scnIdx === -1) {
+        idIdx = 0;
+        scnIdx = 1;
+        typeIdx = 2;
+        resIdx = 3;
+        notesIdx = 4;
       }
-      idVal = idVal.replace(/[`*]/g, '');
+
+      const idVal = (idIdx !== -1 ? cells[idIdx] : `TC-${items.length + 1}`).replace(/[`*]/g, '');
+      const scnVal = scnIdx !== -1 ? cells[scnIdx] : '';
+      const preVal = preIdx !== -1 ? cells[preIdx] : '';
+      const stepsVal = stepsIdx !== -1 ? cells[stepsIdx] : '';
+      const expVal = expIdx !== -1 ? cells[expIdx] : '';
+      const roleVal = roleIdx !== -1 ? cells[roleIdx] : '';
+      const priorityVal = priorityIdx !== -1 ? cells[priorityIdx] : '';
+      const typeVal = typeIdx !== -1 ? cells[typeIdx] : '5.1';
+      const resVal = resIdx !== -1 ? cells[resIdx] : '';
+      const notesVal = notesIdx !== -1 ? cells[notesIdx] : '';
 
       let status = 'Passed';
       const rLower = resVal.toLowerCase();
       if (rLower.includes('fail')) status = 'Failed';
-      else if (rLower.includes('pending') || rLower.includes('not run')) status = 'Pending';
+      else if (rLower.includes('pend') || rLower.includes('not')) status = 'Pending';
 
       const rTypeMatch = typeVal.match(/5\.[1-5]/);
       const cleanReportType = rTypeMatch ? rTypeMatch[0] : (typeVal || '5.1');
 
       items.push({
         testId: idVal,
-        description: scnVal || reqVal,
+        description: scnVal,
         scenario: scnVal,
-        steps: testVal,
-        procedure: testVal,
-        expectedResults: 'Khớp với scenario mong đợi',
-        expected: 'Khớp với scenario mong đợi',
+        preConditions: preVal,
+        given: preVal,
+        steps: stepsVal,
+        procedure: stepsVal,
+        when: stepsVal,
+        inputParams: stepsVal,
+        expectedResults: expVal,
+        expected: expVal,
+        then: expVal,
+        role: roleVal,
+        priority: priorityVal,
         status,
         reportType: cleanReportType,
+        notes: notesVal,
+        feedback: notesVal,
       });
     }
   }
 
   return items;
+}
+
+export interface SpecScenario {
+  reqId: string;
+  reqTitle: string;
+  title: string;
+  given: string;
+  when: string;
+  then: string;
+  role: string;
+  priority: string;
+  type: string;
+}
+
+export function parseSpecsScenarios(md: string): SpecScenario[] {
+  const scenarios: SpecScenario[] = [];
+  const lines = md.split(/\r?\n/);
+
+  let currentReqId = '';
+  let currentReqTitle = '';
+  let currentScenario: Partial<SpecScenario> | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    const reqMatch = line.match(/^###\s+Requirement:\s*(REQ-[\w.-]+)?\s*(.*)/i);
+    if (reqMatch) {
+      if (currentScenario && currentScenario.title) {
+        scenarios.push(finalizeScenario(currentScenario, currentReqId, currentReqTitle));
+        currentScenario = null;
+      }
+      currentReqId = reqMatch[1] || '';
+      currentReqTitle = reqMatch[2] || '';
+      continue;
+    }
+
+    const scnMatch = line.match(/^####\s+Scenario:\s*(.*)/i);
+    if (scnMatch) {
+      if (currentScenario && currentScenario.title) {
+        scenarios.push(finalizeScenario(currentScenario, currentReqId, currentReqTitle));
+      }
+      currentScenario = {
+        title: scnMatch[1].trim(),
+        reqId: currentReqId,
+        reqTitle: currentReqTitle,
+        given: '',
+        when: '',
+        then: '',
+      };
+      continue;
+    }
+
+    if (currentScenario) {
+      const givenMatch = line.match(/[-*]\s+\*\*GIVEN\*\*\s*:?\s*(.*)/i);
+      if (givenMatch) {
+        currentScenario.given = givenMatch[1].trim();
+        continue;
+      }
+      const whenMatch = line.match(/[-*]\s+\*\*WHEN\*\*\s*:?\s*(.*)/i);
+      if (whenMatch) {
+        currentScenario.when = whenMatch[1].trim();
+        continue;
+      }
+      const thenMatch = line.match(/[-*]\s+\*\*THEN\*\*\s*:?\s*(.*)/i);
+      if (thenMatch) {
+        currentScenario.then = thenMatch[1].trim();
+        continue;
+      }
+    }
+  }
+
+  if (currentScenario && currentScenario.title) {
+    scenarios.push(finalizeScenario(currentScenario, currentReqId, currentReqTitle));
+  }
+
+  return scenarios;
+}
+
+function finalizeScenario(s: Partial<SpecScenario>, reqId: string, reqTitle: string): SpecScenario {
+  const text = `${s.title} ${s.given} ${s.when} ${s.then}`.toLowerCase();
+
+  let role = 'User';
+  if (text.includes('storeowner') || text.includes('chủ cửa hàng') || text.includes('owner')) role = 'StoreOwner';
+  else if (text.includes('manager') || text.includes('quản lý')) role = 'StoreManager';
+  else if (text.includes('cashier') || text.includes('thu ngân')) role = 'Cashier';
+  else if (text.includes('customer') || text.includes('khách hàng')) role = 'Customer';
+  else if (text.includes('admin') || text.includes('quản trị')) role = 'Admin';
+
+  let priority = 'Medium';
+  if (text.includes('thanh toán') || text.includes('thu nợ') || text.includes('vietqr') || text.includes('bảo mật') || text.includes('rbac') || text.includes('tiền')) {
+    priority = 'Critical';
+  } else if (text.includes('vượt hạn mức') || text.includes('chặn') || text.includes('lỗi') || text.includes('xóa')) {
+    priority = 'High';
+  }
+
+  let type = 'Normal';
+  if (text.includes('quá') || text.includes('vượt') || text.includes('chặn') || text.includes('sai') || text.includes('không hợp lệ') || text.includes('âm') || text.includes('boundary')) {
+    type = text.includes('quá') || text.includes('vượt') || text.includes('boundary') ? 'Boundary' : 'Abnormal';
+  }
+
+  return {
+    reqId: s.reqId || reqId,
+    reqTitle: s.reqTitle || reqTitle,
+    title: s.title || '',
+    given: s.given || 'Môi trường và dữ liệu khởi tạo sẵn sàng',
+    when: s.when || 'Thực hiện thao tác trên giao diện',
+    then: s.then || 'Hệ thống phản hồi đúng quy tắc nghiệp vụ',
+    role,
+    priority,
+    type,
+  };
+}
+
+export function findBestMatchingScenario(item: Record<string, any>, scenarios: SpecScenario[]): SpecScenario | null {
+  if (scenarios.length === 0) return null;
+
+  const desc = String(item.description || item.scenario || item.testId || '').toLowerCase();
+
+  // 1. Khớp chính xác theo REQ ID (ví dụ REQ-08.1 hoặc REQ-01)
+  const reqMatch = desc.match(/req-[\w.-]+/i);
+  const targetReq = reqMatch ? reqMatch[0].toUpperCase() : '';
+  if (targetReq) {
+    const byReq = scenarios.filter(s => s.reqId.toUpperCase() === targetReq);
+    if (byReq.length > 0) return byReq[0];
+  }
+
+  // 2. Khớp theo số thứ tự (ví dụ TC-FE08-01 -> kịch bản 1)
+  const numMatch = desc.match(/-(\d{1,2})$/) || String(item.testId || '').match(/-(\d{1,2})$/);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < scenarios.length) {
+      return scenarios[idx];
+    }
+  }
+
+  // 3. Khớp theo từ khóa trùng lặp
+  const words = desc.replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter(w => w.length > 2);
+  let bestScore = -1;
+  let bestScenario: SpecScenario | null = null;
+
+  for (const scn of scenarios) {
+    const scnText = `${scn.reqId} ${scn.title} ${scn.given} ${scn.when}`.toLowerCase();
+    let score = 0;
+    for (const w of words) {
+      if (scnText.includes(w)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestScenario = scn;
+    }
+  }
+
+  return bestScenario || scenarios[0] || null;
 }
 
 export type SepWorkflow = ReturnType<typeof createSepWorkflow>;

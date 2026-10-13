@@ -685,6 +685,11 @@ function createServer(ctx: RequestContext): Server {
  * Starts MCP Server in stdio mode (local development).
  */
 async function startStdioMode(provider: DataProvider): Promise<void> {
+  // CRITICAL: In stdio mode, process.stdout is strictly reserved for JSON-RPC messages.
+  // Redirect console.log to stderr so sub-scripts or libraries do not corrupt the stream.
+  console.log = (...args: any[]) => console.error(...args);
+  process.env.MCP_SERVER = '1';
+
   const kbRoot = localKbRoot();
   const user = process.env.SEP_ASSIGNEE?.trim() || undefined;
   const afterWrite = createGitSync(kbRoot);
