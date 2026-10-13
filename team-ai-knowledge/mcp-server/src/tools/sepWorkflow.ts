@@ -816,6 +816,159 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     return raw;
   }
 
+  async function handleDongBoTestSheet(params: {
+    tenChange?: string;
+    reportTypes?: string[];
+    featureCode?: string;
+    featureName?: string;
+    tabName?: string;
+    tester?: string;
+    items?: Array<Record<string, any>>;
+  }): Promise<string> {
+    const name = await resolveName(params.tenChange);
+    const reportMd = await provider.readFile(`${base(name)}/test-report.md`);
+
+    let testItems = params.items && params.items.length > 0 ? params.items : [];
+    if (testItems.length === 0) {
+      if (!reportMd) {
+        throw new Error(`Change \`${name}\` chưa có test-report.md và không truyền testItems. Hãy hoàn thành /sep-test trước.`);
+      }
+      testItems = parseTestReportMarkdown(reportMd);
+    }
+
+    if (testItems.length === 0) {
+      throw new Error(`Không tìm thấy kịch bản test nào trong test-report.md của \`${name}\`. Hãy đảm bảo test-report.md có bảng kịch bản test.`);
+    }
+
+    let featureCode = params.featureCode?.trim();
+    if (!featureCode) {
+      const match = name.match(/fe-?(\d+)/i);
+      featureCode = match ? `FE-${match[1].padStart(2, '0')}` : name;
+    }
+    const session = await readSession(name);
+    const featureName = params.featureName?.trim() || session?.data?.capability || name;
+
+    let webAppUrl = process.env.GOOGLE_SHEET_WEBAPP_URL?.trim();
+    let apiKey = process.env.GOOGLE_SHEET_API_KEY?.trim() || 'MT_GRMS_TEST_SECRET_2026';
+    const tester = params.tester?.trim() || process.env.GOOGLE_SHEET_DEFAULT_TESTER?.trim() || options.defaultAssignee || 'AI-Agent';
+
+    if (!webAppUrl) {
+      const envRaw = await provider.readFile('.env');
+      if (envRaw) {
+        const urlMatch = envRaw.match(/GOOGLE_SHEET_WEBAPP_URL\s*=\s*(.+)/);
+        if (urlMatch) webAppUrl = urlMatch[1].trim().replace(/^["']|["']$/g, '');
+        const keyMatch = envRaw.match(/GOOGLE_SHEET_API_KEY\s*=\s*(.+)/);
+        if (keyMatch) apiKey = keyMatch[1].trim().replace(/^["']|["']$/g, '');
+      }
+    }
+
+    if (!webAppUrl) {
+      return [
+        `⚠️ **Chưa cấu hình GOOGLE_SHEET_WEBAPP_URL**!`,
+        '',
+        `Để đồng bộ kết quả lên Google Sheets, bạn cần:`,
+        `1. Triển khai Google Apps Script theo hướng dẫn tại: [README.md](file:///d:/Sourse_code_Do_An/ai-team-kit/team-ai-knowledge/scripts/google-apps-script/README.md).`,
+        `2. Điền biến \`GOOGLE_SHEET_WEBAPP_URL\` và \`GOOGLE_SHEET_API_KEY\` vào file \`.env\` tại gốc \`team-ai-knowledge\`.`,
+      ].join('\n');
+    }
+
+    const allowedTypes = params.reportTypes && params.reportTypes.length > 0
+      ? params.reportTypes.map(t => String(t).trim())
+      : null;
+
+    const grouped: Record<string, Array<Record<string, any>>> = {};
+    for (const item of testItems) {
+      const rType = String(item.reportType || '5.1').trim();
+      if (allowedTypes && !allowedTypes.includes(rType)) continue;
+      if (!grouped[rType]) grouped[rType] = [];
+      grouped[rType].push(item);
+    }
+
+    const reportKeys = Object.keys(grouped);
+    if (reportKeys.length === 0) {
+      return `ℹ️ Không có kịch bản nào thuộc các loại report yêu cầu (${allowedTypes ? allowedTypes.join(', ') : 'tất cả'}).`;
+    }
+
+    const results: Array<{ reportType: string; tab: string; updated: number; inserted: number; total: number; success: boolean; message: string }> = [];
+
+    for (const rType of reportKeys) {
+      try {
+        const payload = {
+          apiKey,
+          reportType: rType,
+          featureCode,
+          featureName,
+          tabName: params.tabName || featureCode,
+          tester,
+          items: grouped[rType],
+        };
+
+        const res = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          redirect: 'follow',
+        });
+
+        const data = (await res.json()) as any;
+        if (data && data.success) {
+          results.push({
+            reportType: rType,
+            tab: data.data?.tab || featureCode,
+            updated: data.data?.updated ?? 0,
+            inserted: data.data?.inserted ?? 0,
+            total: data.data?.total ?? 0,
+            success: true,
+            message: data.message || 'OK',
+          });
+        } else {
+          results.push({
+            reportType: rType,
+            tab: featureCode,
+            updated: 0,
+            inserted: 0,
+            total: 0,
+            success: false,
+            message: data?.message || 'Lỗi không xác định từ Apps Script',
+          });
+        }
+      } catch (err: any) {
+        results.push({
+          reportType: rType,
+          tab: featureCode,
+          updated: 0,
+          inserted: 0,
+          total: 0,
+          success: false,
+          message: err.message,
+        });
+      }
+    }
+
+    const reportNames: Record<string, string> = {
+      '5.1': 'Report-5.1 (Unit Test)',
+      '5.2': 'Report-5.2 (Integration Test)',
+      '5.3': 'Report-5.3 (System Test FRs)',
+      '5.4': 'Report-5.4 (System Test NFRs)',
+      '5.5': 'Report-5.5 (Acceptance Test)',
+    };
+
+    const lines = [
+      `### 📊 Kết quả đồng bộ kiểm thử lên Google Sheets`,
+      `Feature: **${featureCode}** (${featureName}) · Tester: \`${tester}\``,
+      '',
+      `| Report | Tab / Sheet | Cập nhật | Thêm mới | Tổng | Trạng thái |`,
+      `|---|---|---|---|---|---|`,
+      ...results.map(r => {
+        const nameLabel = reportNames[r.reportType] || `Report-${r.reportType}`;
+        const statusIcon = r.success ? '✅ Thành công' : `❌ Thất bại: ${r.message}`;
+        return `| **${nameLabel}** | \`${r.tab}\` | ${r.updated} | ${r.inserted} | ${r.total} | ${statusIcon} |`;
+      }),
+    ];
+
+    return lines.join('\n');
+  }
+
   return {
     inspectChange,
     listChangeNames,
@@ -828,7 +981,84 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     handleChuyenTrangThai,
     handleLuiBuoc,
     handleXemPersona,
+    handleDongBoTestSheet,
   };
+}
+
+/**
+ * Trích xuất các test case từ bảng markdown trong test-report.md
+ */
+export function parseTestReportMarkdown(md: string): Array<Record<string, any>> {
+  const lines = md.split(/\r?\n/);
+  const items: Array<Record<string, any>> = [];
+
+  let inTable = false;
+  let headers: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line.startsWith('|')) {
+      if (inTable && items.length > 0) break;
+      continue;
+    }
+
+    const cells = line.split('|').slice(1, -1).map(c => c.trim());
+    if (cells.length === 0) continue;
+
+    if (!inTable) {
+      const lower = cells.map(c => c.toLowerCase());
+      if (lower.some(c => c.includes('req') || c.includes('scenario') || c.includes('test') || c.includes('kết quả') || c.includes('status'))) {
+        headers = lower;
+        inTable = true;
+        continue;
+      }
+    }
+
+    if (inTable) {
+      if (cells.every(c => /^[-:]+$/.test(c))) continue;
+
+      const idIdx = headers.findIndex(h => h.includes('id') || h.includes('mã'));
+      const reqIdx = headers.findIndex(h => h.includes('req'));
+      const scnIdx = headers.findIndex(h => h.includes('scenario') || h.includes('kịch bản') || h.includes('mô tả'));
+      const typeIdx = headers.findIndex(h => h.includes('report') || h.includes('loại'));
+      const testIdx = headers.findIndex(h => h.includes('test') && !h.includes('id') && !h.includes('report'));
+      const resIdx = headers.findIndex(h => h.includes('kết quả') || h.includes('result') || h.includes('verdict') || h.includes('status'));
+
+      const reqVal = reqIdx !== -1 ? cells[reqIdx] : '';
+      const scnVal = scnIdx !== -1 ? cells[scnIdx] : '';
+      const testVal = testIdx !== -1 ? cells[testIdx] : '';
+      const resVal = resIdx !== -1 ? cells[resIdx] : '';
+      const typeVal = typeIdx !== -1 ? cells[typeIdx] : '5.1';
+      let idVal = idIdx !== -1 ? cells[idIdx] : '';
+
+      if (!idVal) {
+        idVal = reqVal ? `TC-${reqVal}` : `TC-${items.length + 1}`;
+      }
+      idVal = idVal.replace(/[`*]/g, '');
+
+      let status = 'Passed';
+      const rLower = resVal.toLowerCase();
+      if (rLower.includes('fail')) status = 'Failed';
+      else if (rLower.includes('pending') || rLower.includes('not run')) status = 'Pending';
+
+      const rTypeMatch = typeVal.match(/5\.[1-5]/);
+      const cleanReportType = rTypeMatch ? rTypeMatch[0] : (typeVal || '5.1');
+
+      items.push({
+        testId: idVal,
+        description: scnVal || reqVal,
+        scenario: scnVal,
+        steps: testVal,
+        procedure: testVal,
+        expectedResults: 'Khớp với scenario mong đợi',
+        expected: 'Khớp với scenario mong đợi',
+        status,
+        reportType: cleanReportType,
+      });
+    }
+  }
+
+  return items;
 }
 
 export type SepWorkflow = ReturnType<typeof createSepWorkflow>;
@@ -968,5 +1198,28 @@ export const SEP_TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    name: 'sep_dong_bo_test_sheet',
+    description:
+      'SEP kiểm thử: Đồng bộ kết quả test lên 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5) qua Google Apps Script Web App. ' +
+      'Tự động đọc test-report.md của change hiện tại (hoặc nhận items truyền vào), phân loại theo Report Type (5.1-5.5), ' +
+      'tự động clone Tab Feature mới nếu chưa có, và upsert theo Test Case ID.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        tenChange: TEN_CHANGE,
+        reportTypes: {
+          type: 'array',
+          items: { type: 'string', enum: ['5.1', '5.2', '5.3', '5.4', '5.5'] },
+          description: 'Danh sách các report cần đồng bộ (VD: ["5.1", "5.3"]). Nếu bỏ trống sẽ đồng bộ mọi report tìm thấy.',
+        },
+        featureCode: { type: 'string', description: 'Mã feature (VD: FE-01, FE-02). Bỏ trống = tự suy ra từ tên change.' },
+        featureName: { type: 'string', description: 'Tên đầy đủ của tính năng để ghi vào ô B2 trên Sheet.' },
+        tabName: { type: 'string', description: 'Tên tab trên Google Sheet (mặc định lấy theo featureCode).' },
+        tester: { type: 'string', description: 'Tên người kiểm thử. Mặc định lấy từ cấu hình hoặc SEP_ASSIGNEE.' },
+      },
+    },
+  },
 ];
+
 

@@ -26,7 +26,7 @@ Tên change = phần chữ user gõ sau `/sep-test`; bỏ trống = change đang
 3. Chạy test + build/lint (VD `dotnet test`, `npm run lint`, `npm run build`). Ghi lại lệnh và kết quả thật — **không bịa kết quả**.
    Scenario không tự động hoá được → hướng dẫn user test tay và hỏi kết quả.
 4. Kiểm tra đối chiếu (verify change): code có làm đủ mọi REQ? có thay đổi ngoài phạm vi specs? review HIGH đã xử lý hết?
-5. Lưu **test-report.md** bằng `sep_luu_artifact`. Frontmatter `verdict` là bắt buộc:
+5. Lưu **test-report.md** bằng `sep_luu_artifact`. Frontmatter `verdict` là bắt buộc. Bảng test case nên bao gồm cột `Test Case ID` và `Report Type` (5.1 -> 5.5) để tự động ánh xạ lên 5 file Google Sheets báo cáo:
 
 ```markdown
 ---
@@ -35,9 +35,13 @@ tested_at: 2026-01-01
 ---
 # Test Report: <tên change>
 
-| REQ | Scenario | Test | Kết quả |
-|---|---|---|---|
-| REQ-01 | ... | `path/to/test` | ✅ PASS |
+| REQ | Scenario | Test Case ID | Test | Report Type | Kết quả |
+|---|---|---|---|---|---|
+| REQ-01 | ... | TC-UT-FE01-01 | `src/...` | 5.1 | ✅ PASS |
+| REQ-02 | ... | TC-IT-FE01-01 | `src/...` | 5.2 | ✅ PASS |
+| REQ-03 | ... | TC-SYS-FE01-01 | `tests/...` | 5.3 | ✅ PASS |
+| REQ-04 | ... | TC-SEC-FE01-01 | `tests/...` | 5.4 | ✅ PASS |
+| REQ-05 | ... | SC-UAT-FE01-01 | `manual` | 5.5 | ✅ PASS |
 
 ## Lệnh đã chạy
 ## Đối chiếu specs ↔ code
@@ -46,7 +50,11 @@ tested_at: 2026-01-01
 
    `verdict: PASS` chỉ khi **mọi** Scenario pass. Có cái fail → `verdict: FAIL`.
 6. FAIL → báo lỗi, sửa code (quay lại `/sep-apply` nếu cần thêm task), chạy lại test và lưu lại test-report.md đến khi PASS.
-7. **Gate** (chỉ khi PASS): tóm tắt số scenario pass, lệnh đã chạy; hỏi "Approve hay Reject?".
+7. **Đồng bộ Google Sheets (Tùy chọn)**:
+   - Sau khi `test-report.md` đạt `verdict: PASS`, hỏi user:
+     *"Bạn có muốn đồng bộ kết quả kiểm thử này lên Google Sheet không? Hãy chọn các report cần điền (VD: chỉ 5.1 & 5.3, hoặc cả 5 file, hoặc bỏ qua)."*
+   - Nếu user chọn -> gọi tool `sep_dong_bo_test_sheet({ reportTypes: [...] })` để tự động cập nhật/upsert lên các file Google Sheets tương ứng.
+8. **Gate** (chỉ khi PASS): tóm tắt số scenario pass, lệnh đã chạy, kết quả đồng bộ Sheet (nếu có); hỏi "Approve hay Reject?".
    Reject → xử lý, `sep_duyet_buoc` (`reject`, lý do), hỏi lại. Approve → `sep_duyet_buoc` (`buoc: "test"`, `approve`, `tomTat`, `caiTien`).
 
 ## Kết thúc

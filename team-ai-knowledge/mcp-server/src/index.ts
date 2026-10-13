@@ -306,6 +306,7 @@ const TOOL_KIND: Record<string, 'read' | 'write' | 'destructive'> = {
   sep_duyet_buoc: 'write',
   sep_chuyen_trang_thai: 'destructive',
   sep_lui_buoc: 'write',
+  sep_dong_bo_test_sheet: 'write',
 };
 const IDEMPOTENT = new Set(['sep_luu_artifact', 'sep_chon_change']);
 
@@ -595,6 +596,19 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         case 'sep_xem_persona': {
           const p = (args ?? {}) as { ten?: string };
           return { content: [{ type: 'text' as const, text: await sep.handleXemPersona(p) }] };
+        }
+
+        case 'sep_dong_bo_test_sheet': {
+          const p = (args ?? {}) as {
+            tenChange?: string;
+            reportTypes?: string[];
+            featureCode?: string;
+            featureName?: string;
+            tabName?: string;
+            tester?: string;
+            items?: Array<Record<string, any>>;
+          };
+          return { content: [{ type: 'text' as const, text: await sep.handleDongBoTestSheet(p) }] };
         }
 
         default:
