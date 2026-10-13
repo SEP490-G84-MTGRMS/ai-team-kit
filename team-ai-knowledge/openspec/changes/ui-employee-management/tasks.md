@@ -8,3 +8,5 @@
 - [x] T6: Xây dựng Panel Chi tiết Nhân viên 360 độ với 5 tabs (Thông tin, Lịch làm việc, Mức lương, Phiếu lương in/xuất file, Nợ & Tạm ứng kèm Tạo phiếu chi) tại `src/features/employee/components/EmployeeDetailModal.tsx`
 - [x] T7: Xây dựng Modal Duyệt yêu cầu (Nhân viên, Chấm công, duyệt hàng loạt) và Modal Import Excel tại `src/features/employee/components/ApprovalRequestsModal.tsx` & `ImportEmployeeModal.tsx`
 - [x] T8: Hoàn thiện Trang danh sách chính `EmployeeListPage.tsx`, cấu hình Routing trong `router.tsx`, tích hợp liên kết trên `AppTopNav.tsx`, và kiểm tra `npm run build` đạt 0 lỗi
+- [x] T9: Bổ sung Màn hình Lịch làm việc ma trận (`WorkSchedulePage.tsx`), Quản lý ca làm việc (`WorkshiftManagementPage.tsx`), Modal tạo ca (`ShiftFormModal.tsx`) và Modal phân ca (`AddScheduleModal.tsx`) theo thiết kế `work_schedule/`
+- [x] T10: Bổ sung Màn hình Bảng chấm công (`AttendancePage.tsx`), Modal chi tiết chấm công vi phạm/thưởng (`AttendanceDetailModal.tsx`), và popup định vị GPS / mã QR check-in theo thiết kế `attendance/`
