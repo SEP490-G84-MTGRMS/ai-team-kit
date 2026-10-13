@@ -128,8 +128,8 @@ Nhằm đảm bảo sản phẩm tinh gọn và hoàn thành đúng cam kết tr
 
 | Thành viên | Vai trò | Chuyên môn phụ trách chính (Accountable) |
 |---|---|---|
-| **Nguyễn Long Nhật** | Leader | Kiến trúc hệ thống, Backend Core, Identity & SaaS Platform (FE-11, 20, 21, 22, 23) |
-| **Nguyễn Minh Tâm** | Member | Quản lý Hàng hóa, Lô hạn FEFO, Nhập mua & Kho (FE-01, 02, 04, 05, 06, 15) |
-| **Nguyễn Trương An** | Member | POS Checkout, Thanh toán VietQR, Khuyến mãi & Khách hàng (FE-03, 12, 13, 14, 16) |
-| **Nguyễn Bá Sơn** | Member | Tài chính, Dòng tiền, Thuế hộ kinh doanh & Nhà cung cấp (FE-07, 08, 09, 10, 17, 19) |
-| **Đặng Đỗ Minh Đức** | Member | Quản lý Nhân sự, Ca làm việc, Chấm công & Bảng lương (FE-18) |
+| **Nguyễn Minh Tâm** | Lead BA | Khung SRS, Context Diagram, Bán lẻ đa kênh, Danh mục hàng hóa & Nhân sự (FE-01, 15, 18, 20, 26) |
+| **Nguyễn Long Nhật** | PM/Architect | Kiến trúc SaaS, Bảo mật, AI Recommender, Background Jobs (FE-11, 21, 22, 23, 24, 25) |
+| **Nguyễn Trường An** | Backend/DB | Sơ đồ ERD, API, Tài chính – CRM – Thuế (FE-07, 08, 10, 17, 19) |
+| **Đặng Đỗ Minh Đức** | Kho vận/FEFO | Luồng Nhập hàng, Phân bổ chi phí, Kho vận & Thuật toán FEFO (FE-02, 04, 05, 06, 09) |
+| **Nguyễn Bá Sơn** | Frontend/UI | Thiết kế Screen Inventory, Quầy POS, Khuyến mãi & UI mockups (FE-03, 12, 13, 14, 16) |

@@ -63,21 +63,23 @@ erDiagram
     BATCHES ||--o{ ORDER_ITEMS : "xuất trừ tồn FEFO (BatchId)"
     
     ORDERS ||--o{ PAYMENT_TRANSACTIONS : "thanh toán qua (OrderId)"
+    ORDERS ||--o{ RETURN_ORDERS : "khách trả hàng (OriginalOrderId)"
+    RETURN_ORDERS ||--|{ RETURN_ORDER_ITEMS : "chi tiết hàng trả (ReturnOrderId)"
 
     %% ==========================================
-    %% KHỐI 5: TÀI CHÍNH, DÒNG TIỀN & THUẾ (FINANCE)
+    %% KHỐI 5: TÀI CHÍNH, DÒNG TIỀN, P&L & THUẾ (FINANCE & P&L)
     %% ==========================================
-    BRANCHES ||--o{ CASHBOOK_ENTRIES : "ghi sổ quỹ chi nhánh (BranchId)"
-    ORDERS ||..o{ CASHBOOK_ENTRIES : "sinh phiếu thu tiền (ReferenceCode)"
-    GOODS_RECEIPTS ||..o{ CASHBOOK_ENTRIES : "sinh phiếu chi tiền (ReferenceCode)"
-    CUSTOMERS ||--o{ CASHBOOK_ENTRIES : "thu tiền công nợ AR (CustomerId)"
+    BRANCHES ||--o{ CASH_ACCOUNTS : "quản lý tài khoản quỹ (BranchId)"
+    CASH_ACCOUNTS ||--o{ LEDGER_TRANSACTIONS : "chứa các bút toán thu chi (AccountId)"
+    ORDERS ||..o{ LEDGER_TRANSACTIONS : "sinh phiếu thu tiền (ReferenceDocId)"
+    GOODS_RECEIPTS ||..o{ LEDGER_TRANSACTIONS : "sinh phiếu chi tiền (ReferenceDocId)"
+    SERVICE_EXPENSES ||..o| LEDGER_TRANSACTIONS : "sinh phiếu chi khi thanh toán (ReferenceDocId)"
     BRANCHES ||--o{ SERVICE_EXPENSES : "phát sinh chi phí dịch vụ (BranchId)"
-    SERVICE_EXPENSES ||..o| CASHBOOK_ENTRIES : "sinh phiếu chi khi thanh toán (CashBookEntryId)"
-    BRANCHES ||--o{ CASH_RECONCILIATIONS : "biên bản đối soát két tiền (BranchId)"
     TENANTS ||--o{ TAX_SNAPSHOTS : "tờ khai thuế hộ kinh doanh (TenantId)"
+    BRANCHES ||--o{ DAILY_SALES_SUMMARIES : "snapshot P&L & KPIs ngày (BranchId)"
 
     %% ==========================================
-    %% KHỐI 6: KIỂM KÊ & ĐIỀU CHUYỂN KHO (OPS)
+    %% KHỐI 6: KIỂM KÊ, ĐIỀU CHUYỂN & HAO HỤT (OPS & LOSS)
     %% ==========================================
     BRANCHES ||--o{ STOCKTAKES : "kiểm kê tại chi nhánh (BranchId)"
     STOCKTAKES ||--|{ STOCKTAKE_ITEMS : "dòng chi tiết kiểm đếm (StocktakeId)"
@@ -85,6 +87,9 @@ erDiagram
     
     BRANCHES ||--o{ INTER_BRANCH_TRANSFERS : "chi nhánh xuất / nhận"
     INTER_BRANCH_TRANSFERS ||--|{ TRANSFER_ITEMS : "chi tiết hàng chuyển"
+
+    BRANCHES ||--o{ GOODS_DISPOSALS : "xuất hủy hao hụt kho (BranchId)"
+    GOODS_DISPOSALS ||--|{ GOODS_DISPOSAL_ITEMS : "chi tiết hàng hủy (DisposalId)"
 ```
 
 ---

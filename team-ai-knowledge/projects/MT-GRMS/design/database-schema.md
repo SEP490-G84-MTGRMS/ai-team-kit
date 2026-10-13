@@ -146,6 +146,34 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `MinStockAlert` | `decimal(18,3)` | ✔️ | | Ngưỡng tồn tối thiểu cần báo động nhập hàng. |
 | `MaxStockAlert` | `decimal(18,3)` | ✔️ | | Ngưỡng tồn tối đa tránh đọng vốn. |
 
+#### Bảng `GoodsDisposals` (Phiếu xuất hủy & Hao hụt kho - FE-06)
+*Kế thừa `BaseTenantEntity`. Quản lý tiêu hủy hàng hỏng, hết date, hao hụt để ghi nhận chi phí tổn thất vào P&L (Shrinkage Loss).*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `DisposalCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu xuất hủy (VD: `XH-20261012-001`). |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh phát sinh hao hụt hủy hàng. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Approved' | Trạng thái: `Draft`, `PendingApproval`, `Approved`, `Cancelled`. |
+| `DisposedAt` | `datetime2` | ❌ | | Thời điểm xuất hủy hàng khỏi kho (UTC). |
+| `ReasonCategory` | `varchar(50)` | ❌ | | Phân loại lý do: `Expired` (Hết date), `Damaged` (Vỡ/hỏng), `PestDamage` (Chuột/côn trùng), `Sampling` (Hao hụt dùng thử). |
+| `TotalLossValue` | `decimal(18,2)` | ❌ | | Tổng giá trị tổn thất (tính theo Landed Cost của lô hàng) để trừ vào P&L. |
+| `CreatedByStaff` | `nvarchar(150)` | ❌ | | Nhân viên kho/cửa hàng kiểm đếm và lập phiếu. |
+| `ApprovedByManager`| `nvarchar(150)` | ✔️ | | Quản lý hoặc Chủ cửa hàng phê duyệt hủy. |
+| `PhotoEvidenceUrl` | `nvarchar(500)` | ✔️ | | Ảnh chụp minh chứng hàng hư hỏng/hết hạn. |
+| `Note` | `nvarchar(500)` | ✔️ | | Diễn giải chi tiết lý do tiêu hủy. |
+
+#### Bảng `GoodsDisposalItems` (Dòng chi tiết hàng hóa xuất hủy)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `DisposalId` | `Guid` | ❌ | FK -> GoodsDisposals | Phiếu xuất hủy cha. |
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm xuất hủy. |
+| `BatchId` | `Guid` | ✔️ | FK -> Batches | Lô hàng xuất hủy (để trừ kho FEFO chính xác). |
+| `UnitName` | `nvarchar(50)` | ❌ | | Đơn vị tính (Lon, Gói, Hộp). |
+| `Quantity` | `decimal(18,3)` | ❌ | | Số lượng xuất hủy thực tế. |
+| `BaseQuantity` | `decimal(18,3)` | ❌ | | Số lượng quy đổi chuẩn để trừ kho vật lý. |
+| `CostPrice` | `decimal(18,2)` | ❌ | | Giá vốn nhập của lô tại thời điểm hủy (Landed Cost). |
+| `LineTotal` | `decimal(18,2)` | ❌ | | Thành tiền tổn thất dòng (`BaseQuantity * CostPrice`). |
+
 ---
 
 ### 3.3 Phân Hệ Bán Hàng POS & Thanh Toán (POS & Orders)
@@ -204,6 +232,32 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `WebhookPayload` | `nvarchar(max)`| ✔️ | | Toàn bộ nội dung JSON Webhook ngân hàng bắn về. |
 | `ConfirmedAt` | `datetime2` | ✔️ | | Thời điểm nhận xác nhận tiền vào. |
 
+#### Bảng `ReturnOrders` (Đơn khách trả hàng & Hoàn tiền - FE-13)
+*Kế thừa `BaseTenantEntity`. Quản lý khách đổi trả hàng để trừ ngược lại Doanh thu thuần (Net Sales) trên Báo cáo P&L.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `ReturnCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu đổi trả hàng (VD: `TH-20261012-001`). |
+| `OriginalOrderId` | `Guid` | ❌ | FK -> Orders | Hóa đơn bán lẻ gốc phát sinh trả hàng. |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh xử lý nhận trả hàng. |
+| `CashierId` | `Guid` | ❌ | FK -> Employees | Thu ngân tiếp nhận xử lý đổi trả. |
+| `ReturnDate` | `datetime2` | ❌ | | Thời điểm nhận trả hàng (UTC). |
+| `TotalRefundAmount`| `decimal(18,2)` | ❌ | | Tổng số tiền hoàn lại cho khách (để trừ doanh thu). |
+| `RefundMethod` | `varchar(50)` | ❌ | Def: 'Cash' | Phương thức hoàn tiền: `Cash`, `BankTransfer`, `StoreCredit`. |
+| `Reason` | `nvarchar(255)` | ✔️ | | Lý do trả hàng (Hàng cận date, lỗi bao bì, khách mua nhầm...). |
+
+#### Bảng `ReturnOrderItems` (Dòng chi tiết sản phẩm khách trả lại)
+*Kế thừa `BaseTenantEntity`.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `ReturnOrderId` | `Guid` | ❌ | FK -> ReturnOrders | Đơn trả hàng cha. |
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm khách trả lại. |
+| `BatchId` | `Guid` | ✔️ | FK -> Batches | Lô hàng ban đầu đã bán. |
+| `Quantity` | `decimal(18,3)` | ❌ | | Số lượng trả lại thực tế. |
+| `RefundUnitPrice` | `decimal(18,2)` | ❌ | | Đơn giá hoàn lại mỗi đơn vị. |
+| `RefundLineTotal` | `decimal(18,2)` | ❌ | | Tổng tiền hoàn dòng hàng (`Quantity * RefundUnitPrice`). |
+| `RestockStatus` | `varchar(50)` | ❌ | Def: 'Restocked' | Xử lý hàng trả: `Restocked` (Nhập lại kho bán tiếp) / `Disposed` (Hỏng chuyển hủy). |
+| `RestockedCostPrice`| `decimal(18,2)` | ✔️ | | Giá vốn nhập lại kho để trừ ngược lại COGS. |
+
 ---
 
 ### 3.4 Phân Hệ Mua Hàng & Nhà Cung Cấp (Purchasing & Supply Chain)
@@ -257,33 +311,36 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `CashDifference` | `decimal(18,2)` | ✔️ | | Chênh lệch ca (`ActualCash - ExpectedCash`). |
 | `ZReportSummary` | `nvarchar(max)`| ✔️ | | Dữ liệu tóm tắt doanh số ca (Z-Report). |
 
-#### Bảng `Cashbooks` & `CashbookEntries` (Sổ quỹ & Bút toán thu chi)
+#### Bảng `CashAccounts` (Tài khoản quỹ tiền mặt & Ngân hàng)
 *Kế thừa `BaseTenantEntity`.*
 | Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh quản lý quỹ. |
-| `AccountType` | `varchar(20)` | ❌ | Def: 'CASH' | Nguồn tiền: `CASH` (Tiền mặt két) / `BANK` (Tài khoản ngân hàng). |
-| `EntryCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu thu/chi (VD: `PT-001`, `PC-001`). |
-| `EntryType` | `varchar(20)` | ❌ | | Loại phiếu: `RECEIPT` (Thu) / `PAYMENT` (Chi). |
-| `Amount` | `decimal(18,2)` | ❌ | | Số tiền giao dịch quỹ. |
-| `Category` | `varchar(50)` | ❌ | | Danh mục: `Sales`, `DebtCollection`, `SupplierPayment`, `ServiceExpense`, `Salary`. |
-| `ReferenceCode` | `varchar(100)` | ✔️ | | Mã chứng từ liên kết (Mã hóa đơn, Mã phiếu chi...). |
-| `CreatedByStaff` | `nvarchar(150)` | ✔️ | | Nhân viên lập phiếu thu/chi. |
-| `Note` | `nvarchar(255)` | ✔️ | | Diễn giải nội dung thu/chi. |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh sở hữu tài khoản (Quan hệ 1 - n: 1 Branch có nhiều tài khoản quỹ). |
+| `Name` | `nvarchar(150)` | ❌ | | Tên tài khoản (VD: *Két tiền mặt quầy thu ngân*, *Tài khoản MB Bank chính*). |
+| `AccountType` | `varchar(20)` | ❌ | Def: 'CASH' | Loại tài khoản: `'CASH'` (Tiền mặt két) / `'BANK'` (Ngân hàng) / `'WALLET'` (Ví điện tử). |
+| `BankName` | `nvarchar(100)` | ✔️ | | Tên ngân hàng (Vietcombank, MB Bank, Techcombank...). |
+| `AccountNumber` | `varchar(50)` | ✔️ | | Số tài khoản ngân hàng phục vụ đối chiếu sao kê và VietQR. |
+| `CurrentBalance` | `decimal(18,2)` | ❌ | Def: 0 | **Số dư khả dụng hiện tại (Real-time Balance)**. |
+| `Status` | `varchar(20)` | ❌ | Def: 'Active' | Trạng thái: `'Active'`, `'Inactive'`. |
 
-#### Bảng `CashReconciliations` (Biên bản kiểm kê & đối soát quỹ tiền mặt)
+#### Bảng `LedgerTransactions` (Bút toán sổ quỹ & Nhật ký thu chi)
 *Kế thừa `BaseTenantEntity`.*
 | Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
 |---|---|:---:|:---:|---|
-| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh thực hiện kiểm kê quỹ. |
-| `ReconciledAt` | `datetime2` | ❌ | | Thời điểm chốt kiểm đếm tiền mặt. |
-| `SystemBalance` | `decimal(18,2)` | ❌ | | Số dư tiền mặt lý thuyết trên sổ quỹ. |
-| `ActualCountedBalance` | `decimal(18,2)` | ❌ | | Số tiền mặt thực tế đếm được trong két an toàn. |
-| `DifferenceAmount` | `decimal(18,2)` | ❌ | | Chênh lệch tiền mặt (`Actual - System`). |
-| `Reason` | `nvarchar(255)` | ✔️ | | Lý do chênh lệch (thừa/thiếu tiền). |
-| `CountedByStaff` | `nvarchar(150)` | ❌ | | Nhân viên kiểm đếm. |
-| `ApprovedByManager` | `nvarchar(150)` | ✔️ | | Quản lý hoặc Chủ cửa hàng phê duyệt chốt sổ. |
-| `Status` | `varchar(50)` | ❌ | Def: 'Approved' | Trạng thái biên bản kiểm kê quỹ. |
+| `AccountId` | `Guid` | ❌ | FK -> CashAccounts | Tài khoản quỹ phát sinh giao dịch (Quan hệ 1 - n: 1 Account có nhiều Transactions). |
+| `Date` | `datetime2` | ❌ | | Thời điểm ghi sổ giao dịch. |
+| `TransactionType` | `varchar(20)` | ❌ | | Loại giao dịch: `'RECEIPT'` (Thu / +), `'PAYMENT'` (Chi / -), `'ADJUSTMENT'` (Điều chỉnh lệch kiểm kê quỹ). |
+| `Amount` | `decimal(18,2)` | ❌ | `Amount > 0` | Số tiền giao dịch. |
+| `BalanceAfter` | `decimal(18,2)` | ❌ | | **Số dư tài khoản lũy kế ngay sau giao dịch (Running Balance)**. |
+| `ReferenceDocId` | `varchar(100)` | ✔️ | | Mã chứng từ hiển thị (Mã hóa đơn POS, Hóa đơn dịch vụ FE-07, Phiếu lương FE-18...). |
+| `ReferenceDocType` | `varchar(50)` | ✔️ | | Loại chứng từ nguồn: `POS_ORDER`, `EXPENSE_BILL`, `DEBT_PAYMENT`, `PAYSLIP`, `PURCHASE_ORDER`, `MANUAL`. |
+| `IsAutomated` | `bit` | ❌ | Def: 0 | **`1`: Hệ thống sinh tự động (chặn sửa/xóa theo `GBR-CSH-01`), `0`: Tạo thủ công**. |
+| `CounterpartyType`| `varchar(20)` | ✔️ | | Loại đối tượng: `Customer`, `Supplier`, `Employee`, `Other`. |
+| `CounterpartyName`| `nvarchar(150)` | ✔️ | | Tên người nộp hoặc người nhận tiền. |
+| `Description` | `nvarchar(500)` | ✔️ | | Diễn giải nội dung, lý do thu/chi, hoặc lý do giải trình khi kiểm kê lệch quỹ (`GBR-CSH-04`). |
+| `Status` | `varchar(20)` | ❌ | Def: 'COMPLETED' | Trạng thái: `'COMPLETED'` (Hợp lệ) / `'CANCELLED'` (Đã hủy phiếu). |
+
+> **Ghi chú nghiệp vụ Kiểm kê quỹ (UC-17.4)**: Khi Store Owner kiểm kê quỹ tiền mặt phát hiện chênh lệch giữa số tiền thực đếm và số dư sổ sách, hệ thống tạo trực tiếp 1 bản ghi `LedgerTransactions` loại `TransactionType = 'ADJUSTMENT'` với số tiền lệch, cập nhật `CurrentBalance` của `CashAccounts`, và bắt buộc ghi nhận lý do giải trình vào `Description` theo quy định `GBR-CSH-04`.
 
 #### Bảng `ServiceExpenses` (Chi phí dịch vụ vận hành & Mua ngoài)
 *Kế thừa `BaseTenantEntity`.*
@@ -314,5 +371,69 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `TaxMethod` | `varchar(50)` | ❌ | Def: 'RevenueRate' | Phương pháp tính thuế: Tỷ lệ trên doanh thu. |
 | `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái tờ khai: `Draft`, `Finalized`, `Submitted`, `Paid`. |
 | `GeneratedAt` | `datetime2` | ❌ | | Thời điểm chốt số liệu tờ khai thuế. |
+
+---
+
+### 3.6 Phân Hệ Báo Cáo Tài Chính & Dashboard KPIs (FE-10 Analytics & P&L Reporting)
+
+#### Bảng `DailySalesSummaries` (Snapshot số liệu tổng hợp theo ngày - High Performance Cache)
+*Kế thừa `BaseTenantEntity`. Bảng tổng hợp trước dữ liệu (Pre-aggregated Table) được cập nhật định kỳ cuối ngày hoặc qua background job, giúp Dashboard KPIs và Báo cáo P&L load tức thì (< 100ms) mà không phải quét toàn bộ bảng Orders khi quy mô dữ liệu đạt hàng triệu bản ghi.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh tổng hợp (hoặc `Guid.Empty` nếu tổng hợp toàn chuỗi). |
+| `ReportDate` | `date` | ❌ | Index | Ngày chốt số liệu báo cáo (YYYY-MM-DD). |
+| `TotalOrders` | `int` | ❌ | Def: 0 | Tổng số hóa đơn bán lẻ phát sinh trong ngày. |
+| `GrossRevenue` | `decimal(18,2)` | ❌ | Def: 0 | Tổng doanh thu trước chiết khấu (`SUM(TotalAmount)`). |
+| `TotalDiscount` | `decimal(18,2)` | ❌ | Def: 0 | Tổng tiền chiết khấu / khuyến mãi / voucher (`SUM(DiscountAmount)`). |
+| `TotalRefund` | `decimal(18,2)` | ❌ | Def: 0 | Tổng tiền hoàn trả hàng cho khách trong ngày (`SUM(ReturnOrders)`). |
+| `NetRevenue` | `decimal(18,2)` | ❌ | Def: 0 | Doanh thu thuần thực tế (`GrossRevenue - TotalDiscount - TotalRefund`). |
+| `TotalCOGS` | `decimal(18,2)` | ❌ | Def: 0 | Tổng giá vốn hàng bán (`SUM(OrderItems.BaseQuantity * CostPrice) - ReturnCOGS`). |
+| `GrossProfit` | `decimal(18,2)` | ❌ | Def: 0 | Lợi nhuận gộp trong ngày (`NetRevenue - TotalCOGS`). |
+| `OperatingExpenses`| `decimal(18,2)`| ❌ | Def: 0 | Tổng chi phí vận hành dịch vụ trong ngày (`SUM(ServiceExpenses)`). |
+| `WastageLoss` | `decimal(18,2)` | ❌ | Def: 0 | Tổn thất hao hụt hàng hóa xuất hủy trong ngày (`SUM(GoodsDisposals)`). |
+| `NetProfit` | `decimal(18,2)` | ❌ | Def: 0 | Lợi nhuận ròng trong ngày (`GrossProfit - OperatingExpenses - WastageLoss`). |
+| `AverageOrderValue`| `decimal(18,2)`| ❌ | Def: 0 | Giá trị trung bình mỗi đơn hàng (AOV). |
+| `LastAggregatedAt`| `datetime2` | ❌ | | Thời điểm cập nhật số liệu snapshot cuối cùng (UTC). |
+
+---
+
+## 4. Ánh Xạ Công Thức Nghiệp Vụ FE-10 Vào Schema Cơ Sở Dữ Liệu
+
+Báo cáo Lãi/Lỗ (P&L Statement) trong FE-10 được tính toán trực tiếp từ các trường dữ liệu như sau:
+
+| Khoản mục P&L | Tên tiếng Anh | Nguồn dữ liệu & Công thức truy vấn SQL / LINQ |
+|---|---|---|
+| **1. Doanh thu bán hàng** | Gross Sales | `SUM(Orders.TotalAmount)` WHERE `PaymentStatus = 'Paid'` AND `IsDeleted = 0` |
+| **2. Giảm giá & Khuyến mãi** | Sales Discounts | `SUM(Orders.DiscountAmount)` WHERE `PaymentStatus = 'Paid'` |
+| **3. Hàng bán bị trả lại** | Sales Returns | `SUM(ReturnOrders.TotalRefundAmount)` |
+| **4. Doanh thu thuần** | **Net Revenue** | `(1) - (2) - (3)` = Doanh thu thực thu từ khách |
+| **5. Giá vốn hàng bán** | **COGS** | `SUM(OrderItems.BaseQuantity * OrderItems.CostPrice)` trừ `SUM(ReturnOrderItems.Quantity * CostPrice)` |
+| **6. Lợi nhuận gộp** | **Gross Profit** | `(4) Net Revenue - (5) COGS` |
+| **7. Chi phí dịch vụ & vận hành** | Operating Expenses | `SUM(ServiceExpenses.Amount)` WHERE `Status = 'Paid'` (tiền điện, nước, mặt bằng, sửa chữa...) |
+| **8. Chi phí tổn thất hao hụt** | Shrinkage / Wastage | `SUM(GoodsDisposals.TotalLossValue)` WHERE `Status = 'Approved'` (hết hạn, hư hỏng) |
+| **9. Lợi nhuận ròng** | **Net Profit** | `(6) Gross Profit - (7) OPEX - (8) Wastage` |
+
+---
+
+## 5. Chỉ Mục Tối Ưu Hóa Hiệu Năng Bắt Buộc Cho FE-10 (Composite Indexes)
+
+Để đảm bảo Dashboard và Báo cáo P&L load tức thì dưới 200ms trên cơ sở dữ liệu lớn, bắt buộc phải cấu hình các Composite Indexes sau:
+1. `IX_Orders_Tenant_Branch_Date_Status`: `Orders(TenantId, BranchId, CreatedAt, PaymentStatus)` Include (`TotalAmount`, `DiscountAmount`, `FinalAmount`).
+2. `IX_OrderItems_Tenant_Order_Product`: `OrderItems(TenantId, OrderId, ProductId)` Include (`BaseQuantity`, `UnitPrice`, `CostPrice`, `BatchId`).
+3. `IX_ServiceExpenses_Tenant_Branch_Date`: `ServiceExpenses(TenantId, BranchId, ExpenseDate, Status)` Include (`Category`, `Amount`).
+4. `IX_GoodsDisposals_Tenant_Branch_Date`: `GoodsDisposals(TenantId, BranchId, DisposedAt, Status)` Include (`TotalLossValue`).
+5. `IX_ReturnOrders_Tenant_Branch_Date`: `ReturnOrders(TenantId, BranchId, ReturnDate)` Include (`TotalRefundAmount`).
+6. `IX_DailySalesSummaries_Tenant_Branch_Date`: `DailySalesSummaries(TenantId, BranchId, ReportDate)`.
+
+---
+
+## 6. Lưu Ý Triển Khai Backend C# (Backend Implementation Notes)
+
+> **⚠️ BẮT BUỘC KHI DEV BACKEND**:
+> 1. Entity `OrderItem.cs` trong backend **phải có `CostPrice` và `BatchId`** để snapshot giá vốn tại thời điểm bán (không được tính ngược từ `Product.CostPrice` hiện tại vì giá nhập biến động theo thời gian).
+> 2. Entity `ServiceExpense.cs` cần được tạo mới khớp với mục 3.5.
+> 3. Cần tạo background job / stored procedure tổng hợp vào bảng `DailySalesSummaries` mỗi ngày.
+
 - **2026-10-12**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-13**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
+- **2026-10-13 (FE-10 Prep)**: Bổ sung Bảng `GoodsDisposals` (FE-06), `ReturnOrders` (FE-13), `DailySalesSummaries` (FE-10) và bảng công thức ánh xạ P&L.
