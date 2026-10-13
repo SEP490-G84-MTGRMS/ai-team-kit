@@ -15,3 +15,7 @@ Thực thi code frontend tuân thủ nghiêm ngặt 100% Vanilla CSS tokens, Dee
 ## Apply · 2026-10-13 18:57
 
 Tiến hành lập test-report.md và nghiệm thu kết quả kiểm thử ở Bước 5.
+
+## Test · 2026-10-13 18:58
+
+Tiến hành đóng change và lưu trữ archive theo quy trình SEP.
