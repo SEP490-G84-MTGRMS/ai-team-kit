@@ -10,6 +10,7 @@
 - [x] T7 — Xây dựng component `PlanDetailModal.tsx` popup xem chi tiết kỹ thuật và danh sách Tenant đang thuê (REQ-05)
 - [x] T8 — Xây dựng trang quản trị chính `SubscriptionPlanPage.tsx` tích hợp logic CRUD và toast thông báo (REQ-01)
 - [x] T9 — Cập nhật `src/app/router.tsx` đăng ký route `/admin/subscriptions` và tích hợp link điều hướng (REQ-07)
+- [x] T12 — Chuyển đổi xem chi tiết sang Trang chuyên dụng `SubscriptionPlanDetailPage.tsx` bố cục 2 cột bóc tách 7 subcomponents theo demo `subscription_detail.html` (REQ-05)
 
 ## Test & Validation
 - [x] T10 — Viết unit test `src/features/admin/__tests__/planValidation.test.ts` kiểm tra logic tính toán quota và validation
