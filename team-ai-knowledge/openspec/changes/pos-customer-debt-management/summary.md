@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 15:36
 
 Đã duyệt review/skeptic.md và tasks.md gồm 7 tasks. Bắt đầu tiến hành triển khai code ở bước Apply. Lưu ý cam kết không git push code lên remote repo MT_GRMS_FRONTEND theo yêu cầu của user.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 16:10
+
+Đã hoàn tất code bán nợ quầy POS, cảnh báo vượt hạn mức, modal thu nợ hóa đơn bán lẻ, build kiểm tra pass 100% và push lên nhánh add/ui-pos-checkout-ver2.
