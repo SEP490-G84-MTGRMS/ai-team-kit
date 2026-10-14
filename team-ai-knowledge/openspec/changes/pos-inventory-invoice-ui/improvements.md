@@ -15,3 +15,7 @@ Bắt đầu triển khai code 8 tasks trong Apply
 ## Apply · 2026-10-14 09:15
 
 Tiến hành tạo test-report.md cho bước test nghiệm thu
+
+## Test · 2026-10-14 09:17
+
+Tiến hành lưu trữ archive change pos-inventory-invoice-ui
