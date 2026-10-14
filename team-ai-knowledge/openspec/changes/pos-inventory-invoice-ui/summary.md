@@ -7,3 +7,7 @@ Người dùng đã duyệt thông qua proposal.md cho 2 màn hình Tra cứu t�
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 08:58
 
 Người dùng đã duyệt thông qua các tài liệu Brainstorm (exploration.md, design-brief.md, specs.md).
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 08:59
+
+Người dùng đã duyệt thông qua review/skeptic.md và tasks.md. Sẵn sàng thực thi bước Apply.
