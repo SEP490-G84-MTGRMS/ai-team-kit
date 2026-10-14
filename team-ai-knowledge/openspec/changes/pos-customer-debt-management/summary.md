@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 15:34
 
 Đã duyệt exploration.md, design-brief.md và specs.md (delta). Thống nhất luồng bán nợ quầy POS, kiểm tra hạn mức nợ khách hàng, modal cảnh báo vượt hạn mức và tính năng thu nợ hóa đơn bán lẻ tại Quản lý hóa đơn.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-10-14 15:36
+
+Đã duyệt review/skeptic.md và tasks.md gồm 7 tasks. Bắt đầu tiến hành triển khai code ở bước Apply. Lưu ý cam kết không git push code lên remote repo MT_GRMS_FRONTEND theo yêu cầu của user.
