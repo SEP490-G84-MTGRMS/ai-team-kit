@@ -7,3 +7,7 @@ User phê duyệt proposal, yêu cầu tiến hành brainstorm thiết kế đ�
 ## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-10-14 11:46
 
 User phê duyệt bước Brainstorm, tiến sang verify-spec
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-10-14 11:51
+
+User phê duyệt verify-spec, tiến sang apply triển khai mã nguồn
