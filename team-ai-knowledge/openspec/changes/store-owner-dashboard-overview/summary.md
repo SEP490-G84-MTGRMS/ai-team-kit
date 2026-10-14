@@ -11,3 +11,7 @@ User duyệt thiết kế kỹ thuật phân tách Store Owner Dashboard và c�
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-10-14 15:21
 
 User duyệt kế hoạch 11 task và kết quả review skeptic cho Store Owner Dashboard
+
+## Apply — ✅ Approve bởi @Ortus24 · 2026-10-14 15:45
+
+User duyệt hoàn thành code màn hình Store Owner Dashboard tách biệt với Admin SaaS

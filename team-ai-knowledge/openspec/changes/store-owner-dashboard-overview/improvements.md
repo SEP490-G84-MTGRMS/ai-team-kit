@@ -11,3 +11,7 @@ Phản biện các edge cases về hiển thị dữ liệu rỗng và phân chi
 ## Verify Spec · 2026-10-14 15:21
 
 Bắt đầu triển khai 11 task trong tasks.md theo chuẩn RULE_UI_DESIGN_SYSTEM
+
+## Apply · 2026-10-14 15:45
+
+Đã hoàn thiện Store Owner Dashboard bóc tách 7 component độc lập, tuân thủ RULE_UI_DESIGN_SYSTEM và build pass 100%
