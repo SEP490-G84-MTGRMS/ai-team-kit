@@ -437,3 +437,4 @@ Báo cáo Lãi/Lỗ (P&L Statement) trong FE-10 được tính toán trực ti�
 - **2026-10-12**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-13**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-13 (FE-10 Prep)**: Bổ sung Bảng `GoodsDisposals` (FE-06), `ReturnOrders` (FE-13), `DailySalesSummaries` (FE-10) và bảng công thức ánh xạ P&L.
+- **2026-10-14**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
