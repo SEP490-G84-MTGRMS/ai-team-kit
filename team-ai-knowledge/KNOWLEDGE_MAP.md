@@ -70,7 +70,8 @@ team-ai-knowledge/
 3. Đọc `projects/{project-của-tôi}/context/overview.md` — tổng quan dự án & 23 FEs
 4. Đọc `projects/{project-của-tôi}/context/business-flows.md` — 8 luồng nghiệp vụ chuẩn & quy tắc FEFO
 5. Đọc `projects/{project-của-tôi}/context/actors-and-permissions.md` — 5 tác tử & ma trận quyền RBAC
-6. Đọc `openspec/config.yaml` — stack và rule kỹ thuật
+6. Đọc `projects/{project-của-tôi}/context/financial-operational-integration-matrix.md` — Ma trận móc nối & phân tích tài chính dồn tích / dòng tiền (FE-07, FE-08, FE-10, FE-17, FE-19)
+7. Đọc `openspec/config.yaml` — stack và rule kỹ thuật
 
 ### Tôi cần biết team đã quyết định gì về X
 1. Tìm trong `_global/decisions/` — quyết định cấp team
@@ -84,6 +85,7 @@ team-ai-knowledge/
 1. Dùng tool MCP `xem_thiet_ke` để tra cứu nhanh bảng/cột/ERD
 2. Đọc `projects/{project}/design/database-schema.md` (Từ điển dữ liệu)
 3. Đọc `projects/{project}/design/erd-diagram.md` (Sơ đồ ERD Mermaid)
+4. Đọc projects/{project}/design/financial-system-ui-db-design.md (Thiết kế Database & UI/UX chi tiết cho FE-07, FE-08, FE-10, FE-17, FE-19)
 4. Chạy `npm run sep -- db-sync` để cập nhật bảng mới nhất từ C# Backend
 
 ### Tôi muốn biết team đã làm gì tuần qua
