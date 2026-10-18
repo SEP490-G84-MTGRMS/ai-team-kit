@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-18 04:20
 
 Đã hoàn tất đánh giá 4 personas (Skeptic, Guardian, Codebase, Advocate). Đã giải quyết các edge case về race condition công nợ, quy tắc thu hẹp loại hình và phân rã chi tiết 20 tasks cho cả DB, Backend, Frontend và Tests.
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-10-18 04:45
+
+Đã checkout nhánh feat/backend-supplier-management, cài đặt đầy đủ Domain Entities, Enums, EF Core Migrations (áp dụng thành công lên DB PostgreSQL), Clean Architecture Application Services & DTOs, API Controllers và 15/15 Unit Tests pass 100%. Đã tick toàn bộ 20/20 tasks.
