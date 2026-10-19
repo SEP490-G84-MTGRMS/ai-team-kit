@@ -11,3 +11,7 @@ Chuẩn hóa phân tích từ prototype HTML sang cấu trúc dữ liệu N-N v�
 ## Verify Spec · 2026-10-11 15:15
 
 Đảm bảo Query Handler kiểm tra đồng thời trạng thái Active của cả Supplier và SupplierProduct khi lập đơn PO.
+
+## Apply · 2026-10-19 15:58
+
+Frontend layout đồng bộ chuẩn po-matrix-container, Backend vượt qua 100% bộ unit tests tự động (27/27 tests PASS).
