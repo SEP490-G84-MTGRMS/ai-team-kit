@@ -3,3 +3,7 @@
 ## Spec — ✅ Approve bởi @Des7240 · 2026-10-20 04:43
 
 Đã chốt mục tiêu, phạm vi và tiêu chí thành công cho Trung tâm thông báo Notification Center gồm Popover, Drawer và State Management.
+
+## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-20 04:46
+
+Đã chốt exploration.md, design-brief.md và specs.md dạng delta với 5 requirements (Badge, Popover 2 tab, Quick Action + Deep Link, Slide Drawer, Local Persistence).
