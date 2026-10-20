@@ -1,6 +1,7 @@
 # Design Brief: store-owner-po-list (Màn hình Danh sách Đơn mua hàng PO)
 
 ## 1. Luồng người dùng (User Flow)
+
 ```mermaid
 graph TD
     A[Store Owner vào hệ thống] --> B[Truy cập /store-owner/purchase-orders/list]
@@ -35,13 +36,14 @@ src/features/purchase-order/
 ## 3. Data Contract & DTO
 
 ### Interface `PurchaseOrderListItem`:
+
 ```typescript
-export type PurchaseOrderStatus = 
-  | 'SENT'                 // Đã gửi NCC
-  | 'CONFIRMED'            // NCC đã chốt đơn
-  | 'PARTIALLY_RECEIVED'   // Đã nhận một phần
-  | 'RECEIVED'             // Đã nhập kho xong
-  | 'CANCELLED';           // Đã hủy
+export type PurchaseOrderStatus =
+  | "SENT" // Đã gửi NCC
+  | "CONFIRMED" // NCC đã chốt đơn
+  | "PARTIALLY_RECEIVED" // Đã nhận một phần
+  | "RECEIVED" // Đã nhập kho xong
+  | "CANCELLED"; // Đã hủy
 
 export interface PurchaseOrderItemDetail {
   id: string;
@@ -56,19 +58,19 @@ export interface PurchaseOrderItemDetail {
 
 export interface PurchaseOrderListItem {
   id: string;
-  poCode: string;              // VD: PO-20261008-001
-  storeRefCode: string;        // VD: STR-01, DC-01
+  poCode: string; // VD: PO-20261008-001
+  storeRefCode: string; // VD: STR-01, DC-01
   supplierId: string;
-  supplierCode: string;        // VD: SUP-001
-  supplierName: string;        // VD: CÔNG TY THỰC PHẨM TƯƠI SỐNG HƯƠNG QUÊ
+  supplierCode: string; // VD: SUP-001
+  supplierName: string; // VD: CÔNG TY THỰC PHẨM TƯƠI SỐNG HƯƠNG QUÊ
   branchId: string;
-  branchCode: string;          // VD: BR-01
-  branchName: string;          // VD: BR-01 CH Nguyễn Trãi
-  createdSource: string;       // VD: NV. Nguyễn Văn A (Nhập Grid), Chủ cửa hàng (Dispatch Hub)
-  lastUpdated: string;         // VD: 08/10/2026 17:15
-  expectedDelivery: string;    // VD: 09/10/2026
-  itemCount: number;           // Số mặt hàng (SKU)
-  totalAmount: number;         // Tổng tiền đơn hàng (VNĐ)
+  branchCode: string; // VD: BR-01
+  branchName: string; // VD: BR-01 CH Nguyễn Trãi
+  createdSource: string; // VD: NV. Nguyễn Văn A (Nhập Grid), Chủ cửa hàng (Dispatch Hub)
+  lastUpdated: string; // VD: 08/10/2026 17:15
+  expectedDelivery: string; // VD: 09/10/2026
+  itemCount: number; // Số mặt hàng (SKU)
+  totalAmount: number; // Tổng tiền đơn hàng (VNĐ)
   status: PurchaseOrderStatus;
   note?: string;
   items: PurchaseOrderItemDetail[];
@@ -76,13 +78,14 @@ export interface PurchaseOrderListItem {
 ```
 
 ### Interface `PoListFilterState`:
+
 ```typescript
 export interface PoListFilterState {
-  branchId: string;            // 'all' | ID cụ thể
-  supplierId: string;          // 'all' | ID cụ thể
-  status: 'all' | PurchaseOrderStatus;
-  dateFrom: string;            // YYYY-MM-DD
-  dateTo: string;              // YYYY-MM-DD
+  branchId: string; // 'all' | ID cụ thể
+  supplierId: string; // 'all' | ID cụ thể
+  status: "all" | PurchaseOrderStatus;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string; // YYYY-MM-DD
   keyword: string;
   pageIndex: number;
   pageSize: number;
@@ -92,12 +95,14 @@ export interface PoListFilterState {
 ## 4. Đặc tả Giao diện & Trạng thái UI
 
 ### 4.1. Page Header
+
 - Tiêu đề: `<h1>Danh sách đơn mua hàng (PO)</h1>`
 - Cụm nút chuyển hướng nhanh bên phải:
   - Nút Outline: `[⚡ Chốt đơn với NCC]` -> chuyển sang `/store-owner/purchase-orders/dispatch-hub`
   - Nút Outline: `[▦ Bảng lưới đặt hàng]` -> chuyển sang `/store-owner/purchase-orders/create-matrix`
 
 ### 4.2. Unified Filter Bar
+
 - Hàng 1 (hoặc dải liên tục):
   - Ô tìm kiếm: `🔍 Tìm kiếm Mã PO, NCC, Chi nhánh, Tên SP, Người nhập...` (width ~260px)
   - Select box `Chi nhánh nhận:` (Tất cả chi nhánh, BR-01, BR-02, BR-03, DC1...)
@@ -107,6 +112,7 @@ export interface PoListFilterState {
   - Cụm nút: `[Tìm kiếm]` (solid xanh `#0f766e`) và `[Đặt lại]` (outline ghost).
 
 ### 4.3. Data Table Layout
+
 - Cấu trúc bảng có Sticky Header, 9 cột chính:
   1. **Mã PO & Mã cửa hàng:** Dòng 1: `PO-20261008-001` (font-mono, link xanh). Dòng 2: `STR-01` (badge xám).
   2. **Nhà cung cấp:** Tên NCC in đậm + badge mã NCC (`SUP-001`).
@@ -124,18 +130,21 @@ export interface PoListFilterState {
      - `CANCELLED`: Đỏ pastel (`#fee2e2`, text `#b91c1c`, border `#fca5a5`) - "Đã hủy"
   10. **Thao tác:**
       - Nút ghost `[Xem chi tiết]` (Eye icon): mở Drawer chi tiết.
-      - Nút `[Sửa]` (hoặc menu phụ nếu PO ở trạng thái SENT/chưa xác nhận).
+      - Nút `[Sửa]` (hoặc menu phụ nếu PO ở trạng thái SENT/nhận).
 
 ### 4.4. Footer Phân trang (Paging)
+
 - Trái: `Hiển thị X - Y trên Z đơn mua hàng PO` + Chọn `Bản ghi/trang: 10, 20, 30, 50`.
 - Phải: Nút `[Trước]`, nhãn `Trang 1 / 1`, nút `[Sau]`.
 
 ### 4.5. Slide-over Drawer Chi tiết PO
+
 - Mở từ cạnh phải khi click dòng hoặc nút "Xem chi tiết".
 - Header: Mã PO, Trạng thái badge, Chi nhánh nhận, NCC, nút đóng [X].
 - Body: Bảng danh sách SKU chi tiết (STT, Tên SP, SKU, ĐVT, SL đặt, SL đã nhận, Đơn giá, Thành tiền).
 - Footer: Ghi chú đơn hàng + Tổng cộng tiền PO.
 
 ## 5. Trạng thái Loading / Empty / Error
+
 - **Loading:** Skeleton rows hoặc spinner chuẩn hệ thống.
 - **Empty Filtered:** Icon Layers/Inbox rỗng + Thông báo `"Không tìm thấy đơn mua hàng nào phù hợp với bộ lọc"`, kèm nút `"Đặt lại bộ lọc"`.
