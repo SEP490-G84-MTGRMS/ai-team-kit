@@ -15,3 +15,7 @@ Bắt đầu chuyển sang bước Apply để code 11 task trong tasks.md
 ## Apply · 2026-10-20 04:58
 
 Tiến hành viết test report và nghiệm thu kết quả kiểm thử ở bước Test
+
+## Test · 2026-10-20 15:01
+
+Tiến hành chuyển sang bước 6 Archive để hoàn tất nghiệm thu và merge specs vào knowledge base
