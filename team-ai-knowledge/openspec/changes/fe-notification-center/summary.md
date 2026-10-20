@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-20 04:46
 
 Đã chốt exploration.md, design-brief.md và specs.md dạng delta với 5 requirements (Badge, Popover 2 tab, Quick Action + Deep Link, Slide Drawer, Local Persistence).
+
+## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-20 04:47
+
+Đã duyệt review/skeptic.md (kết luận Chấp nhận) và checklist 11 task trong tasks.md. Sẵn sàng thực thi code.
