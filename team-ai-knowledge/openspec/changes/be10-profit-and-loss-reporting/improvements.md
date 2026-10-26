@@ -7,3 +7,7 @@ Proposal đã làm rõ bài toán phân định dòng tiền và lợi nhuận, 
 ## Brainstorm · 2026-10-26 14:45
 
 Chốt chuẩn công thức P&L: NetRevenue, COGS từ lô hàng, OPEX FE-07, BadDebt FE-08, và phân rã chi phí chi tiết
+
+## Verify Spec · 2026-10-26 14:56
+
+Review Skeptic đạt 5/5, hoàn chỉnh 16 tasks chuẩn bị cho Bước 4 Apply

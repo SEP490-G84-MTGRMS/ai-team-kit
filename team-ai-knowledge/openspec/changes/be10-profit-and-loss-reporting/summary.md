@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-26 14:45
 
 Đã duyệt 3 artifacts: exploration.md, design-brief.md, specs.md. Thiết kế mô hình truy vấn tức thời tối ưu index, tách biệt dòng vốn chủ khỏi P&L
+
+## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-26 14:56
+
+Đã duyệt Verify Spec (review/skeptic.md và tasks.md), các điều kiện biên được kiểm soát chặt chẽ
