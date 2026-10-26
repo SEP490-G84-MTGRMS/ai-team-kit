@@ -7,3 +7,7 @@ Phê duyệt đề xuất tính năng Backend Thuế Hộ Kinh Doanh theo TT 152
 ## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-26 15:14
 
 Phê duyệt bộ tài liệu Brainstorm: exploration.md, design-brief.md và specs.md (định dạng delta REQ-TAX-01 đến REQ-TAX-05) với kiến trúc Hybrid (Realtime + Snapshot) và 4 sổ TT 152/2025/TT-BTC.
+
+## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-26 15:29
+
+Phê duyệt kết quả Verify Spec: review skeptic 5/5 điểm và bảng kế hoạch 10 tasks chi tiết từ DB đến Tests. Mở khoá bước Apply.
