@@ -3,3 +3,7 @@
 ## Spec — ✅ Approve bởi @Des7240 · 2026-10-26 14:40
 
 Đã duyệt proposal.md xác định rõ mục tiêu, phạm vi in/out-of-scope, vai trò người dùng và tiêu chí thành công đo được cho P&L FE-10
+
+## Brainstorm — ✅ Approve bởi @Des7240 · 2026-10-26 14:45
+
+Đã duyệt 3 artifacts: exploration.md, design-brief.md, specs.md. Thiết kế mô hình truy vấn tức thời tối ưu index, tách biệt dòng vốn chủ khỏi P&L
