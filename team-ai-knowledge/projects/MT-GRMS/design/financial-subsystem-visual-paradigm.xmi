@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1"
+         xmlns:xmi="http://schema.omg.org/spec/XMI/2.1"
+         xmlns:uml="http://schema.omg.org/spec/UML/2.1">
+  <xmi:Documentation exporter="Antigravity AI (Google DeepMind)" exporterVersion="2.0"/>
+  <uml:Model xmi:type="uml:Model" xmi:id="model_mt_grms" name="MT_GRMS_Financial_Subsystem">
+    
+    <!-- ======================================================== -->
+    <!-- PACKAGE 1: ACTIVITY DIAGRAMS (SWIMLANES: AS-IS & TO-BE)   -->
+    <!-- ======================================================== -->
+    <packagedElement xmi:type="uml:Package" xmi:id="pkg_processes" name="Financial_Lifecycle_Processes">
+      
+      <!-- 1.1 AS-IS PROCESS (HIEN TRANG THU CONG) -->
+      <packagedElement xmi:type="uml:Activity" xmi:id="act_as_is" name="Financial_Lifecycle_AS_IS">
+        
+        <!-- SWIMLANES (ACTIVITY PARTITIONS) -->
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_as_is_cashier" name="Thu ngân / Nhân viên" 
+               node="init_as_is act_as_is_sale act_as_is_debt_note act_as_is_cash_in act_as_is_draw_cash act_as_is_shift_end act_as_is_handover"/>
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_as_is_cust" name="Khách hàng / NCC" 
+               node="dec_as_is_pay"/>
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_as_is_ledger" name="Sổ sách / Excel thủ công" 
+               node="act_as_is_write_book act_as_is_scrap_paper act_as_is_tax_est"/>
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_as_is_owner" name="Chủ cửa hàng / Quản lý" 
+               node="act_as_is_check_app dec_as_is_expense act_as_is_reconcile dec_as_is_match act_as_is_dispute act_as_is_save_excel act_as_is_pl_calc final_as_is"/>
+
+        <!-- NODES -->
+        <node xmi:type="uml:InitialNode" xmi:id="init_as_is" name="Bắt đầu"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_sale" name="Bán hàng hoặc tiếp nhận chứng từ chi phí"/>
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_as_is_pay" name="Hình thức thanh toán?"/>
+        
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_debt_note" name="Ghi số nợ và tên khách vào mảnh giấy/sổ nợ"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_write_book" name="Lưu vào sổ nợ tay (Rủi ro mất, quên đòi)"/>
+        
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_cash_in" name="Thu tiền mặt vào két hoặc xin chụp bill CK"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_check_app" name="Mở Mobile Banking cá nhân kiểm tra thủ công"/>
+        
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_as_is_expense" name="Có phát sinh chi tiêu tại quầy?"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_draw_cash" name="Rút tiền mặt trong két trả tiền điện, rác, bốc vác"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_scrap_paper" name="Ghi nháp vào mẩu giấy hoặc quên ghi"/>
+        
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_shift_end" name="Hết ca: Đếm tiền mặt vật lý tại két"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_handover" name="Gom biên lai, hóa đơn giấy và bàn giao cho Chủ"/>
+        
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_reconcile" name="Chủ đối soát tiền phong bì với sổ chép tay &amp; tin nhắn bank"/>
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_as_is_match" name="Số liệu có khớp không?"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_dispute" name="Tranh cãi, truy tìm hóa đơn thất lạc hoặc trừ lương"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_save_excel" name="Ghi tổng tiền vào file Excel cá nhân"/>
+        
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_tax_est" name="Cuối quý: Ước lượng doanh thu kê khai thuế khoán"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_as_is_pl_calc" name="Tính nhẩm P&amp;L (Trễ 5-10 ngày, sai lệch giá vốn)"/>
+        <node xmi:type="uml:ActivityFinalNode" xmi:id="final_as_is" name="Kết thúc"/>
+
+        <!-- EDGES (CONTROL FLOWS) -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_1" source="init_as_is" target="act_as_is_sale"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_2" source="act_as_is_sale" target="dec_as_is_pay"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_3" name="Mua nợ" source="dec_as_is_pay" target="act_as_is_debt_note"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_4" source="act_as_is_debt_note" target="act_as_is_write_book"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_5" source="act_as_is_write_book" target="dec_as_is_expense"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_6" name="Tiền mặt/CK" source="dec_as_is_pay" target="act_as_is_cash_in"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_7" source="act_as_is_cash_in" target="act_as_is_check_app"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_8" source="act_as_is_check_app" target="dec_as_is_expense"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_9" name="Có" source="dec_as_is_expense" target="act_as_is_draw_cash"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_10" source="act_as_is_draw_cash" target="act_as_is_scrap_paper"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_11" source="act_as_is_scrap_paper" target="act_as_is_shift_end"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_12" name="Không" source="dec_as_is_expense" target="act_as_is_shift_end"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_13" source="act_as_is_shift_end" target="act_as_is_handover"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_14" source="act_as_is_handover" target="act_as_is_reconcile"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_15" source="act_as_is_reconcile" target="dec_as_is_match"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_16" name="Lệch tiền" source="dec_as_is_match" target="act_as_is_dispute"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_17" source="act_as_is_dispute" target="act_as_is_save_excel"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_18" name="Khớp" source="dec_as_is_match" target="act_as_is_save_excel"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_19" source="act_as_is_save_excel" target="act_as_is_tax_est"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_20" source="act_as_is_tax_est" target="act_as_is_pl_calc"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_as_21" source="act_as_is_pl_calc" target="final_as_is"/>
+      </packagedElement>
+
+      <!-- 1.2 TO-BE PROCESS (QUY TRINH MT-GRMS TU DONG HOA) -->
+      <packagedElement xmi:type="uml:Activity" xmi:id="act_to_be" name="Financial_Lifecycle_TO_BE">
+        
+        <!-- SWIMLANES (ACTIVITY PARTITIONS) -->
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_to_be_cashier" name="Thu ngân / POS" 
+               node="init_to_be act_to_be_pos_order act_to_be_cash_pos act_to_be_req_expense act_to_be_shift_close act_to_be_enter_cash"/>
+        
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_to_be_cust_gw" name="Khách hàng &amp; Cổng VietQR" 
+               node="act_to_be_scan_qr act_to_be_webhook"/>
+        
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_to_be_core" name="Hệ thống MT-GRMS (Finance Engine)" 
+               node="dec_to_be_pay_method act_to_be_check_debt dec_to_be_debt_valid act_to_be_auto_debt_ledger act_to_be_auto_ledger_qr act_to_be_auto_ledger_cash dec_to_be_opex act_to_be_auto_pay_ledger act_to_be_auto_audit dec_to_be_discrepancy act_to_be_auto_adjust act_to_be_night_job act_to_be_tax_freeze"/>
+        
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_to_be_owner" name="Chủ cửa hàng (Store Owner)" 
+               node="act_to_be_owner_override act_to_be_approve_expense act_to_be_view_dashboard act_to_be_approve_tax"/>
+        
+        <group xmi:type="uml:ActivityPartition" xmi:id="part_to_be_tax" name="Cơ quan Thuế (TT 40/2021)" 
+               node="act_to_be_tax_submit final_to_be"/>
+
+        <!-- NODES -->
+        <node xmi:type="uml:InitialNode" xmi:id="init_to_be" name="Bắt đầu"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_pos_order" name="Tạo đơn hàng tại màn hình POS (FE-04)"/>
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_to_be_pay_method" name="Phương thức thanh toán?"/>
+        
+        <!-- MUA NỢ -->
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_check_debt" name="Kiểm tra hạn mức [TotalDebt + Amount &lt;= DebtLimit]"/>
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_to_be_debt_valid" name="Hạn mức hợp lệ?"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_owner_override" name="Chủ cửa hàng nhập mã Manager Override duyệt nợ"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_debt_ledger" name="Tự động ghi CustomerDebtLedgers (FE-08)"/>
+        
+        <!-- VIETQR -->
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_scan_qr" name="Khách quét mã VietQR động chứa OrderCode"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_webhook" name="Cổng thanh toán gửi Webhook xác nhận thanh toán"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_ledger_qr" name="Khớp lệnh 1:1, sinh LedgerTransactions &amp; tăng CashAccounts"/>
+        
+        <!-- TIỀN MẶT -->
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_cash_pos" name="Thu tiền mặt &amp; in hóa đơn POS"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_ledger_cash" name="Sinh LedgerTransactions ghi nhận tiền két thu ngân"/>
+        
+        <!-- CHI PHÍ VẬN HÀNH (FE-07) -->
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_to_be_opex" name="Phát sinh chi phí OpEx?"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_req_expense" name="Tạo đề xuất chi trên ServiceExpenses"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_approve_expense" name="Chủ duyệt phiếu chi trên Mobile App"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_pay_ledger" name="Sinh LedgerTransactions (PAYMENT) trừ số dư CashAccounts"/>
+        
+        <!-- CHỐT CA & ĐỐI SOÁT CUỐI NGÀY (FE-17) -->
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_shift_close" name="Bấm Chốt ca &amp; Kiểm kê két"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_enter_cash" name="Nhập số tiền mặt thực tế kiểm đếm"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_audit" name="Hệ thống đối soát tự động &amp; in Z-Report khóa ca"/>
+        <node xmi:type="uml:DecisionNode" xmi:id="dec_to_be_discrepancy" name="Có lệch tiền mặt?"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_auto_adjust" name="Sinh bút toán ADJUSTMENT &amp; cảnh báo cho Chủ"/>
+        
+        <!-- P&L & THUẾ (FE-10, FE-19) -->
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_night_job" name="Job đêm 00:05 tổng hợp DailySalesSummaries (Gross, COGS, OpEx, NetProfit)"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_view_dashboard" name="Xem Dashboard KPIs &amp; Báo cáo P&amp;L thời gian thực (FE-10)"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_tax_freeze" name="Cuối kỳ: Tổng hợp TaxSnapshots, đóng băng đơn hàng theo TT40"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_approve_tax" name="Duyệt Mẫu 01/CNKD &amp; ủy quyền nộp thuế"/>
+        <node xmi:type="uml:OpaqueAction" xmi:id="act_to_be_tax_submit" name="Nộp điện tử cơ quan thuế &amp; sinh phiếu chi nộp kho bạc"/>
+        <node xmi:type="uml:ActivityFinalNode" xmi:id="final_to_be" name="Kết thúc chu trình"/>
+
+        <!-- EDGES (CONTROL FLOWS) -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_1" source="init_to_be" target="act_to_be_pos_order"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_2" source="act_to_be_pos_order" target="dec_to_be_pay_method"/>
+        
+        <!-- Nhánh Mua Nợ -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_3" name="Mua nợ" source="dec_to_be_pay_method" target="act_to_be_check_debt"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_4" source="act_to_be_check_debt" target="dec_to_be_debt_valid"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_5" name="Hợp lệ" source="dec_to_be_debt_valid" target="act_to_be_auto_debt_ledger"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_6" name="Vượt mức" source="dec_to_be_debt_valid" target="act_to_be_owner_override"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_7" source="act_to_be_owner_override" target="act_to_be_auto_debt_ledger"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_8" source="act_to_be_auto_debt_ledger" target="dec_to_be_opex"/>
+        
+        <!-- Nhánh VietQR -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_9" name="VietQR" source="dec_to_be_pay_method" target="act_to_be_scan_qr"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_10" source="act_to_be_scan_qr" target="act_to_be_webhook"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_11" source="act_to_be_webhook" target="act_to_be_auto_ledger_qr"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_12" source="act_to_be_auto_ledger_qr" target="dec_to_be_opex"/>
+        
+        <!-- Nhánh Tiền Mặt -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_13" name="Tiền mặt" source="dec_to_be_pay_method" target="act_to_be_cash_pos"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_14" source="act_to_be_cash_pos" target="act_to_be_auto_ledger_cash"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_15" source="act_to_be_auto_ledger_cash" target="dec_to_be_opex"/>
+        
+        <!-- Nhánh Chi Phí Vận Hành -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_16" name="Có" source="dec_to_be_opex" target="act_to_be_req_expense"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_17" source="act_to_be_req_expense" target="act_to_be_approve_expense"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_18" source="act_to_be_approve_expense" target="act_to_be_auto_pay_ledger"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_19" source="act_to_be_auto_pay_ledger" target="act_to_be_shift_close"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_20" name="Không" source="dec_to_be_opex" target="act_to_be_shift_close"/>
+        
+        <!-- Nhánh Chốt Ca -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_21" source="act_to_be_shift_close" target="act_to_be_enter_cash"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_22" source="act_to_be_enter_cash" target="act_to_be_auto_audit"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_23" source="act_to_be_auto_audit" target="dec_to_be_discrepancy"/>
+        
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_24" name="Lệch tiền" source="dec_to_be_discrepancy" target="act_to_be_auto_adjust"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_25" source="act_to_be_auto_adjust" target="act_to_be_night_job"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_26" name="Khớp 100%" source="dec_to_be_discrepancy" target="act_to_be_night_job"/>
+        
+        <!-- Nhánh P&L & Thuế -->
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_27" source="act_to_be_night_job" target="act_to_be_view_dashboard"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_28" source="act_to_be_view_dashboard" target="act_to_be_tax_freeze"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_29" source="act_to_be_tax_freeze" target="act_to_be_approve_tax"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_30" source="act_to_be_approve_tax" target="act_to_be_tax_submit"/>
+        <edge xmi:type="uml:ControlFlow" xmi:id="f_to_31" source="act_to_be_tax_submit" target="final_to_be"/>
+      </packagedElement>
+
+    </packagedElement>
+
+    <!-- ======================================================== -->
+    <!-- PACKAGE 2: FINANCIAL SUBSYSTEM ERD / CLASS MODEL (FE-07,08,10,17,19) -->
+    <!-- ======================================================== -->
+    <packagedElement xmi:type="uml:Package" xmi:id="pkg_entities" name="Financial_Entities_ERD">
+      
+      <!-- 2.1 CashAccounts -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_cash_account" name="CashAccounts">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ca_1" name="AccountId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ca_2" name="AccountName" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ca_3" name="AccountType" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ca_4" name="CurrentBalance" type="Decimal"/>
+      </packagedElement>
+
+      <!-- 2.2 LedgerTransactions -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_ledger_tx" name="LedgerTransactions">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_1" name="TransactionId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_2" name="AccountId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_3" name="Type" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_4" name="Category" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_5" name="Amount" type="Decimal"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_lt_6" name="LinkedTransactionId" type="UUID"/>
+      </packagedElement>
+
+      <!-- 2.3 ServiceExpenses -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_service_expense" name="ServiceExpenses">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_se_1" name="ExpenseId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_se_2" name="ExpenseName" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_se_3" name="Amount" type="Decimal"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_se_4" name="Status" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_se_5" name="PaidFromAccountId" type="UUID"/>
+      </packagedElement>
+
+      <!-- 2.4 CustomerDebtLedgers -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_debt_ledger" name="CustomerDebtLedgers">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_dl_1" name="DebtLedgerId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_dl_2" name="CustomerId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_dl_3" name="TransactionType" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_dl_4" name="Amount" type="Decimal"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_dl_5" name="BalanceAfter" type="Decimal"/>
+      </packagedElement>
+
+      <!-- 2.5 TaxSnapshots -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_tax_snapshot" name="TaxSnapshots">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ts_1" name="SnapshotId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ts_2" name="TaxPeriod" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ts_3" name="TotalTaxPayable" type="Decimal"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ts_4" name="Status" type="String"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ts_5" name="CashTransactionId" type="UUID"/>
+      </packagedElement>
+
+      <!-- 2.6 DailySalesSummaries -->
+      <packagedElement xmi:type="uml:Class" xmi:id="cls_sales_summary" name="DailySalesSummaries">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ss_1" name="SummaryId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ss_2" name="BranchId" type="UUID"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ss_3" name="SummaryDate" type="Date"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ss_4" name="NetRevenue" type="Decimal"/>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_ss_5" name="NetProfit" type="Decimal"/>
+      </packagedElement>
+
+    </packagedElement>
+  </uml:Model>
+</xmi:XMI>

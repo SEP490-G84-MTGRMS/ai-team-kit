@@ -18,6 +18,10 @@
     "project": {
       "type": "string"
     },
+    "epic": {
+      "type": "string",
+      "description": "Epic or feature name grouping this session"
+    },
     "goals": {
       "type": "array",
       "items": { "type": "string" }
@@ -33,6 +37,29 @@
     "tags": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "changelog": {
+      "type": "array",
+      "description": "Audit log of modifications made via sua_tai_lieu",
+      "items": {
+        "type": "object",
+        "required": ["date", "author", "reason", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

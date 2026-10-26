@@ -64,7 +64,8 @@ function validateFile(filePath) {
     if (!valid) {
       console.error(`❌ [ERROR] ${filePath} failed validation:`);
       validate.errors.forEach((err) => {
-        console.error(`   - ${err.instancePath || 'root'} ${err.message}`);
+        const extra = err.params?.additionalProperty ? ` ('${err.params.additionalProperty}')` : '';
+        console.error(`   - ${err.instancePath || 'root'} ${err.message}${extra}`);
       });
       return false;
     }

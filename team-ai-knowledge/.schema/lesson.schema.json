@@ -29,7 +29,7 @@
     },
     "scope": {
       "type": "string",
-      "enum": ["backend", "frontend", "infra", "devops", "database", "security", "performance", "cross-cutting"]
+      "enum": ["backend", "frontend", "infra", "devops", "database", "security", "performance", "qa", "testing", "cross-cutting"]
     },
     "tags": {
       "type": "array",
@@ -48,6 +48,29 @@
       "items": {
         "type": "string",
         "pattern": "^ADR-\\d{4}$"
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "description": "Audit log of modifications made via sua_tai_lieu",
+      "items": {
+        "type": "object",
+        "required": ["date", "author", "reason", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          }
+        }
       }
     }
   }
