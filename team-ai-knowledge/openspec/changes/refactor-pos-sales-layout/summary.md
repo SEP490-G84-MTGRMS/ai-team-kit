@@ -15,3 +15,7 @@ Duyệt verify-spec: skeptic review 5/5 chấp nhận, chốt danh sách 5 tasks
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-10-26 16:24
 
 Hoàn thành 5/5 tasks: chuyển PosCatalogGrid sang PosCatalogModal dạng popup (F3/Esc), mở rộng bảng giỏ hàng chứa >=7 mặt hàng, mở rộng cột thanh toán lên 450px và làm gọn fieldset tránh tràn màn hình. Build frontend đã PASS 100%.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-10-26 16:25
+
+Báo cáo test-report.md đạt VERDICT: PASS 100%. Toàn bộ 3 yêu cầu REQ-POS-LAYOUT-01..03 và kiểm thử hồi quy đều đạt, npm run build hoàn thành thành công trong 558ms.
