@@ -11,3 +11,7 @@ Duyệt exploration.md & specs.md: chọn phương án Modal Dialog độc lập
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-10-26 16:11
 
 Duyệt verify-spec: skeptic review 5/5 chấp nhận, chốt danh sách 5 tasks triển khai code UI.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-10-26 16:24
+
+Hoàn thành 5/5 tasks: chuyển PosCatalogGrid sang PosCatalogModal dạng popup (F3/Esc), mở rộng bảng giỏ hàng chứa >=7 mặt hàng, mở rộng cột thanh toán lên 450px và làm gọn fieldset tránh tràn màn hình. Build frontend đã PASS 100%.
