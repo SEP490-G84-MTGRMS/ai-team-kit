@@ -3,3 +3,7 @@
 ## Spec · 2026-10-26 11:20
 
 Tiếp tục sang bước 2 /sep-brainstorm để tạo exploration.md, design-brief.md, và delta specs.md.
+
+## Brainstorm · 2026-10-26 11:26
+
+Tiếp tục sang bước 3 /sep-verify-spec để tạo review/skeptic.md và tasks.md.
