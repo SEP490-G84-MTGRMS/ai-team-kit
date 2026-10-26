@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-26 14:16
 
 Review Skeptic đạt 5/5 điểm tuyệt đối, tasks.md hoàn chỉnh chuẩn bị sang Bước 4 Apply
+
+## Apply — ✅ Approve bởi @Des7240 · 2026-10-26 14:28
+
+Đã triển khai hoàn tất Domain Entities, CustomerDebtRepository khóa bi quan, CustomerDebtService FIFO, CustomerDebtController, DI và 23 tests mới cho FE-08
