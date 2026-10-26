@@ -85,8 +85,9 @@ team-ai-knowledge/
 1. Dùng tool MCP `xem_thiet_ke` để tra cứu nhanh bảng/cột/ERD
 2. Đọc `projects/{project}/design/database-schema.md` (Từ điển dữ liệu)
 3. Đọc `projects/{project}/design/erd-diagram.md` (Sơ đồ ERD Mermaid)
-4. Đọc projects/{project}/design/financial-system-ui-db-design.md (Thiết kế Database & UI/UX chi tiết cho FE-07, FE-08, FE-10, FE-17, FE-19)
-4. Chạy `npm run sep -- db-sync` để cập nhật bảng mới nhất từ C# Backend
+4. Đọc `projects/{project}/design/financial-system-ui-db-design.md` (Thiết kế Database & UI/UX chi tiết cho FE-07, FE-08, FE-10, FE-17, FE-19)
+5. Đọc `projects/{project}/design/financial-subsystem-erd.md` (Đặc tả chi tiết thực thể thuộc tính ERD & 8 quyết định nghiệp vụ chuẩn hóa phân hệ tài chính)
+6. Chạy `npm run sep -- db-sync` để cập nhật bảng mới nhất từ C# Backend
 
 ### Tôi muốn biết team đã làm gì tuần qua
 1. Xem `projects/{project}/sessions/` — sắp xếp theo ngày

@@ -3,7 +3,7 @@ id: LL-2026-10-26-533
 title: Quy chuẩn thiết kế UML Activity Swimlanes tương thích 100% Draw.io và PlantUML
 date: '2026-10-26'
 author: Des7240
-scope: architecture
+scope: cross-cutting
 severity: medium
 resolution: resolved
 tags:
@@ -24,3 +24,4 @@ Khi chuyển đổi và vẽ Activity Diagram Swimlanes từ PlantUML sang Draw.
 2) Tuyệt đối không dùng switch/case hoặc cascading else-if khi cần tương thích với Draw.io importer; sử dụng Cây quyết định nhị phân lồng nhau chuẩn UML 2.5 (Nested Binary Decision Tree: if condition 1 then yes else if condition 2 then yes else no endif endif).
 3) Không nhảy swimlane bên trong các nhánh rẽ điều kiện con để tránh lỗi lệch tọa độ Graphviz.
 4) Ngắt dòng văn bản thủ công bằng \n sau mỗi 15-20 ký tự để tạo các nốt khối vuông cân đối (compact square boxes).
+
