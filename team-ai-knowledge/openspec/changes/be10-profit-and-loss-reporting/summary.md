@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @Des7240 · 2026-10-26 14:56
 
 Đã duyệt Verify Spec (review/skeptic.md và tasks.md), các điều kiện biên được kiểm soát chặt chẽ
+
+## Apply — ✅ Approve bởi @Des7240 · 2026-10-26 15:03
+
+Đã triển khai hoàn tất DTOs phân cấp, PnLReportRepository, PnLReportService (100% coverage), PnLReportController, DI và 9 tests mới cho FE-10
