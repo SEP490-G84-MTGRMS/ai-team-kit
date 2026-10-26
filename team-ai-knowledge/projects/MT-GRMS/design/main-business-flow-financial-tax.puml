@@ -1,0 +1,547 @@
+' ==============================================================================
+' MT-GRMS: MAIN BUSINESS FLOW ACTIVITY DIAGRAMS (AS-IS & TO-BE)
+' Domain: Financial Management, Cashbook, Accounting Ledgers & Tax Compliance
+' Modules: FE-07 (Service Expenses), FE-08 (Customer Receivables), 
+'          FE-10 (P&L & Financial Reports), FE-17 (Cashbook), FE-19 (Tax Reports)
+' Developer: Nguyen Truong An
+' Standard: UML 2.5 Activity Diagram with Multi-Branch Decision & Merge Diamonds
+' ==============================================================================
+
+' ==============================================================================
+' FLOW 1 (AS-IS): SERVICE EXPENSE & PETTY CASH DISBURSEMENT (THỦ CÔNG)
+' ==============================================================================
+@startuml AS_IS_Flow1_ServiceExpense_CashDisbursement
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 240
+
+title FLOW 1 (AS-IS) — Manual Service Expense Payment & Cash Outflow
+
+|Service Provider / Landlord|
+|Branch Cashier / Staff|
+|Store Owner|
+
+|Service Provider / Landlord|
+start
+:Bring utility, rent,\nor internet bill to\nstore & request payment;
+
+|Branch Cashier / Staff|
+if (Store Owner\npresent at store?) then (Yes)
+  |Store Owner|
+  :Take out personal\nwallet or personal\nbanking app to pay;
+  :Stuff paper receipt\ninto drawer corner\nwithout ledger record;
+else (No)
+  |Branch Cashier / Staff|
+  :Contact Store Owner\nvia phone to request\npayment authorization;
+  if (Owner approves\nimmediate payout?) then (No / Cannot reach)
+    :Tell provider to\nreturn later;\nRisk utility cut-off;
+  else (Yes)
+    :Take cash directly\nfrom cash drawer\nto pay provider;
+    :Tuck paper bill\nunder cashier counter;\nForget shift note;
+    |Store Owner|
+    :Periodically check\ntill; discover cash\nshortage vs sales;
+    if (Can locate paper\nbill under counter?) then (Yes)
+      :Manually reconcile\nshortage; no expense\nledger entry kept;
+    else (No)
+      :Conflict & dispute\nwith cashier over\nsuspected theft;
+    endif
+  endif
+endif
+
+|Store Owner|
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 1 (TO-BE): AUTOMATED EXPENSE WORKFLOW & CASHBOOK POSTING (MT-GRMS)
+' Clean layout with unified approval and fund-source routing
+' ==============================================================================
+@startuml TO_BE_Flow1_ServiceExpense_CashDisbursement
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 240
+
+title FLOW 1 (TO-BE) — Standardized Service Expense & Cashbook Voucher (FE-07 & FE-17)
+
+|Service Provider / Landlord|
+|Branch Staff / Manager|
+|MT-GRMS System|
+|Store Owner|
+
+|Service Provider / Landlord|
+start
+:Deliver utility / rent\ninvoice or digital bill;
+
+|Branch Staff / Manager|
+:Log in MT-GRMS (FE-07);\nCapture photo of bill\n& input expense details;
+
+|MT-GRMS System|
+:Verify expense policy;\nCheck branch auto-limit\n(e.g., threshold 500k VND);
+
+if (Expense amount >\nbranch auto-limit?) then (Yes - Requires Approval)
+  :Flag "Pending Approval";\nPush alert to Store Owner;
+  |Store Owner|
+  :Review bill photo\n& expense justification;
+  if (Approve expense request?) then (No - Rejected)
+    :Reject expense voucher\nwith reason comment;
+    |Branch Staff / Manager|
+    :Receive rejection notice;\nCancel payment / revise;
+    stop
+  else (Yes - Approved)
+    :Confirm approval on mobile;
+  endif
+else (No - Under Limit)
+  |MT-GRMS System|
+  :Auto-approve expense under\nbranch daily allowance;
+endif
+
+|MT-GRMS System|
+:Unlock payment execution;\nPrompt fund source selection;
+
+|Branch Staff / Manager|
+if (Disbursement Fund Source?) then (Branch Cash Till)
+  :Withdraw physical cash\nfrom till & pay provider;
+  |MT-GRMS System|
+  :Create Cash Disbursement\nVoucher in FE-17;\nDeduct branch till balance;
+else (Digital Bank Account)
+  |Store Owner|
+  :Execute payment via\nconnected digital banking;
+  |MT-GRMS System|
+  :Create Bank Disbursement\nVoucher in FE-17;\nDeduct central bank ledger;
+endif
+
+|MT-GRMS System|
+:Post entry to Statutory\nExpense Ledger S2c-HKD;\nUpdate Branch P&L (FE-10);
+
+|Branch Staff / Manager|
+:File voucher & complete;
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 2 (AS-IS): CUSTOMER CREDIT EXTENSION & MANUAL DEBT (SỔ NỢ TAY)
+' (Exact match and faithful reproduction of the user's reference diagram)
+' ==============================================================================
+@startuml AS_IS_Flow2_CustomerCredit_ManualDebt
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 240
+
+title FLOW 2 (AS-IS) — Customer Purchases & Manual Debt Ledger (Reference Standard)
+
+|Customer|
+|Store Owner / Employee|
+
+|Customer|
+start
+:Bring selected products\nto checkout counter;
+
+|Store Owner / Employee|
+repeat
+  :Inspect item & calculate\nprice manually (from\nmemory / calculator);
+repeat while (More products?) is (Yes) not (No)
+
+:Calculate final total\npayable amount;
+
+|Customer|
+:Receive verbal notification\nof total payable amount;
+
+if (Customer requests to buy\non credit (deferred payment)?) then (No - Immediate payment)
+  |Store Owner / Employee|
+  :Receive cash payment\n& place into till;
+else (Yes)
+  |Customer|
+  :Ask to buy\non credit;
+  |Store Owner / Employee|
+  if (Agree to\nextend credit?) then (Yes)
+    :Record debt into physical\nledger (Customer Name,\ndate, amount);
+  else (No)
+    :Decline credit purchase;\nRequire immediate payment;
+    if (Customer agrees\nto pay now?) then (Yes)
+      :Collect payment\n& hand over goods;
+    else (No)
+      :Cancel sale &\nreturn items to shelf;
+    endif
+  endif
+endif
+
+|Store Owner / Employee|
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 2 (TO-BE): DIGITAL CUSTOMER CREDIT CONTROL AT POS (FE-08 & FE-17)
+' Direct 1-to-1 counterpart of AS-IS Flow 2 — Clean, Vertical, Zero Overlap
+' ==============================================================================
+@startuml TO_BE_Flow2_CustomerCredit_POS
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 240
+
+title FLOW 2 (TO-BE) — Digital Customer Credit Control at POS (FE-08 & FE-17)
+
+|Customer|
+|Cashier / POS Staff|
+|MT-GRMS System|
+
+|Customer|
+start
+:Bring selected items\nto checkout counter;
+
+|Cashier / POS Staff|
+:Scan product barcodes\non mPOS interface;
+
+|MT-GRMS System|
+:Calculate total amount\n& display bill summary;
+
+|Customer|
+:Receive bill summary;
+if (Request to buy on credit\n(deferred payment)?) then (No - Pay Now)
+  |Customer|
+  :Pay via Cash\nor Dynamic VietQR;
+  |Cashier / POS Staff|
+  :Collect payment\n& complete order;
+  |MT-GRMS System|
+  :Generate Sales Receipt\nin Cashbook (FE-17);\nPost revenue to S2a-HKD;
+else (Yes - Buy on Credit)
+  |Cashier / POS Staff|
+  :Select customer profile\nin MT-GRMS database;
+  |MT-GRMS System|
+  :Check credit profile (FE-08):\nVerify credit limit &\ncheck overdue debt;
+  if (Credit status valid?\n(Within limit & No overdue)) then (No - Blocked)
+    :Display red alert:\n"Credit limit exceeded\nor overdue debt exists";
+    |Cashier / POS Staff|
+    :Notify customer of rejection;\nDemand immediate payment;
+    if (Customer agrees\nto pay now?) then (Yes)
+      |Customer|
+      :Pay via Cash or QR;
+      |Cashier / POS Staff|
+      :Collect payment;
+      |MT-GRMS System|
+      :Create Sales Receipt (FE-17);
+    else (No)
+      |Cashier / POS Staff|
+      :Void pending cart;\nReturn items to shelf;
+      stop
+    endif
+  else (Yes - Approved)
+    |Cashier / POS Staff|
+    :Confirm credit transaction\non mPOS screen;
+    |MT-GRMS System|
+    :Create AR debt record (FE-08);\nIncrease customer debt balance;\nSend Zalo/SMS debt alert;
+    :Post revenue to S2a-HKD\nwith "Unpaid Credit" tag;
+  endif
+endif
+
+|Cashier / POS Staff|
+:Hand over goods with\nelectronic receipt;
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 2B (TO-BE): MULTI-CHANNEL DEBT SETTLEMENT & RECOVERY (FE-08 & FE-17)
+' Clean, Dedicated Flow for Debt Repayment (Cash vs Dynamic VietQR)
+' ==============================================================================
+@startuml TO_BE_Flow2B_DebtSettlement_Recovery
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 240
+
+title FLOW 2B (TO-BE) — Multi-Channel Debt Settlement & AR Clearance (FE-08 & FE-17)
+
+|Customer|
+|Cashier / POS Staff|
+|MT-GRMS System|
+
+|Customer|
+start
+:Visit store or open app\nto settle past debt;
+
+|Cashier / POS Staff|
+:Search customer in FE-08;\nView unpaid debt invoices;
+
+|MT-GRMS System|
+:Display outstanding balance\n& invoice breakdown;
+
+|Customer|
+if (Selected Repayment Channel?) then (Physical Cash at Counter)
+  :Hand over cash to cashier;
+  |Cashier / POS Staff|
+  :Count cash & deposit into till;\nConfirm receipt on screen;
+  |MT-GRMS System|
+  :Create Cash Receipt in FE-17;\nAdd to branch till balance;
+else (Dynamic VietQR Transfer)
+  |Cashier / POS Staff|
+  :Select "Pay via VietQR";
+  |MT-GRMS System|
+  :Generate Dynamic VietQR with\nembedded invoice & customer ID;
+  |Customer|
+  :Scan QR using banking app\n& authorize payment;
+  |MT-GRMS System|
+  :Receive Bank Webhook;\nCreate Bank Receipt in FE-17;
+endif
+
+|MT-GRMS System|
+:Deduct AR debt balance (FE-08);\nMark debt invoices as "Settled";\nRestore customer credit limit;
+
+|Cashier / POS Staff|
+:Print / send electronic\nsettlement confirmation;
+
+|Customer|
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 3 (AS-IS): TAX AUDIT & ESTIMATION WITHOUT BOOKS (THỦ CÔNG)
+' Clean two-lane workflow without crossed connectors
+' ==============================================================================
+@startuml AS_IS_Flow3_TaxAudit_WithoutBooks
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 250
+
+title FLOW 3 (AS-IS) — Unregulated Operations, Blind Tax Assessment & Penalties
+
+|Store Owner|
+|Tax Authority / Banking Audit|
+
+|Store Owner|
+start
+:Operate retail business\nacross multiple branches\nwithout accounting software;
+:Commingle personal and\nbusiness cash in private\nbank account & drawers;
+:Track daily sales in paper\nnotebooks or discard receipts;
+
+|Tax Authority / Banking Audit|
+:Audit personal banking\ninflows & cross-check local\ne-invoice platforms;
+:Issue formal inspection notice;\nDemand 3-year revenue &\nexpense accounting books;
+
+|Store Owner|
+:Attempt to gather loose\npaper invoices & notes;
+
+if (Can present valid VAT\ninvoices & statutory ledgers?) then (Yes - Full records)
+  :Submit paper receipts\nfor official audit review;
+else (No - Missing / Lost records)
+  |Tax Authority / Banking Audit|
+  :Reject undocumented expenses;\nImpose arbitrary presumed\nrevenue assessment;
+  :Retroactively tax full revenue;\nLevy 20% penalty + 0.03%/day\nlate payment interest charge;
+  |Store Owner|
+  :Accept severe financial loss;\nPay heavy penalties;\nDeplete business profit;
+endif
+
+|Store Owner|
+stop
+@enduml
+
+' ==============================================================================
+' FLOW 3 (TO-BE): MULTI-BRANCH TAX MONITORING & STATUTORY EXPORT (FE-10 & FE-19)
+' Fully Draw.io & PlantUML compatible binary decision tree (Group 1, 2, 3)
+' ==============================================================================
+@startuml TO_BE_Flow3_TaxMonitoring_LedgerExport
+
+skinparam defaultTextAlignment center
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam ActivityBackgroundColor #A9D8FF
+skinparam ActivityBorderColor #000000
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityFontColor #000000
+skinparam ActivityFontSize 12
+
+skinparam DiamondBackgroundColor #A9D8FF
+skinparam DiamondBorderColor #000000
+skinparam DiamondBorderThickness 1.2
+skinparam DiamondFontColor #000000
+skinparam DiamondFontSize 11
+
+skinparam ArrowColor #000000
+skinparam ArrowFontColor #000000
+skinparam ArrowFontSize 11
+
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 1.5
+skinparam SwimlaneTitleFontColor #000000
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneWidth 250
+
+title FLOW 3 (TO-BE) — Tax Threshold Monitoring & Statutory Ledger Export (FE-10 & FE-19)
+
+|Store Owner|
+|MT-GRMS System (FE-10 & FE-19)|
+|Local Storage / Accountant|
+
+|Store Owner|
+start
+:Access Tax & Accounting\nModule (FE-19) at period end;
+
+|MT-GRMS System (FE-10 & FE-19)|
+:Consolidate multi-branch sales,\nCOGS, OpEx (FE-07) & Payroll;\nCompute Year-to-Date (YTD) Revenue;
+
+if (YTD Revenue <= 1B VND?\n(Group 1 - Tax Exempt)) then (Yes)
+  :Set Status: Tax-Exempt;\nGenerate simple ledger S1a-HKD;\n(Alert if YTD > 850M threshold);
+else (No - Revenue > 1B)
+  if (YTD Revenue <= 3B VND?\n(Group 2 - Single Store)) then (Yes)
+    :Display e-invoice compliance alert;\nPrepare statutory ledgers based on\nselected method (% vs Profit 15%);
+  else (No - Group 3: > 3B Chains)
+    :Lock Method: Profit-based (17%);\nPackage complete 6 statutory ledgers:\nS2a, S2b, S2c, S2d, S2e, S3a;
+  endif
+endif
+
+:Display consolidated tax dashboard\n& pre-packaged statutory records;
+
+|Store Owner|
+:Review multi-branch P&L (FE-10)\n& inspect audited cost ledger;
+:Click "Export Statutory\nAccounting Ledger Package";
+
+|MT-GRMS System (FE-10 & FE-19)|
+:Generate standardized Excel & PDF\nfiles (Circular 88/2021/TT-BTC)\nembedded with Digital Audit Hash;
+
+|Local Storage / Accountant|
+:Download official ledger bundle\nto local workstation / cloud;\nArchive for tax audit & records;
+stop
+@enduml
