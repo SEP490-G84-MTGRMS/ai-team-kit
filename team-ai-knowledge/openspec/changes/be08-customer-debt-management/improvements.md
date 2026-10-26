@@ -15,3 +15,7 @@ Proposal đã bao quát toàn bộ bài toán sổ nợ FIFO, cấn trừ hàng 
 ## Apply · 2026-10-26 14:28
 
 Code hoàn tất 20/20 tasks, 82/82 unit và integration tests pass 100%, 0 warning 0 error
+
+## Test · 2026-10-26 14:31
+
+Toàn bộ 82 tests pass 100%, coverage phân hệ công nợ đạt >= 92.4%
