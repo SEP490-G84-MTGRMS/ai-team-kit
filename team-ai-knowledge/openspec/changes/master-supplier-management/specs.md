@@ -4,148 +4,232 @@
 
 | Method | Path | Request Body / Params | Response Body | Status & Error Codes |
 |---|---|---|---|---|
-| `GET` | `/api/v1/suppliers` | `QueryParams (SearchTerm, SupplierType, Status, CategoryId, PageIndex, PageSize)` | `PagedResult<SupplierSummaryDto>` | `200 OK`, `401 Unauthorized` |
-| `GET` | `/api/v1/suppliers/{id}` | Route `id (Guid)` | `SupplierDetailDto` | `200 OK`, `404 Not Found` |
-| `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` | `SupplierDetailDto` | `201 Created`, `400 Bad Request (Duplicate Code/TaxCode)` |
-| `PUT` | `/api/v1/suppliers/{id}` | Route `id`, `UpdateSupplierCommand` | `SupplierDetailDto` | `200 OK`, `400 Bad Request (BR-S07 Violation)`, `404 Not Found` |
-| `PATCH` | `/api/v1/suppliers/{id}/status` | Route `id`, `UpdateSupplierStatusRequest` | `SupplierDetailDto` | `200 OK`, `400 Bad Request (BR-S03 Guard)`, `404 Not Found` |
-| `GET` | `/api/v1/suppliers/{id}/delivery-config` | Route `id (Guid)` | `SupplierDeliveryConfigDto` | `200 OK`, `404 Not Found` |
-| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | Route `id`, `UpdateSupplierDeliveryConfigCommand` | `SupplierDeliveryConfigDto` | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `GET` | `/api/v1/suppliers/{id}/ap/ledger` | Route `id`, `FromDate`, `ToDate`, `PageIndex`, `PageSize` | `PagedResult<SupplierAPLedgerDto>` | `200 OK`, `404 Not Found` |
-| `POST` | `/api/v1/suppliers/{id}/ap/transactions` | Route `id`, `RecordAPTransactionCommand` | `SupplierAPLedgerDto` | `201 Created`, `400 Bad Request`, `409 Conflict (IdempotencyKey Exists)` |
-| `POST` | `/api/v1/suppliers/{id}/link-customer` | Route `id`, `LinkCustomerRequest` | `SupplierDetailDto` | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/api/v1/suppliers` | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` (`Code`, `Name`, `ContactPerson`, `Phone`, `Status`; `CurrentDebt` chỉ Store Owner) | `200`, `401` |
+| `GET` | `/api/v1/suppliers/{id}` | Route `id` | `SupplierDetailDto` | `200`, `404` |
+| `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` | `SupplierDetailDto` | `201`, `400`, `403` |
+| `PUT` | `/api/v1/suppliers/{id}` | `UpdateSupplierCommand` (không nhận `Code`) | `SupplierDetailDto` | `200`, `400`, `403`, `404` |
+| `PATCH` | `/api/v1/suppliers/{id}/status` | `UpdateSupplierStatusRequest` | `SupplierDetailDto` + cảnh báo `openPurchaseOrderCount` | `200`, `400`, `403` |
+| `GET` | `/api/v1/suppliers/{id}/delivery-config` | — | `SupplierDeliveryConfigDto` (`LeadTimeDays`, `CutoffDayOffset`, `OrderCutoffTime`, `DeliveryDays`) | `200`, `404` |
+| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | `UpdateSupplierDeliveryConfigCommand` | `SupplierDeliveryConfigDto` | `200`, `400`, `403` |
+| `GET` | `/api/v1/suppliers/{id}/branches` | — | `List<BranchAssignmentDto>` | `200`, `403`, `404` |
+| `PUT` | `/api/v1/suppliers/{id}/branches` | `{ branchIds: Guid[] }` rỗng = dùng chung | `List<BranchAssignmentDto>` | `200`, `400`, `403` |
+| `GET` | `/api/v1/suppliers/{id}/transactions` | `PageIndex`, `PageSize` | Paged PO + GRN theo phạm vi chi nhánh | `200`, `403`, `404` |
+| `GET` | `/api/v1/suppliers/{id}/ap/summary` | — | `totalPayable`, `totalPaid`, `outstandingBalance`, `due`/`overdue` | `200`, `403` |
+| `GET` | `/api/v1/suppliers/{id}/ap/ledger` | `FromDate`, `ToDate`, paging | `PagedResult<SupplierAPLedgerDto>` | `200`, `403`, `404` |
 
 ---
 
 ## ADDED Requirements
 
-### Requirement: REQ-01 Master Supplier Creation & Code Uniqueness
-Hệ thống MUST cho phép tạo mới hồ sơ Nhà cung cấp với Mã NCC (`Code`) duy nhất trong phạm vi từng Tenant. Nếu không nhập Mã NCC, hệ thống MUST tự động sinh mã theo quy tắc `SUP-{YYYYMMDD}-{XXXX}`.
+### Requirement: REQ-RBAC-01 Two Roles Scope — Store Owner and Branch Employee
+Hệ thống MUST chỉ dùng hai role trên màn FE-09: `StoreOwner` (toàn Tenant) và `BranchEmployee` (NCC được phép tại chi nhánh được phân công). Mọi query MUST lọc `TenantId`. Branch Employee MUST NOT xem NCC Tenant khác hoặc NCC không được gán (trừ NCC dùng chung khi không có assignment).
 
-#### Scenario: Tạo mới Nhà cung cấp hợp lệ thành công (Happy Path)
-- **GIVEN** Người dùng có quyền `Owner` hoặc `Accountant` thuộc Tenant A.
-- **WHEN** Gửi request `POST /api/v1/suppliers` với thông tin: `Name` = "Công ty Thực phẩm Fresh Farm", `SupplierType` = `Goods` (1), `Phone` = "0901234567", `PaymentTermDays` = 30, `CreditLimit` = 50000000.
-- **THEN** Hệ thống lưu NCC vào CSDL với `TenantId` = Tenant A, `CurrentDebt` = 0, `Status` = `Active` (1), tự động sinh `Code` dạng `SUP-...` và trả về `201 Created` kèm `SupplierDetailDto`.
+#### Scenario: Store Owner xem toàn bộ NCC Tenant
+- **GIVEN** User role `StoreOwner` thuộc Tenant A có 12 NCC.
+- **WHEN** `GET /api/v1/suppliers`.
+- **THEN** Trả về toàn bộ NCC Tenant A, không gồm Tenant B.
 
-#### Scenario: Tạo mới thất bại do trùng Mã Nhà cung cấp trong cùng Tenant (Edge Case)
-- **GIVEN** Trong Tenant A đã tồn tại Nhà cung cấp với `Code` = "SUP-001".
-- **WHEN** Người dùng gửi request `POST /api/v1/suppliers` với `Code` = "SUP-001".
-- **THEN** Hệ thống từ chối lưu và trả về `400 Bad Request` với mã lỗi `DUPLICATE_SUPPLIER_CODE` và ProblemDetails theo chuẩn RFC 7807.
+#### Scenario: Branch Employee chỉ thấy NCC được phép tại chi nhánh
+- **GIVEN** Branch Employee chi nhánh CN1. NCC X gán CN1, NCC Y gán CN2, NCC Z không có assignment (dùng chung).
+- **WHEN** `GET /api/v1/suppliers`.
+- **THEN** Kết quả gồm X và Z, không gồm Y.
 
-#### Scenario: Cùng Mã Nhà cung cấp nhưng ở hai Tenant khác nhau (Multi-tenancy Isolation)
-- **GIVEN** Tenant A đã có Nhà cung cấp với `Code` = "SUP-001".
-- **WHEN** Người dùng thuộc Tenant B gửi request `POST /api/v1/suppliers` tạo NCC với `Code` = "SUP-001".
-- **THEN** Hệ thống tạo mới thành công cho Tenant B và trả về `201 Created`.
+#### Scenario: Branch Employee bị từ chối tạo/sửa/đổi trạng thái
+- **GIVEN** Branch Employee.
+- **WHEN** `POST /api/v1/suppliers` hoặc `PUT` hoặc `PATCH .../status`.
+- **THEN** `403 Forbidden`.
 
 ---
 
-### Requirement: REQ-02 Supplier Type Management & Narrowing Restrictions (BR-S07)
-Hệ thống MUST hỗ trợ 3 loại Nhà cung cấp: `Goods` (1 - Hàng hóa), `Service` (2 - Dịch vụ), `Both` (3 - Cả hai). Hệ thống MUST từ chối mọi yêu cầu thu hẹp loại NCC nếu NCC đó đã từng phát sinh giao dịch thuộc loại hình bị thu hẹp.
+### Requirement: REQ-LIST-01 View Supplier List Screen FE-09.01
+Màn `/store-owner/suppliers` MUST hỗ trợ tìm theo mã NCC, tên, SĐT, MST; lọc loại NCC và trạng thái; phân trang server-side. Bảng MUST hiển thị mã, tên, người liên hệ, SĐT, trạng thái. Khi API lỗi MUST hiện error, MUST NOT render mock như dữ liệu thật. `SupplierSummaryDto` MUST gồm `ContactPerson`.
 
-#### Scenario: Mở rộng loại Nhà cung cấp từ Goods sang Both (Cho phép)
-- **GIVEN** Nhà cung cấp "NCC Hàng Khai Anh" đang có `SupplierType` = `Goods` (1) và đã từng phát sinh Đơn nhập hàng (GRN).
-- **WHEN** Người dùng gửi request `PUT /api/v1/suppliers/{id}` cập nhật `SupplierType` thành `Both` (3).
-- **THEN** Hệ thống cập nhật thành công và trả về `200 OK`.
+#### Scenario: Tìm theo MST thành công
+- **GIVEN** NCC có `TaxCode` = "0312345678".
+- **WHEN** User search `0312345678`.
+- **THEN** List trả về NCC đó (`200`).
 
-#### Scenario: Thu hẹp loại Nhà cung cấp từ Both về Goods khi đã từng phát sinh hóa đơn dịch vụ (BR-S07 Violation Guard)
-- **GIVEN** Nhà cung cấp "Công ty Tiện ích Green" có `SupplierType` = `Both` (3) và đã từng phát sinh Hóa đơn Dịch vụ Tiện ích (`DocType` = `ServiceInvoice`).
-- **WHEN** Người dùng gửi request `PUT /api/v1/suppliers/{id}` cố gắng thu hẹp `SupplierType` về `Goods` (1).
-- **THEN** Hệ thống từ chối cập nhật và trả về `400 Bad Request` với thông báo lỗi "Cannot narrow supplier type when historical service transactions exist".
+#### Scenario: Lọc loại Hàng hóa và trạng thái Active
+- **GIVEN** Danh sách lẫn Goods/Service, Active/Inactive.
+- **WHEN** `SupplierType=Goods` và `Status=Active`.
+- **THEN** Chỉ NCC Goods + Active.
+
+#### Scenario: API lỗi không fallback mock
+- **GIVEN** `GET /api/v1/suppliers` thất bại.
+- **WHEN** `SupplierListPage` nhận lỗi.
+- **THEN** Hiện thông báo lỗi; bảng empty hoặc giữ trang lỗi; không đổ `INITIAL_SUPPLIERS`.
+
+---
+
+### Requirement: REQ-BRANCH-01 Assign Supplier to Branch FE-09.10
+Hệ thống MUST cho Store Owner gán NCC với chi nhánh cùng Tenant. Không có assignment MUST hiểu là dùng chung. Đổi assignment MUST NOT xóa PO/GRN/công nợ lịch sử. Tenant một chi nhánh MAY tự gán chi nhánh duy nhất.
+
+#### Scenario: Gán hai chi nhánh thành công
+- **GIVEN** Store Owner, NCC S1, chi nhánh CN1 và CN2 cùng Tenant.
+- **WHEN** `PUT /api/v1/suppliers/{S1}/branches` với `[CN1, CN2]`.
+- **THEN** `200`; Branch Employee CN1 thấy S1, CN3 không thấy.
+
+#### Scenario: Từ chối gán chi nhánh Tenant khác
+- **GIVEN** CN-B thuộc Tenant B.
+- **WHEN** Gán S1 Tenant A với CN-B.
+- **THEN** `400` không lưu.
+
+#### Scenario: Xóa hết assignment = dùng chung
+- **GIVEN** S1 đang gán CN1.
+- **WHEN** `PUT .../branches` với `[]`.
+- **THEN** Mọi chi nhánh Tenant A dùng được S1; lịch sử PO cũ giữ nguyên.
+
+---
+
+### Requirement: REQ-PAY-01 Configure Payment Terms FE-09.06
+Store Owner MUST cấu hình `PaymentTerms`, `PaymentDueDays` (>=0), `CreditLimit` (>=0), `BankName`, `BankAccountNumber`, `BankAccountName`. `CreditLimit` MUST là cấu hình, không phải số dư. Vượt hạn mức MUST NOT mặc định chặn PO. Đổi điều khoản MUST NOT sửa chứng từ đã phát sinh.
+
+#### Scenario: Lưu điều khoản hợp lệ
+- **GIVEN** Store Owner mở tab Payment Terms.
+- **WHEN** `PaymentDueDays=30`, `CreditLimit=50000000`, ngân hàng hợp lệ.
+- **THEN** `200`, cấu hình được lưu.
+
+#### Scenario: Từ chối giá trị âm
+- **GIVEN** Store Owner.
+- **WHEN** `CreditLimit=-1` hoặc `PaymentDueDays=-5`.
+- **THEN** `400`, không lưu.
+
+---
+
+### Requirement: REQ-HIST-01 View Transaction History FE-09.11
+Hệ thống MUST hiển thị lịch sử PO và GRN: mã PO, chi nhánh, ngày đặt, ngày giao dự kiến, trạng thái, thông tin nhận hàng, tổng giá trị nếu được phép. Store Owner xem phạm vi Tenant; Branch Employee chỉ chi nhánh mình. MUST NOT hiện Tenant khác.
+
+#### Scenario: Branch Employee chỉ thấy PO chi nhánh mình
+- **GIVEN** PO của CN1 và CN2 cùng NCC.
+- **WHEN** Branch Employee CN1 mở tab lịch sử.
+- **THEN** Chỉ PO/GRN CN1.
+
+---
+
+### Requirement: REQ-AP-VIEW-01 Outstanding Balance Store Owner Only FE-09.12
+Hệ thống MUST cho Store Owner xem tổng phải trả, đã trả, số dư, khoản đến hạn/quá hạn từ ledger/hóa đơn/nhận hàng/thanh toán — MUST NOT lấy từ `CreditLimit` hay tổng giá trị PO chưa xét nhận hàng. Branch Employee MUST NOT xem công nợ tổng hợp Tenant. List MUST ẩn cột AP và nút trả nợ với Branch Employee.
+
+#### Scenario: Store Owner xem số dư từ ledger
+- **GIVEN** Phải trả 10tr, đã trả 4tr trên ledger.
+- **WHEN** `GET /api/v1/suppliers/{id}/ap/summary`.
+- **THEN** `outstandingBalance=6000000`.
+
+#### Scenario: Branch Employee bị từ chối AP summary
+- **GIVEN** Branch Employee.
+- **WHEN** `GET /api/v1/suppliers/{id}/ap/summary`.
+- **THEN** `403`; UI list không cột Đang nợ / Quá hạn, không nút Trả.
+
+---
+
+### Requirement: REQ-NORETro-01 No Retroactive Apply On Confirmed Documents FE-09.04/07/09
+Cập nhật hồ sơ NCC, giá nhập, điều khoản, lịch giao MUST NOT tự áp lên PO đã gửi hoặc đã xác nhận. Giá trên PO MUST là snapshot lúc đặt.
+
+#### Scenario: Đổi giá NCC không đổi giá dòng PO đã xác nhận
+- **GIVEN** PO CONFIRMED giá 20.000.
+- **WHEN** Store Owner đổi giá NCC thành 22.000.
+- **THEN** Dòng PO vẫn 20.000.
+
+---
+
+## MODIFIED Requirements
+
+### Requirement: REQ-01 Master Supplier Creation & Code Uniqueness
+Hệ thống MUST cho Store Owner tạo NCC. Tên MUST bắt buộc. Mã NCC MUST hệ thống tự sinh, duy nhất trong Tenant (`SUP-{YYYYMMDD}-{XXXX}` nếu user không nhập lúc tạo). Trường tài chính MUST NOT âm. Chỉ Store Owner được tạo.
+
+#### Scenario: Tạo mới hợp lệ
+- **GIVEN** Store Owner Tenant A.
+- **WHEN** `POST /api/v1/suppliers` với `Name` bắt buộc, `SupplierType=Goods`.
+- **THEN** `201`, `Code` dạng `SUP-...`, `Status=Active`, ghi nhận người tạo.
+
+#### Scenario: Trùng mã cùng Tenant
+- **GIVEN** Đã có `Code=SUP-001` Tenant A.
+- **WHEN** Tạo với cùng mã.
+- **THEN** `400` mã `DUPLICATE_SUPPLIER_CODE` (RFC 7807).
+
+#### Scenario: Cùng mã hai Tenant
+- **GIVEN** Tenant A có `SUP-001`.
+- **WHEN** Tenant B tạo `SUP-001`.
+- **THEN** `201` cho Tenant B.
 
 ---
 
 ### Requirement: REQ-03 Soft Inactivation Guard & Status Transition (BR-S03)
-Hệ thống MUST cho phép chuyển trạng thái giữa `Active` (1) và `Inactive` (2). Tuy nhiên, hệ thống MUST từ chối chuyển sang `Inactive` hoặc xóa nếu NCC đang có dư nợ AP (`CurrentDebt` > 0) hoặc đang có Đơn đặt hàng (PO) chưa hoàn tất.
+Hệ thống MUST cho Store Owner chuyển Active/Inactive. NCC Inactive MUST NOT được chọn cho PO mới. Hệ thống MUST NOT xóa cứng NCC đã có lịch sử. Ngừng hoạt động MUST NOT xóa PO/GRN/công nợ. Nếu còn PO đang xử lý, hệ thống MUST cảnh báo (`openPurchaseOrderCount`) và MUST NOT tự hủy đơn đã xác nhận. Cho phép Inactive khi còn dư nợ (có cảnh báo).
 
-#### Scenario: Chuyển trạng thái Inactive thành công khi không còn công nợ hay PO mở
-- **GIVEN** Nhà cung cấp "NCC Rau Củ Quả" có `CurrentDebt` = 0 và không có Đơn đặt hàng PO nào đang ở trạng thái `Pending` / `Approved`.
-- **WHEN** Người dùng gửi request `PATCH /api/v1/suppliers/{id}/status` với `Status` = `Inactive` (2).
-- **THEN** Hệ thống cập nhật trạng thái NCC thành `Inactive` và trả về `200 OK`.
+#### Scenario: Inactive thành công kèm cảnh báo PO mở
+- **GIVEN** NCC có 2 PO CONFIRMED chưa hoàn tất và `CurrentDebt>0`.
+- **WHEN** Store Owner `PATCH .../status` Inactive sau confirm.
+- **THEN** `200`, `Status=Inactive`, PO CONFIRMED giữ nguyên, response có `openPurchaseOrderCount=2`.
 
-#### Scenario: Từ chối chuyển Inactive khi Nhà cung cấp còn dư nợ AP (BR-S03 Guard)
-- **GIVEN** Nhà cung cấp "Công ty Đông Lạnh Frozen Food" đang có `CurrentDebt` = 15,000,000 VND.
-- **WHEN** Người dùng gửi request `PATCH /api/v1/suppliers/{id}/status` với `Status` = `Inactive` (2).
-- **THEN** Hệ thống từ chối và trả về `400 Bad Request` với mã lỗi `SUPPLIER_HAS_OUTSTANDING_DEBT`.
+#### Scenario: Inactive không dùng cho PO mới
+- **GIVEN** NCC Inactive.
+- **WHEN** Tạo PO mới chọn NCC này.
+- **THEN** Hệ thống từ chối chọn NCC Inactive.
 
----
-
-### Requirement: REQ-04 Idempotent AP Ledger & Debt Balance Updates (BR-S08)
-Hệ thống MUST ghi nhận mọi biến động nợ AP vào bảng `SupplierAPLedgers` đồng thời cập nhật `CurrentDebt` của NCC trong cùng một Database Transaction. Hệ thống MUST đảm bảo tính Idempotent thông qua `IdempotencyKey`.
-
-#### Scenario: Ghi nhận Hóa đơn nhập hàng tăng nợ AP (Tăng nợ)
-- **GIVEN** Nhà cung cấp A có `CurrentDebt` = 10,000,000 VND.
-- **WHEN** Gửi request `POST /api/v1/suppliers/{id}/ap/transactions` với `Amount` = 5,000,000, `Direction` = +1 (Increase), `DocType` = `PurchaseInvoice`, `IdempotencyKey` = "GRN-20261010-001".
-- **THEN** Hệ thống tạo bản ghi `SupplierAPLedger` với `BalanceAfter` = 15,000,000 VND, cập nhật `CurrentDebt` = 15,000,000 VND cho NCC, và trả về `201 Created`.
-
-#### Scenario: Retry API ghi nhận công nợ bị trùng IdempotencyKey (Idempotent Retry)
-- **GIVEN** Bảng `SupplierAPLedgers` đã lưu giao dịch với `IdempotencyKey` = "GRN-20261010-001".
-- **WHEN** Client gửi lại request `POST /api/v1/suppliers/{id}/ap/transactions` với cùng `IdempotencyKey` = "GRN-20261010-001".
-- **THEN** Hệ thống phát hiện trùng lặp, không cộng thêm tiền vào `CurrentDebt`, và trả về kết quả giao dịch đã tạo trước đó với status `200 OK` (hoặc `409 Conflict` nếu cấu hình strict).
-
----
-
-### Requirement: REQ-05 Dual-role Customer Linkage & Independent Debt Tracking (BR-S11)
-Hệ thống MUST cho phép liên kết một Hồ sơ Nhà cung cấp với một Hồ sơ Khách hàng (`LinkedCustomerId`). Công nợ AP (Phải trả NCC) và AR (Phải thu Khách hàng) MUST duy trì độc lập hoàn toàn, không tự động cấn trừ.
-
-#### Scenario: Liên kết Hồ sơ Khách hàng cho Nhà cung cấp Dual-role thành công
-- **GIVEN** Trong hệ thống có Nhà cung cấp "Đại lý Bán lẻ & Cung ứng An Bình" (ID: `Supp-123`) và Hồ sơ Khách hàng "Khách hàng An Bình" (ID: `Cust-456`).
-- **WHEN** Người dùng gửi request `POST /api/v1/suppliers/Supp-123/link-customer` với `CustomerId` = `Cust-456`.
-- **THEN** Hệ thống lưu `LinkedCustomerId` = `Cust-456` cho NCC `Supp-123` và trả về `200 OK`. Dư nợ AP và dư nợ AR giữ nguyên giá trị riêng biệt.
-
----
-
-### Requirement: REQ-06 Multi-tenant Data Isolation
-Hệ thống MUST đảm bảo dữ liệu Nhà cung cấp, Danh mục NCC, và Sổ cái AP Ledger được cô lập tuyệt đối theo `TenantId`. Người dùng ở Tenant này không được xem hoặc thao tác trên dữ liệu của Tenant khác.
-
-#### Scenario: Truy vấn danh sách Nhà cung cấp bị chặn truy cập cross-tenant
-- **GIVEN** Người dùng X thuộc Tenant A.
-- **WHEN** Người dùng X gửi request `GET /api/v1/suppliers/Supp-TenantB-999` (thuộc Tenant B).
-- **THEN** Hệ thống áp dụng Global Query Filter `TenantId` = Tenant A và trả về `404 Not Found`.
+#### Scenario: Từ chối xóa cứng khi đã có lịch sử
+- **GIVEN** NCC đã có PO hoặc GRN hoặc AP ledger.
+- **WHEN** `DELETE /api/v1/suppliers/{id}`.
+- **THEN** `400`, dữ liệu giữ nguyên.
 
 ---
 
 ### Requirement: REQ-DEL01 Delivery Schedule & Cutoff Time Configuration (BR-S12)
-Hệ thống MUST cho phép cấu hình lịch giao hàng chi tiết cho từng Nhà cung cấp hàng hoá (`Goods` hoặc `Both`):
-1. **Thời gian chuẩn bị (Lead Time)**: Tính theo giờ hoặc ngày.
-2. **Thời gian chốt đơn (Cutoff Time)**: Định dạng `HH:mm` (mặc định 17:00).
-3. **Các ngày nhận giao hàng trong tuần (Delivery Weekdays)**: Cho phép chọn Thứ 2 đến Chủ nhật (lưu dưới dạng bitmask).
-4. **Quy định đơn hàng tối thiểu**: Giá trị đơn tối thiểu (MOV) và số lượng tối thiểu (MOQ).
-5. **Giao hàng hoả tốc (Urgent Delivery)**: Cho phép bật/tắt, cấu hình Lead time hoả tốc và phụ phí % nếu áp dụng.
+Hệ thống MUST cho Store Owner cấu hình `DeliveryDays`, `LeadTimeDays`, `CutoffDayOffset`, `OrderCutoffTime`. Thời điểm chốt MUST tính theo `Asia/Ho_Chi_Minh`. Tại hoặc sau giờ chốt của ngày (`deliveryDate - CutoffDayOffset`) hệ thống MUST NOT cho tạo/sửa đơn thường cho ngày giao đó. `LeadTimeDays` MUST chỉ mô tả thời gian dự kiến, không thay cutoff. Đổi cấu hình MUST NOT tự sửa PO đã gửi/xác nhận.
 
-#### Scenario: Cập nhật lịch giao hàng và Cutoff Time thành công
-- **GIVEN** Nhà cung cấp "Công ty Thực phẩm Xanh" (ID: `Supp-Fresh-01`).
-- **WHEN** Quản lý kho gửi request `PUT /api/v1/suppliers/Supp-Fresh-01/delivery-config` với `LeadTimeHours` = 24, `CutoffTime` = "16:00", `DeliveryDays` = [Mon, Tue, Wed, Thu, Fri, Sat], `MinOrderValue` = 1,000,000 VND.
-- **THEN** Hệ thống lưu cấu hình và trả về `200 OK` kèm `SupplierDeliveryConfigDto`.
+#### Scenario: Ví dụ chốt đơn T4
+- **GIVEN** Giao Thứ Tư, `CutoffDayOffset=1`, `OrderCutoffTime=17:00`.
+- **WHEN** Ngày giao 28/10/2026 (Thứ Tư).
+- **THEN** Hạn chốt = 17:00 ngày 27/10/2026 (`Asia/Ho_Chi_Minh`).
 
-#### Scenario: Đơn đặt hàng (PO) tạo sau Cutoff Time tự động tính dời ngày giao
-- **GIVEN** NCC có `CutoffTime` = "16:00", `LeadTimeHours` = 24, nhận giao Thứ 2 - Thứ 7 (Nghỉ Chủ nhật).
-- **WHEN** Nhân viên tạo đơn PO vào Thứ 6 lúc 16:30 (sau Cutoff Time).
-- **THEN** Hệ thống tự động tính ngày giao hàng sớm nhất là Thứ 2 tuần kế tiếp (bỏ qua ngày Chủ nhật không nhận giao).
+#### Scenario: Sau cutoff không tạo đơn thường
+- **GIVEN** Cấu hình như trên; hiện tại 27/10/2026 17:00 trở đi.
+- **WHEN** User tạo PO thường cho giao 28/10/2026.
+- **THEN** Hệ thống từ chối; không tự dời ngày giao.
+
+#### Scenario: Đổi cutoff không sửa PO đã xác nhận
+- **GIVEN** PO CONFIRMED giao 28/10.
+- **WHEN** Store Owner đổi `OrderCutoffTime`.
+- **THEN** Ngày giao PO giữ 28/10.
 
 ---
 
 ### Requirement: REQ-DEL02 Holidays & Blackout Dates Management (BR-S13)
-Hệ thống MUST cho phép quản lý danh sách các kỳ nghỉ lễ, ngày tạm ngưng giao hàng (`Blackout Dates`) của từng Nhà cung cấp trong tab riêng biệt. Các ngày này MUST được tự động loại trừ khi hệ thống tính toán ngày giao hàng khả dụng cho Đơn đặt hàng (PO).
+Hệ thống MUST cho Store Owner thêm/xem/sửa ngày không giao kèm lý do. Đơn mới MUST loại blackout khỏi ngày giao hợp lệ. MUST NOT tự đổi ngày giao đơn đã xác nhận. Chỉ Store Owner quản lý blackout.
 
-#### Scenario: Thêm kỳ nghỉ lễ cho Nhà cung cấp thành công
-- **GIVEN** Nhà cung cấp "Công ty Hải sản Miền Nam".
-- **WHEN** Người dùng thêm kỳ nghỉ lễ: `StartDate` = "2026-12-31", `EndDate` = "2027-01-02", `Reason` = "Nghỉ Tết Dương Lịch 2027", `IsRecurringAnnual` = true.
-- **THEN** Hệ thống lưu bản ghi vào `SupplierBlackoutDates` và trả về `200 OK`.
+#### Scenario: Thêm blackout thành công
+- **GIVEN** Store Owner, NCC hàng hóa.
+- **WHEN** Thêm ngày 2026-12-31, lý do "Nghỉ Tết".
+- **THEN** Lưu `SupplierBlackoutDates`, `200`.
 
-#### Scenario: Hệ thống tự động bỏ qua Blackout Date khi tính ngày giao hàng sớm nhất
-- **GIVEN** NCC có Blackout Date từ 2026-09-01 đến 2026-09-03 (Nghỉ lễ Quốc khánh).
-- **WHEN** Nhân viên tạo đơn PO vào ngày 2026-08-31 với `LeadTimeHours` = 24.
-- **THEN** Hệ thống xác định ngày giao hàng sớm nhất là ngày 2026-09-04 (ngày đầu tiên sau kỳ nghỉ lễ mà NCC có nhận giao).
+#### Scenario: Đơn mới không đề xuất ngày blackout
+- **GIVEN** Blackout 2026-09-02.
+- **WHEN** Lấy danh sách ngày giao hợp lệ cho PO mới.
+- **THEN** Không gồm 2026-09-02.
+
+#### Scenario: Không tự đổi PO đã xác nhận
+- **GIVEN** PO CONFIRMED giao đúng ngày sau đó bị khai blackout.
+- **WHEN** Store Owner lưu blackout.
+- **THEN** Ngày giao PO không đổi; hệ thống có thể cảnh báo.
+
+---
+
+## Unchanged Requirements (giữ nguyên từ bản Apply trước)
+
+REQ-02 Supplier Type narrowing (BR-S07), REQ-04 AP Ledger idempotency (BR-S08), REQ-05 Dual-role linkage (BR-S11), REQ-06 tenant isolation — giữ hành vi đã Implement; Dual-role không phải thao tác chính trên list FE-09.
 
 ---
 
 ## Acceptance checklist
 
-- [ ] **REQ-01**: Tạo mới NCC thành công, tự động sinh mã `SUP-...` khi để trống, bắt lỗi trùng `Code` cùng Tenant.
-- [ ] **REQ-02**: Đổi `SupplierType` mở rộng thành công; chặn thu hẹp type (BR-S07) nếu có lịch sử giao dịch tương ứng.
-- [ ] **REQ-03**: Đổi trạng thái Active/Inactive; chặn Inactive/Delete (BR-S03) khi còn dư nợ AP hoặc PO mở.
-- [ ] **REQ-04**: Ghi nhận biến động AP Ledger chính xác `BalanceAfter`, cập nhật `CurrentDebt`; chống trùng lặp bằng `IdempotencyKey` (BR-S08).
-- [ ] **REQ-05**: Liên kết Dual-role `LinkedCustomerId` (BR-S11); giữ công nợ AP và AR độc lập.
-- [ ] **REQ-06**: Cô lập tuyệt đối theo `TenantId` trên tất cả API (Query Filter & Authorization).
-- [ ] **REQ-DEL01**: Quản lý cấu hình giao hàng (Lead Time, Cutoff Time, Weekdays mask, MOQ/MOV, Urgent Delivery); tự động tính ngày giao hàng khả dụng.
-- [ ] **REQ-DEL02**: Quản lý kỳ nghỉ lễ / Blackout dates riêng biệt; tự động bỏ qua ngày nghỉ lễ khi lập kế hoạch giao hàng PO.
+- [ ] **REQ-RBAC-01**: Store Owner thấy toàn Tenant; Branch Employee chỉ NCC gán/dùng chung; 403 khi Employee tạo/sửa/status.
+- [ ] **REQ-LIST-01**: Search mã/tên/SĐT/MST; filter loại + trạng thái; cột mã/tên/liên hệ/SĐT/trạng thái; `ContactPerson` trên DTO; không fallback mock.
+- [ ] **REQ-BRANCH-01**: Gán chi nhánh cùng Tenant; rỗng = dùng chung; không xóa lịch sử.
+- [ ] **REQ-PAY-01**: Điều khoản + ngân hàng; không âm; Credit Limit không chặn PO mặc định.
+- [ ] **REQ-HIST-01**: Lịch sử PO/GRN theo phạm vi chi nhánh.
+- [ ] **REQ-AP-VIEW-01**: Store Owner xem số dư từ ledger; Employee 403 + ẩn cột AP trên list.
+- [ ] **REQ-NORETro-01**: Đổi giá/điều khoản/lịch giao không áp ngược PO đã xác nhận.
+- [ ] **REQ-01**: Tạo NCC, mã tự sinh, unique theo Tenant.
+- [ ] **REQ-03**: Inactive không dùng PO mới; cảnh báo PO mở; không tự hủy; không xóa cứng khi có lịch sử.
+- [ ] **REQ-DEL01**: CutoffDayOffset + timezone VN; sau cutoff không tạo đơn thường.
+- [ ] **REQ-DEL02**: Blackout loại khỏi ngày giao mới; không tự sửa PO xác nhận.
+- [ ] **REQ-02 / REQ-04 / REQ-05 / REQ-06**: Giữ regression.
