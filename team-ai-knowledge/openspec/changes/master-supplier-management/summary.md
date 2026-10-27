@@ -19,3 +19,7 @@
 ## Brainstorm — ✅ Approve bởi @minhduc118a · 2026-10-27 15:11
 
 User Approve Brainstorm: căn chỉnh FE-09 trên change cũ — 2 role Store Owner/Branch Employee, list search MST + filter loại NCC, gán chi nhánh, cutoff CutoffDayOffset, không áp ngược PO, công nợ chỉ Store Owner. Phương án: surgical refactor code hiện có.
+
+## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-27 15:15
+
+Verify-spec FE-09: 4 persona (skeptic/guardian/advocate/codebase). HIGH đã sửa: map STORE_OWNER|ADMIN vs Employee+branchId; list không cột công nợ; cutoff chỉ lưu config (không chặn PO trong change này); GET ngoài phạm vi 404; không mock list. tasks.md T20–T33.

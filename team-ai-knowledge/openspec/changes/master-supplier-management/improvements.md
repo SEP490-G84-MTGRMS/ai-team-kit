@@ -15,3 +15,7 @@ Tiếp tục duy trì việc tách repository interface rõ ràng để giữ ch
 ## Brainstorm · 2026-10-27 15:11
 
 Khi user chốt tài liệu FE-09 mới trên change đã Test, lùi về Brainstorm rồi cập nhật delta thay vì tạo change song song.
+
+## Verify Spec · 2026-10-27 15:15
+
+User yêu cầu verify-spec và apply liền; HIGH đã vá vào specs (map JWT role, list không AP, cutoff config-only, 404 ngoài phạm vi).
