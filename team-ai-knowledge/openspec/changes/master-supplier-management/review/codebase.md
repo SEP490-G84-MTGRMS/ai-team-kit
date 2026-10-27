@@ -1,39 +1,33 @@
-# Review: Codebase — master-supplier-management
+# Codebase Review: master-supplier-management
 
-**Persona**: Codebase Architect (Kiểm tra sự phù hợp với cấu trúc Clean Architecture & CSDL MT-GRMS)  
-**Ngày review**: 2026-10-10  
-**Tài liệu đánh giá**: Codebase `MT_GRMS_BACKEND.sln` và `MT_GRMS_FRONTEND`  
+## Bản đồ ảnh hưởng
+| REQ | Code hiện có | Cần thêm/sửa | Ghi chú |
+|---|---|---|
+| REQ-RBAC-01 | `ITenantContext` có TenantId/BranchId, không có Role | Middleware đọc claim; service lọc assignment | `UserProfile.role`: STORE_OWNER/ADMIN/MANAGER/CASHIER |
+| REQ-LIST-01 | `SupplierListPage`, `SupplierFilterBar`, `SupplierTable` | Filter loại NCC; search MST; cột; bỏ mock | `GetPagedListAsync` chỉ Name/Code/Phone |
+| REQ-01 | `CreateSupplierAsync` tự sinh mã nếu trống | UI ẩn nhập mã | |
+| REQ-03 | `UpdateStatusAsync` ném nợ AP | Cho Inactive + cảnh báo PO | Test cũ sẽ fail |
+| REQ-PAY-01 | Field PaymentTermDays, CreditLimit, bank | Validate >=0 đã có một phần | |
+| REQ-DEL01 | `LeadTimeHours`, `CutoffTime` | Thêm LeadTimeDays, CutoffDayOffset, OrderCutoffTime | Migration mới |
+| REQ-DEL02 | `SupplierBlackoutDate` + HolidaysTab mock | Nối API | |
+| REQ-BRANCH-01 | Không thấy entity | `SupplierBranchAssignment` + API | |
+| REQ-HIST-01 | `SupplierHistoryTab` + MOCK_PURCHASE_ORDERS | API transactions | |
+| REQ-AP-VIEW-01 | `CurrentDebt` trên SummaryDto; PayablesTab mock | `/ap/summary`; ẩn list AP | |
+| REQ-NORETro-01 | PO snapshot thuộc FE-05 | Không đổi giá dòng PO trong change này | |
 
----
+## Tái sử dụng được
+- `MT_GRMS_FRONTEND/src/features/supplier/pages/SupplierListPage.tsx` — layout list.
+- `MT_GRMS_BACKEND/src/MT_GRMS.Application/Suppliers/SupplierService.cs` — CRUD.
+- `MT_GRMS_BACKEND/src/MT_GRMS.Infrastructure/Repositories/SupplierRepository.cs` — paging.
+- `SupplierFormModal.tsx`, `SupplierDetailPage.tsx` — cần nối API, không viết mới.
+- `supplier-product-management` — FE-09.09.
 
-## 1. Phân tích Cấu trúc & Khả năng tương thích
+## Xung đột / rủi ro
+- [HIGH] `supplierApi.getSuppliers` fallback `INITIAL_SUPPLIERS` khi API lỗi — trái REQ-LIST-01.
+- [HIGH] `SupplierSummaryDto` không có `ContactPerson`; list dễ trống cột liên hệ.
+- [HIGH] Chưa có `SupplierBranchAssignment` — FE-09.10/RBAC không làm được chỉ bằng UI.
+- [HIGH] `UpdateStatusAsync` chặn Inactive khi `CurrentDebt>0` — trái REQ-03 mới.
+- [MEDIUM] `SupplierDetailPage` đọc mock, không `getSupplierById`.
+- [MEDIUM] FilterBar có `supplierType` trong state nhưng không render select loại NCC; có filter category/debt trái FE-09.01.
 
-```
-MT_GRMS.Domain/
-  └── Entities/
-      └── SupplierAggregate/
-          ├── Supplier.cs (Entity)
-          ├── SupplierCategory.cs (Entity)
-          ├── SupplierAPLedger.cs (Entity)
-          └── Enums/ (SupplierType, SupplierStatus, APDocType)
-MT_GRMS.Application/
-  └── Features/Suppliers/
-      ├── Commands/ (CreateSupplier, UpdateSupplier, UpdateStatus, RecordAPTransaction, LinkCustomer)
-      ├── Queries/ (GetSuppliersList, GetSupplierById, GetAPLedger)
-      └── Dtos/ & Validators/
-MT_GRMS.Infrastructure/
-  └── Persistence/
-      ├── Configurations/ (SupplierConfiguration, SupplierAPLedgerConfiguration)
-      └── Migrations/
-MT_GRMS.Api/
-  └── Controllers/SuppliersController.cs
-```
-
-- **Clean Architecture 4 tầng**: Hoàn toàn phù hợp với kiến trúc backend .NET 8 của MT-GRMS.
-- **EF Core 8 Code-First**: Tạo Migration mới (không sửa Migration đã merge).
-- **xUnit Test Coverage**: Sẵn sàng hỗ trợ Unit Test (`MT_GRMS.UnitTests`) & Integration Test (`MT_GRMS.IntegrationTests`).
-
----
-
-## 2. Kết luận
-**Verdict**: **PASS (Đạt)** — Thiết kế sẵn sàng cho việc phát triển code ở Bước 4 (`/sep-apply`).
+## Kết luận: Khả thi
