@@ -11,3 +11,7 @@ Luôn đồng bộ specs và design brief bám sát phản hồi thực tế t�
 ## Apply · 2026-10-18 04:45
 
 Tiếp tục duy trì việc tách repository interface rõ ràng để giữ cho tầng Application độc lập hoàn toàn với EF Core.
+
+## Brainstorm · 2026-10-27 15:11
+
+Khi user chốt tài liệu FE-09 mới trên change đã Test, lùi về Brainstorm rồi cập nhật delta thay vì tạo change song song.
