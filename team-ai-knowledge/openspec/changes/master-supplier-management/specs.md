@@ -4,232 +4,213 @@
 
 | Method | Path | Request Body / Params | Response Body | Status & Error Codes |
 |---|---|---|---|---|
-| `GET` | `/api/v1/suppliers` | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` (`Code`, `Name`, `ContactPerson`, `Phone`, `Status`; `CurrentDebt` chỉ Store Owner) | `200`, `401` |
-| `GET` | `/api/v1/suppliers/{id}` | Route `id` | `SupplierDetailDto` | `200`, `404` |
-| `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` | `SupplierDetailDto` | `201`, `400`, `403` |
+| `GET` | `/api/v1/suppliers` | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` (`Code`, `Name`, `ContactPerson`, `Phone`, `TaxCode`, `SupplierType`, `Status`). Không trả `CurrentDebt` cho Branch Employee | `200`, `401` |
+| `GET` | `/api/v1/suppliers/{id}` | Route `id` | `SupplierDetailDto`. Ngoài phạm vi chi nhánh → `404` | `200`, `404` |
+| `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` (bỏ qua `Code` nếu trống — hệ thống sinh) | `SupplierDetailDto` | `201`, `400`, `403` |
 | `PUT` | `/api/v1/suppliers/{id}` | `UpdateSupplierCommand` (không nhận `Code`) | `SupplierDetailDto` | `200`, `400`, `403`, `404` |
-| `PATCH` | `/api/v1/suppliers/{id}/status` | `UpdateSupplierStatusRequest` | `SupplierDetailDto` + cảnh báo `openPurchaseOrderCount` | `200`, `400`, `403` |
+| `PATCH` | `/api/v1/suppliers/{id}/status` | `UpdateSupplierStatusRequest` | `SupplierDetailDto` + `openPurchaseOrderCount` | `200`, `400`, `403` |
 | `GET` | `/api/v1/suppliers/{id}/delivery-config` | — | `SupplierDeliveryConfigDto` (`LeadTimeDays`, `CutoffDayOffset`, `OrderCutoffTime`, `DeliveryDays`) | `200`, `404` |
-| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | `UpdateSupplierDeliveryConfigCommand` | `SupplierDeliveryConfigDto` | `200`, `400`, `403` |
+| `PUT` | `/api/v1/suppliers/{id}/delivery-config` | command; `LeadTimeDays>=0`, `CutoffDayOffset>=0`, `OrderCutoffTime` HH:mm | DTO | `200`, `400`, `403` |
 | `GET` | `/api/v1/suppliers/{id}/branches` | — | `List<BranchAssignmentDto>` | `200`, `403`, `404` |
-| `PUT` | `/api/v1/suppliers/{id}/branches` | `{ branchIds: Guid[] }` rỗng = dùng chung | `List<BranchAssignmentDto>` | `200`, `400`, `403` |
-| `GET` | `/api/v1/suppliers/{id}/transactions` | `PageIndex`, `PageSize` | Paged PO + GRN theo phạm vi chi nhánh | `200`, `403`, `404` |
-| `GET` | `/api/v1/suppliers/{id}/ap/summary` | — | `totalPayable`, `totalPaid`, `outstandingBalance`, `due`/`overdue` | `200`, `403` |
-| `GET` | `/api/v1/suppliers/{id}/ap/ledger` | `FromDate`, `ToDate`, paging | `PagedResult<SupplierAPLedgerDto>` | `200`, `403`, `404` |
+| `PUT` | `/api/v1/suppliers/{id}/branches` | `{ branchIds: Guid[] }` rỗng = dùng chung; chỉ Branch cùng Tenant | list | `200`, `400`, `403` |
+| `GET` | `/api/v1/suppliers/{id}/transactions` | paging | PO + GRN theo phạm vi chi nhánh | `200`, `403`, `404` |
+| `GET` | `/api/v1/suppliers/{id}/ap/summary` | — Store Owner | `totalPayable`, `totalPaid`, `outstandingBalance` | `200`, `403` |
+
+Map role JWT (`UserProfile.role` / claim):
+- **Store Owner**: `STORE_OWNER` hoặc `ADMIN`.
+- **Branch Employee**: không phải Store Owner và có `branchId` (thường `MANAGER`).
+
+Change này **không** implement tạo/sửa PO. Cutoff được expose qua delivery-config để FE-05 dùng sau.
 
 ---
 
 ## ADDED Requirements
 
 ### Requirement: REQ-RBAC-01 Two Roles Scope — Store Owner and Branch Employee
-Hệ thống MUST chỉ dùng hai role trên màn FE-09: `StoreOwner` (toàn Tenant) và `BranchEmployee` (NCC được phép tại chi nhánh được phân công). Mọi query MUST lọc `TenantId`. Branch Employee MUST NOT xem NCC Tenant khác hoặc NCC không được gán (trừ NCC dùng chung khi không có assignment).
+Hệ thống MUST map Store Owner = role `STORE_OWNER`\|`ADMIN`; Branch Employee = user có `branchId` và không phải Store Owner. Mọi query MUST lọc `TenantId`. Write (create/update/status/delivery/blackout/branches) MUST Store Owner ở **Application layer** (403 nếu không). Branch Employee MUST chỉ thấy NCC có assignment chứa chi nhánh mình, hoặc NCC không có assignment (dùng chung). GET `{id}` ngoài phạm vi MUST `404` (không 403).
 
-#### Scenario: Store Owner xem toàn bộ NCC Tenant
-- **GIVEN** User role `StoreOwner` thuộc Tenant A có 12 NCC.
+#### Scenario: Store Owner xem toàn Tenant
+- **GIVEN** User `STORE_OWNER` Tenant A, 12 NCC.
 - **WHEN** `GET /api/v1/suppliers`.
-- **THEN** Trả về toàn bộ NCC Tenant A, không gồm Tenant B.
+- **THEN** 12 NCC Tenant A, không Tenant B.
 
-#### Scenario: Branch Employee chỉ thấy NCC được phép tại chi nhánh
-- **GIVEN** Branch Employee chi nhánh CN1. NCC X gán CN1, NCC Y gán CN2, NCC Z không có assignment (dùng chung).
+#### Scenario: Branch Employee chỉ NCC gán hoặc dùng chung
+- **GIVEN** `MANAGER` chi nhánh CN1. X gán CN1, Y gán CN2, Z không assignment.
 - **WHEN** `GET /api/v1/suppliers`.
-- **THEN** Kết quả gồm X và Z, không gồm Y.
+- **THEN** X và Z, không Y. DTO không có `CurrentDebt`.
 
-#### Scenario: Branch Employee bị từ chối tạo/sửa/đổi trạng thái
+#### Scenario: Employee mở chi tiết NCC không được phép
+- **GIVEN** Employee CN1, NCC Y chỉ gán CN2.
+- **WHEN** `GET /api/v1/suppliers/{Y}`.
+- **THEN** `404`.
+
+#### Scenario: Employee bị 403 khi tạo/sửa/status
 - **GIVEN** Branch Employee.
-- **WHEN** `POST /api/v1/suppliers` hoặc `PUT` hoặc `PATCH .../status`.
-- **THEN** `403 Forbidden`.
+- **WHEN** POST/PUT/PATCH status.
+- **THEN** `403`.
 
 ---
 
 ### Requirement: REQ-LIST-01 View Supplier List Screen FE-09.01
-Màn `/store-owner/suppliers` MUST hỗ trợ tìm theo mã NCC, tên, SĐT, MST; lọc loại NCC và trạng thái; phân trang server-side. Bảng MUST hiển thị mã, tên, người liên hệ, SĐT, trạng thái. Khi API lỗi MUST hiện error, MUST NOT render mock như dữ liệu thật. `SupplierSummaryDto` MUST gồm `ContactPerson`.
+Màn `/store-owner/suppliers` MUST tìm theo mã, tên, SĐT, MST; lọc `SupplierType` và `Status`; phân trang server-side. Bảng MUST: mã, tên, người liên hệ, SĐT, trạng thái, hành động. MUST NOT cột công nợ / nút Trả / Xuất Excel stub. Nút Thêm/Sửa chỉ Store Owner. `SupplierSummaryDto` MUST có `ContactPerson`. API lỗi MUST error banner, MUST NOT `INITIAL_SUPPLIERS`.
 
-#### Scenario: Tìm theo MST thành công
-- **GIVEN** NCC có `TaxCode` = "0312345678".
-- **WHEN** User search `0312345678`.
-- **THEN** List trả về NCC đó (`200`).
+#### Scenario: Tìm MST
+- **GIVEN** TaxCode `0312345678`.
+- **WHEN** search `0312345678`.
+- **THEN** trả NCC đó.
 
-#### Scenario: Lọc loại Hàng hóa và trạng thái Active
-- **GIVEN** Danh sách lẫn Goods/Service, Active/Inactive.
-- **WHEN** `SupplierType=Goods` và `Status=Active`.
-- **THEN** Chỉ NCC Goods + Active.
+#### Scenario: Lọc Goods + Active
+- **GIVEN** lẫn type/status.
+- **WHEN** Type=Goods, Status=Active.
+- **THEN** chỉ Goods Active.
 
-#### Scenario: API lỗi không fallback mock
-- **GIVEN** `GET /api/v1/suppliers` thất bại.
-- **WHEN** `SupplierListPage` nhận lỗi.
-- **THEN** Hiện thông báo lỗi; bảng empty hoặc giữ trang lỗi; không đổ `INITIAL_SUPPLIERS`.
+#### Scenario: API lỗi không mock
+- **GIVEN** GET `/suppliers` fail.
+- **WHEN** list nhận lỗi.
+- **THEN** banner lỗi, không mock.
 
 ---
 
 ### Requirement: REQ-BRANCH-01 Assign Supplier to Branch FE-09.10
-Hệ thống MUST cho Store Owner gán NCC với chi nhánh cùng Tenant. Không có assignment MUST hiểu là dùng chung. Đổi assignment MUST NOT xóa PO/GRN/công nợ lịch sử. Tenant một chi nhánh MAY tự gán chi nhánh duy nhất.
+Store Owner MUST gán NCC với chi nhánh **cùng Tenant**. `branchIds=[]` = dùng chung. Branch khác Tenant MUST `400`. Đổi gán MUST NOT xóa lịch sử PO/GRN/AP.
 
-#### Scenario: Gán hai chi nhánh thành công
-- **GIVEN** Store Owner, NCC S1, chi nhánh CN1 và CN2 cùng Tenant.
-- **WHEN** `PUT /api/v1/suppliers/{S1}/branches` với `[CN1, CN2]`.
-- **THEN** `200`; Branch Employee CN1 thấy S1, CN3 không thấy.
+#### Scenario: Gán CN1+CN2
+- **GIVEN** Store Owner, S1, CN1 CN2 cùng Tenant.
+- **WHEN** PUT branches `[CN1,CN2]`.
+- **THEN** `200`; Employee CN1 thấy S1; CN3 không.
 
-#### Scenario: Từ chối gán chi nhánh Tenant khác
-- **GIVEN** CN-B thuộc Tenant B.
-- **WHEN** Gán S1 Tenant A với CN-B.
-- **THEN** `400` không lưu.
+#### Scenario: Từ chối chi nhánh Tenant khác
+- **GIVEN** CN-B Tenant B.
+- **WHEN** gán S1 Tenant A với CN-B.
+- **THEN** `400`.
 
-#### Scenario: Xóa hết assignment = dùng chung
+#### Scenario: Rỗng = dùng chung
 - **GIVEN** S1 đang gán CN1.
-- **WHEN** `PUT .../branches` với `[]`.
-- **THEN** Mọi chi nhánh Tenant A dùng được S1; lịch sử PO cũ giữ nguyên.
+- **WHEN** PUT `[]`.
+- **THEN** mọi chi nhánh Tenant A dùng S1; PO cũ giữ.
 
 ---
 
 ### Requirement: REQ-PAY-01 Configure Payment Terms FE-09.06
-Store Owner MUST cấu hình `PaymentTerms`, `PaymentDueDays` (>=0), `CreditLimit` (>=0), `BankName`, `BankAccountNumber`, `BankAccountName`. `CreditLimit` MUST là cấu hình, không phải số dư. Vượt hạn mức MUST NOT mặc định chặn PO. Đổi điều khoản MUST NOT sửa chứng từ đã phát sinh.
+Store Owner MUST cấu hình PaymentTerms/DueDays (>=0), CreditLimit (>=0), bank fields. CreditLimit là cấu hình, không phải số dư. MUST NOT mặc định chặn PO khi vượt hạn mức. Đổi điều khoản MUST NOT sửa chứng từ cũ.
 
-#### Scenario: Lưu điều khoản hợp lệ
-- **GIVEN** Store Owner mở tab Payment Terms.
-- **WHEN** `PaymentDueDays=30`, `CreditLimit=50000000`, ngân hàng hợp lệ.
-- **THEN** `200`, cấu hình được lưu.
+#### Scenario: Lưu hợp lệ
+- **WHEN** DueDays=30, CreditLimit=50000000.
+- **THEN** `200`.
 
-#### Scenario: Từ chối giá trị âm
-- **GIVEN** Store Owner.
-- **WHEN** `CreditLimit=-1` hoặc `PaymentDueDays=-5`.
-- **THEN** `400`, không lưu.
+#### Scenario: Từ chối âm
+- **WHEN** CreditLimit=-1 hoặc DueDays=-5.
+- **THEN** `400`.
 
 ---
 
 ### Requirement: REQ-HIST-01 View Transaction History FE-09.11
-Hệ thống MUST hiển thị lịch sử PO và GRN: mã PO, chi nhánh, ngày đặt, ngày giao dự kiến, trạng thái, thông tin nhận hàng, tổng giá trị nếu được phép. Store Owner xem phạm vi Tenant; Branch Employee chỉ chi nhánh mình. MUST NOT hiện Tenant khác.
+Tab lịch sử MUST PO+GRN: mã, chi nhánh, ngày đặt, ngày giao, trạng thái, GRN, tổng nếu được xem. Store Owner Tenant; Employee chỉ chi nhánh mình. Nếu chưa có API PO, tab MUST empty-state thật, không mock PO.
 
-#### Scenario: Branch Employee chỉ thấy PO chi nhánh mình
-- **GIVEN** PO của CN1 và CN2 cùng NCC.
-- **WHEN** Branch Employee CN1 mở tab lịch sử.
-- **THEN** Chỉ PO/GRN CN1.
+#### Scenario: Employee chỉ PO chi nhánh mình
+- **GIVEN** PO CN1 và CN2.
+- **WHEN** Employee CN1 mở lịch sử.
+- **THEN** chỉ CN1.
 
 ---
 
 ### Requirement: REQ-AP-VIEW-01 Outstanding Balance Store Owner Only FE-09.12
-Hệ thống MUST cho Store Owner xem tổng phải trả, đã trả, số dư, khoản đến hạn/quá hạn từ ledger/hóa đơn/nhận hàng/thanh toán — MUST NOT lấy từ `CreditLimit` hay tổng giá trị PO chưa xét nhận hàng. Branch Employee MUST NOT xem công nợ tổng hợp Tenant. List MUST ẩn cột AP và nút trả nợ với Branch Employee.
+Store Owner MUST xem phải trả / đã trả / số dư từ ledger (không từ CreditLimit, không từ tổng PO chưa nhận). Branch Employee MUST `403` trên `/ap/summary`. List MUST NOT cột AP cho mọi role.
 
-#### Scenario: Store Owner xem số dư từ ledger
-- **GIVEN** Phải trả 10tr, đã trả 4tr trên ledger.
-- **WHEN** `GET /api/v1/suppliers/{id}/ap/summary`.
-- **THEN** `outstandingBalance=6000000`.
+#### Scenario: Số dư từ ledger
+- **GIVEN** phải trả 10tr, đã trả 4tr.
+- **WHEN** GET ap/summary Store Owner.
+- **THEN** outstanding=6tr.
 
-#### Scenario: Branch Employee bị từ chối AP summary
-- **GIVEN** Branch Employee.
-- **WHEN** `GET /api/v1/suppliers/{id}/ap/summary`.
-- **THEN** `403`; UI list không cột Đang nợ / Quá hạn, không nút Trả.
+#### Scenario: Employee 403 AP
+- **WHEN** Employee GET ap/summary.
+- **THEN** 403; list không cột nợ, không nút Trả.
 
 ---
 
-### Requirement: REQ-NORETro-01 No Retroactive Apply On Confirmed Documents FE-09.04/07/09
-Cập nhật hồ sơ NCC, giá nhập, điều khoản, lịch giao MUST NOT tự áp lên PO đã gửi hoặc đã xác nhận. Giá trên PO MUST là snapshot lúc đặt.
+### Requirement: REQ-NORETro-01 No Retroactive Apply
+Đổi giá/điều khoản/lịch giao MUST NOT tự sửa PO đã gửi/xác nhận. Apply change này MUST NOT viết code đổi dòng PO; snapshot thuộc FE-05.
 
-#### Scenario: Đổi giá NCC không đổi giá dòng PO đã xác nhận
+#### Scenario: Đổi giá NCC không đụng PO confirmed
 - **GIVEN** PO CONFIRMED giá 20.000.
-- **WHEN** Store Owner đổi giá NCC thành 22.000.
-- **THEN** Dòng PO vẫn 20.000.
+- **WHEN** đổi giá NCC 22.000.
+- **THEN** dòng PO 20.000 (không có API trong change này để overwrite).
 
 ---
 
 ## MODIFIED Requirements
 
 ### Requirement: REQ-01 Master Supplier Creation & Code Uniqueness
-Hệ thống MUST cho Store Owner tạo NCC. Tên MUST bắt buộc. Mã NCC MUST hệ thống tự sinh, duy nhất trong Tenant (`SUP-{YYYYMMDD}-{XXXX}` nếu user không nhập lúc tạo). Trường tài chính MUST NOT âm. Chỉ Store Owner được tạo.
+Chỉ Store Owner tạo. Tên bắt buộc. UI MUST NOT cho nhập mã lúc tạo; backend tự sinh `SUP-{yyyyMMdd}-{seq}` nếu Code trống. Code unique theo Tenant. Tài chính không âm.
 
-#### Scenario: Tạo mới hợp lệ
-- **GIVEN** Store Owner Tenant A.
-- **WHEN** `POST /api/v1/suppliers` với `Name` bắt buộc, `SupplierType=Goods`.
-- **THEN** `201`, `Code` dạng `SUP-...`, `Status=Active`, ghi nhận người tạo.
+#### Scenario: Tạo thành công
+- **GIVEN** Store Owner.
+- **WHEN** POST Name bắt buộc, Type=Goods, không gửi Code.
+- **THEN** 201, Code `SUP-...`, Status Active.
 
-#### Scenario: Trùng mã cùng Tenant
-- **GIVEN** Đã có `Code=SUP-001` Tenant A.
-- **WHEN** Tạo với cùng mã.
-- **THEN** `400` mã `DUPLICATE_SUPPLIER_CODE` (RFC 7807).
+#### Scenario: Trùng mã Tenant
+- **THEN** 400 `DUPLICATE_SUPPLIER_CODE`.
 
 #### Scenario: Cùng mã hai Tenant
-- **GIVEN** Tenant A có `SUP-001`.
-- **WHEN** Tenant B tạo `SUP-001`.
-- **THEN** `201` cho Tenant B.
+- **THEN** 201 Tenant B.
 
 ---
 
-### Requirement: REQ-03 Soft Inactivation Guard & Status Transition (BR-S03)
-Hệ thống MUST cho Store Owner chuyển Active/Inactive. NCC Inactive MUST NOT được chọn cho PO mới. Hệ thống MUST NOT xóa cứng NCC đã có lịch sử. Ngừng hoạt động MUST NOT xóa PO/GRN/công nợ. Nếu còn PO đang xử lý, hệ thống MUST cảnh báo (`openPurchaseOrderCount`) và MUST NOT tự hủy đơn đã xác nhận. Cho phép Inactive khi còn dư nợ (có cảnh báo).
+### Requirement: REQ-03 Soft Inactivation (BR-S03 FE-09.05)
+Store Owner chuyển Active/Inactive. Inactive MUST NOT chọn cho PO mới. MUST NOT xóa cứng khi đã có PO hoặc GRN hoặc AP ledger (không chỉ khi CurrentDebt>0). Inactive được phép khi còn nợ; response MUST `openPurchaseOrderCount`. MUST NOT tự hủy PO CONFIRMED. MUST NOT trả `SUPPLIER_HAS_OUTSTANDING_DEBT` khi Inactive.
 
-#### Scenario: Inactive thành công kèm cảnh báo PO mở
-- **GIVEN** NCC có 2 PO CONFIRMED chưa hoàn tất và `CurrentDebt>0`.
-- **WHEN** Store Owner `PATCH .../status` Inactive sau confirm.
-- **THEN** `200`, `Status=Inactive`, PO CONFIRMED giữ nguyên, response có `openPurchaseOrderCount=2`.
+#### Scenario: Inactive khi còn nợ và PO mở
+- **GIVEN** CurrentDebt>0, 2 PO CONFIRMED.
+- **WHEN** PATCH Inactive.
+- **THEN** 200 Inactive; PO giữ; `openPurchaseOrderCount=2`.
 
-#### Scenario: Inactive không dùng cho PO mới
-- **GIVEN** NCC Inactive.
-- **WHEN** Tạo PO mới chọn NCC này.
-- **THEN** Hệ thống từ chối chọn NCC Inactive.
-
-#### Scenario: Từ chối xóa cứng khi đã có lịch sử
-- **GIVEN** NCC đã có PO hoặc GRN hoặc AP ledger.
-- **WHEN** `DELETE /api/v1/suppliers/{id}`.
-- **THEN** `400`, dữ liệu giữ nguyên.
+#### Scenario: Từ chối xóa khi có lịch sử
+- **GIVEN** đã có PO (dù nợ=0).
+- **WHEN** DELETE.
+- **THEN** 400, bản ghi còn.
 
 ---
 
-### Requirement: REQ-DEL01 Delivery Schedule & Cutoff Time Configuration (BR-S12)
-Hệ thống MUST cho Store Owner cấu hình `DeliveryDays`, `LeadTimeDays`, `CutoffDayOffset`, `OrderCutoffTime`. Thời điểm chốt MUST tính theo `Asia/Ho_Chi_Minh`. Tại hoặc sau giờ chốt của ngày (`deliveryDate - CutoffDayOffset`) hệ thống MUST NOT cho tạo/sửa đơn thường cho ngày giao đó. `LeadTimeDays` MUST chỉ mô tả thời gian dự kiến, không thay cutoff. Đổi cấu hình MUST NOT tự sửa PO đã gửi/xác nhận.
+### Requirement: REQ-DEL01 Delivery Schedule (BR-S12) — config only
+Store Owner cấu hình DeliveryDays, LeadTimeDays>=0, CutoffDayOffset>=0, OrderCutoffTime HH:mm. Tính theo `Asia/Ho_Chi_Minh`. Change này MUST lưu và trả config; MAY trả `EarliestDeliveryDate` tham khảo. **Không** chặn tạo PO trong change này (FE-05).
 
-#### Scenario: Ví dụ chốt đơn T4
-- **GIVEN** Giao Thứ Tư, `CutoffDayOffset=1`, `OrderCutoffTime=17:00`.
-- **WHEN** Ngày giao 28/10/2026 (Thứ Tư).
-- **THEN** Hạn chốt = 17:00 ngày 27/10/2026 (`Asia/Ho_Chi_Minh`).
+#### Scenario: Ví dụ T4
+- **GIVEN** giao Wed, offset=1, cutoff 17:00.
+- **WHEN** delivery 28/10/2026.
+- **THEN** hạn chốt 17:00 27/10/2026 TZ VN (ghi trên DTO/docs).
 
-#### Scenario: Sau cutoff không tạo đơn thường
-- **GIVEN** Cấu hình như trên; hiện tại 27/10/2026 17:00 trở đi.
-- **WHEN** User tạo PO thường cho giao 28/10/2026.
-- **THEN** Hệ thống từ chối; không tự dời ngày giao.
-
-#### Scenario: Đổi cutoff không sửa PO đã xác nhận
-- **GIVEN** PO CONFIRMED giao 28/10.
-- **WHEN** Store Owner đổi `OrderCutoffTime`.
-- **THEN** Ngày giao PO giữ 28/10.
+#### Scenario: Đổi cutoff không sửa PO confirmed
+- **THEN** ngày giao PO không đổi (không có job rewrite).
 
 ---
 
-### Requirement: REQ-DEL02 Holidays & Blackout Dates Management (BR-S13)
-Hệ thống MUST cho Store Owner thêm/xem/sửa ngày không giao kèm lý do. Đơn mới MUST loại blackout khỏi ngày giao hợp lệ. MUST NOT tự đổi ngày giao đơn đã xác nhận. Chỉ Store Owner quản lý blackout.
+### Requirement: REQ-DEL02 Blackout Dates (BR-S13)
+Store Owner CRUD blackout + lý do. Đơn mới (FE-05) loại ngày này — change này lưu danh sách. MUST NOT tự đổi PO confirmed. Employee không CRUD blackout (403).
 
-#### Scenario: Thêm blackout thành công
-- **GIVEN** Store Owner, NCC hàng hóa.
-- **WHEN** Thêm ngày 2026-12-31, lý do "Nghỉ Tết".
-- **THEN** Lưu `SupplierBlackoutDates`, `200`.
+#### Scenario: Thêm blackout
+- **THEN** 200 lưu ngày + lý do.
 
-#### Scenario: Đơn mới không đề xuất ngày blackout
-- **GIVEN** Blackout 2026-09-02.
-- **WHEN** Lấy danh sách ngày giao hợp lệ cho PO mới.
-- **THEN** Không gồm 2026-09-02.
-
-#### Scenario: Không tự đổi PO đã xác nhận
-- **GIVEN** PO CONFIRMED giao đúng ngày sau đó bị khai blackout.
-- **WHEN** Store Owner lưu blackout.
-- **THEN** Ngày giao PO không đổi; hệ thống có thể cảnh báo.
+#### Scenario: Employee 403 blackout write
+- **WHEN** Employee PUT delivery-config kèm blackout mới.
+- **THEN** 403.
 
 ---
 
-## Unchanged Requirements (giữ nguyên từ bản Apply trước)
-
-REQ-02 Supplier Type narrowing (BR-S07), REQ-04 AP Ledger idempotency (BR-S08), REQ-05 Dual-role linkage (BR-S11), REQ-06 tenant isolation — giữ hành vi đã Implement; Dual-role không phải thao tác chính trên list FE-09.
+## Unchanged Requirements
+REQ-02 type narrowing BR-S07; REQ-04 AP ledger idempotency; REQ-05 Dual-role (không hiện trên list); REQ-06 tenant isolation.
 
 ---
 
 ## Acceptance checklist
-
-- [ ] **REQ-RBAC-01**: Store Owner thấy toàn Tenant; Branch Employee chỉ NCC gán/dùng chung; 403 khi Employee tạo/sửa/status.
-- [ ] **REQ-LIST-01**: Search mã/tên/SĐT/MST; filter loại + trạng thái; cột mã/tên/liên hệ/SĐT/trạng thái; `ContactPerson` trên DTO; không fallback mock.
-- [ ] **REQ-BRANCH-01**: Gán chi nhánh cùng Tenant; rỗng = dùng chung; không xóa lịch sử.
-- [ ] **REQ-PAY-01**: Điều khoản + ngân hàng; không âm; Credit Limit không chặn PO mặc định.
-- [ ] **REQ-HIST-01**: Lịch sử PO/GRN theo phạm vi chi nhánh.
-- [ ] **REQ-AP-VIEW-01**: Store Owner xem số dư từ ledger; Employee 403 + ẩn cột AP trên list.
-- [ ] **REQ-NORETro-01**: Đổi giá/điều khoản/lịch giao không áp ngược PO đã xác nhận.
-- [ ] **REQ-01**: Tạo NCC, mã tự sinh, unique theo Tenant.
-- [ ] **REQ-03**: Inactive không dùng PO mới; cảnh báo PO mở; không tự hủy; không xóa cứng khi có lịch sử.
-- [ ] **REQ-DEL01**: CutoffDayOffset + timezone VN; sau cutoff không tạo đơn thường.
-- [ ] **REQ-DEL02**: Blackout loại khỏi ngày giao mới; không tự sửa PO xác nhận.
-- [ ] **REQ-02 / REQ-04 / REQ-05 / REQ-06**: Giữ regression.
+- [ ] REQ-RBAC-01 role map JWT + 404 ngoài phạm vi + 403 write Employee
+- [ ] REQ-LIST-01 search MST, filter type+status, cột FE-09.01, không AP/Trả/Excel, không mock
+- [ ] REQ-BRANCH-01 gán chi nhánh cùng Tenant; rỗng = dùng chung
+- [ ] REQ-PAY-01 điều khoản không âm
+- [ ] REQ-HIST-01 lịch sử theo chi nhánh, không mock nếu API trống
+- [ ] REQ-AP-VIEW-01 summary Store Owner; list không AP
+- [ ] REQ-NORETro-01 không rewrite PO
+- [ ] REQ-01 tạo + mã tự sinh
+- [ ] REQ-03 Inactive khi còn nợ; không xóa khi có lịch sử
+- [ ] REQ-DEL01 lưu cutoff fields; không implement chặn PO
+- [ ] REQ-DEL02 blackout Store Owner
+- [ ] REQ-02/04/05/06 regression
