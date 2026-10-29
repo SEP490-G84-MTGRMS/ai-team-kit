@@ -27,3 +27,7 @@ User đồng ý duyệt verify-spec và yêu cầu bắt đầu bằng việc t�
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 14:52
 
 Duyệt review đa persona và danh sách 9 tasks. Bắt đầu triển khai hiển thị danh sách sản phẩm ra ProductListPage.
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-29 15:08
+
+Đã chia nhỏ và cập nhật toàn bộ proposal, exploration, design-brief, specs tập trung 100% vào Cụm 1 (Product List & Category Filter) theo yêu cầu của user

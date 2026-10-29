@@ -15,3 +15,7 @@ Bám sát đặc tả nghiệp vụ FE-01 và SRS trong quan ly hang hoa.md cho 
 ## Verify Spec · 2026-10-29 14:52
 
 Chia task theo thứ tự: types -> api -> hooks -> components -> page để code liền mạch và dễ test
+
+## Brainstorm · 2026-10-29 15:08
+
+Chia nhỏ phân hệ thành 4 cụm độc lập: Cụm 1 (Danh sách & Bộ lọc), Cụm 2 (Thêm mới), Cụm 3 (Chi tiết & NCC), Cụm 4 (Sửa & Xóa). Giúp review và test nhanh, chuẩn xác hơn.
