@@ -15,3 +15,7 @@ User duyệt verify-spec và chuyển sang bước /sep-apply để triển khai
 ## Apply — ✅ Approve bởi @minhtamhtyb · 2026-10-29 10:55
 
 User duyệt kết quả Apply và chuyển sang bước /sep-test để lập test report cho product-crud-backend.
+
+## Test — ✅ Approve bởi @minhtamhtyb · 2026-10-29 11:02
+
+User duyệt kết quả kiểm thử bước Test (100% tests PASS, verdict PASS) và chuyển sang bước /sep-archive để đóng change và merge specs.
