@@ -11,7 +11,7 @@
 - [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` chỉ chứa các interface cốt lõi cho danh sách: `ProductResponse`, `PagedResult<T>`, `ProductQueryFilter` khớp 100% với DTOs C#. (REQ-01)
 
 ### Task T2: Product API Service (Tiểu cụm 1.1)
-- [ ] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
+- [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 
 ### Task T3: Server-side Paginated Product Table Integration (Tiểu cụm 1.2)
 - [ ] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` (không dùng custom hook) gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng (Mã hàng, Mã vạch, Tên hàng, ĐVT, Giá bán, Trạng thái) và bộ điều khiển phân trang server-side (trang 1, 2,...). (REQ-01)
