@@ -14,217 +14,188 @@ MT_GRMS.Infrastructure (Repositories, EF Core AppDbContext, PostgreSQL)
 
 ---
 
-## 2. Danh sách Chi tiết DTOs và Endpoint (API Contracts)
+## 2. Thiết kế Chi tiết Phân hệ Quản lý Gói dịch vụ SaaS (Subscription Plans)
 
-### Phân hệ 1: Quản lý Gói cước SaaS (`/api/admin/plans`)
+Khớp 100% với hợp đồng dữ liệu phía Frontend (`plan.types.ts`, `mockPlanData.ts`, `planValidation.ts`):
 
-| Phương thức | Đường dẫn API | Request DTO | Response DTO | Mô tả nghiệp vụ |
+### 2.1. Cấu trúc lưu trữ dữ liệu JSON (`EnabledModulesJson`)
+Do bảng `SubscriptionPlans` trong CSDL có sẵn cột `EnabledModulesJson` (text), hệ thống sẽ đóng gói có cấu trúc (Strongly-typed Metadata):
+```json
+{
+  "description": "Mô tả chi tiết gói cước phù hợp đối tượng nào...",
+  "quotas": {
+    "maxBranches": 1,
+    "maxEmployees": 3,
+    "maxStorageGb": 5,
+    "backupFrequency": "Weekly"
+  },
+  "features": {
+    "fefoExpiryAlert": true,
+    "multiUnitConversion": true,
+    "vietQrDynamic": true,
+    "debtZaloBook": false,
+    "barcodeScanning": true,
+    "financialReporting": false
+  }
+}
+```
+*Đồng thời đồng bộ `MaxBranches` và `MaxStaff` trực tiếp vào 2 cột cùng tên của bảng `SubscriptionPlans` để tăng tốc độ truy vấn.*
+
+---
+
+### 2.2. Danh sách Endpoint API Quản lý Gói dịch vụ (`/api/admin/plans`)
+
+| Phương thức | Đường dẫn API | Request Body | Response DTO | Mô tả nghiệp vụ |
 |---|---|---|---|---|
-| `GET` | `/api/admin/plans` | `(None)` | `ApiResponse<List<PlanSummaryResponse>>` | Lấy danh sách toàn bộ gói cước kèm số tenant đang dùng |
+| `GET` | `/api/admin/plans` | `[Query] PlanFilterRequest` | `ApiResponse<List<PlanSummaryResponse>>` | Lấy danh sách gói cước (lọc theo keyword, status) |
+| `GET` | `/api/admin/plans/kpis` | `(None)` | `ApiResponse<PlanKpiBannerResponse>` | Lấy số liệu 4 thẻ KPI trên đầu màn hình gói cước |
 | `GET` | `/api/admin/plans/{id}` | `(Path: id)` | `ApiResponse<PlanDetailResponse>` | Lấy chi tiết gói cước và danh sách tenant liên kết |
-| `POST` | `/api/admin/plans` | `CreatePlanRequest` | `ApiResponse<PlanDetailResponse>` | Tạo gói cước mới (mã không được trùng) |
-| `PUT` | `/api/admin/plans/{id}` | `UpdatePlanRequest` | `ApiResponse<PlanDetailResponse>` | Cập nhật thông tin, hạn mức, tính năng gói |
-| `PATCH`| `/api/admin/plans/{id}/status` | `UpdatePlanStatusRequest`| `ApiResponse<bool>` | Bật hoặc tắt trạng thái kích hoạt của gói cước |
-
-#### Chi tiết DTOs Gói cước:
-- **`PlanQuotaDto`**:
-  ```csharp
-  public record PlanQuotaDto(
-      int MaxBranches,        // -1: Không giới hạn
-      int MaxEmployees,       // -1: Không giới hạn
-      int MaxStorageGb,
-      string BackupFrequency  // "Daily", "Weekly", "Hourly"
-  );
-  ```
-- **`PlanFeatureDto`**:
-  ```csharp
-  public record PlanFeatureDto(
-      bool FefoExpiryAlert,
-      bool MultiUnitConversion,
-      bool VietQrDynamic,
-      bool DebtZaloBook,
-      bool BarcodeScanning,
-      bool FinancialReporting
-  );
-  ```
-- **`CreatePlanRequest`**:
-  ```csharp
-  public record CreatePlanRequest(
-      string Code,
-      string Name,
-      string Description,
-      decimal MonthlyPrice,
-      decimal YearlyPrice,
-      PlanQuotaDto Quotas,
-      PlanFeatureDto Features
-  );
-  ```
-- **`UpdatePlanRequest`**:
-  ```csharp
-  public record UpdatePlanRequest(
-      string Name,
-      string Description,
-      decimal MonthlyPrice,
-      decimal YearlyPrice,
-      PlanQuotaDto Quotas,
-      PlanFeatureDto Features
-  );
-  ```
-- **`PlanSummaryResponse`**:
-  ```csharp
-  public record PlanSummaryResponse(
-      string Id,
-      string Code,
-      string Name,
-      string Description,
-      decimal MonthlyPrice,
-      decimal YearlyPrice,
-      string Status,         // "Active" | "Inactive"
-      int ActiveTenantCount,
-      PlanQuotaDto Quotas,
-      PlanFeatureDto Features,
-      DateTime CreatedAt,
-      DateTime? UpdatedAt
-  );
-  ```
+| `POST` | `/api/admin/plans` | `CreatePlanRequest` | `ApiResponse<PlanDetailResponse>` | Tạo mới gói cước SaaS |
+| `PUT` | `/api/admin/plans/{id}` | `UpdatePlanRequest` | `ApiResponse<PlanDetailResponse>` | Cập nhật thông tin, giá, hạn mức, tính năng |
+| `PATCH`| `/api/admin/plans/{id}/status`| `UpdatePlanStatusRequest` | `ApiResponse<bool>` | Bật hoặc tắt trạng thái kích hoạt (Active/Inactive) |
+| `DELETE`| `/api/admin/plans/{id}` | `(None)` | `ApiResponse<bool>` | Xóa gói cước (chặn nếu đang có tenant sử dụng) |
 
 ---
 
-### Phân hệ 2: Quản lý Khách thuê (`/api/admin/tenants`)
+### 2.3. Chi tiết DTOs và Quy tắc Validation
 
-| Phương thức | Đường dẫn API | Request DTO | Response DTO | Mô tả nghiệp vụ |
-|---|---|---|---|---|
-| `GET` | `/api/admin/tenants` | `(Query: TenantFilterRequest)` | `ApiResponse<PagedResult<TenantSummaryResponse>>` | Tìm kiếm, phân trang và lọc tenant theo trạng thái |
-| `GET` | `/api/admin/tenants/{id}` | `(Path: id)` | `ApiResponse<TenantDetailResponse>` | Xem hồ sơ chi tiết chuỗi, chi nhánh, chủ sở hữu |
-| `PUT` | `/api/admin/tenants/{id}` | `UpdateTenantRequest` | `ApiResponse<TenantDetailResponse>` | Cập nhật thông tin hành chính của khách thuê |
-| `POST` | `/api/admin/tenants/{id}/lock` | `LockTenantRequest` | `ApiResponse<bool>` | Khóa hoạt động của khách thuê (Soft hoặc Hard) |
-| `POST` | `/api/admin/tenants/{id}/unlock` | `(None)` | `ApiResponse<bool>` | Mở khóa và khôi phục hoạt động cho khách thuê |
-| `POST` | `/api/admin/tenants/{id}/extend-grace` | `ExtendGraceRequest` | `ApiResponse<DateTime>` | Gia hạn thêm ngày ân hạn thanh toán cho tenant |
+#### `PlanQuotaDto`
+```csharp
+public record PlanQuotaDto(
+    int MaxBranches,        // Tối thiểu 1 hoặc -1 (vô hạn)
+    int MaxEmployees,       // Tối thiểu 1 hoặc -1 (vô hạn)
+    int MaxStorageGb,       // Tối thiểu 1 GB
+    string BackupFrequency  // "Daily" | "Weekly" | "Hourly"
+);
+```
 
-#### Chi tiết DTOs Khách thuê:
-- **`TenantFilterRequest`**:
-  ```csharp
-  public record TenantFilterRequest(
-      string? Keyword,
-      string? Status,        // "all", "active", "expiring", "grace", "locked"
-      string? PlanCode,
-      int Page = 1,
-      int PageSize = 10
-  );
-  ```
-- **`TenantSummaryResponse`**:
-  ```csharp
-  public record TenantSummaryResponse(
-      string Id,
-      string Subdomain,
-      string Name,
-      string TaxCode,
-      string City,
-      string OwnerName,
-      string OwnerEmail,
-      string OwnerPhone,
-      string Plan,
-      int BranchCount,
-      int MaxBranches,
-      int StaffCount,
-      int MaxStaff,
-      DateTime? ExpiryDate,
-      string Status,
-      string? LockType,
-      int? GraceDaysRemaining,
-      int? DaysUntilExpiry
-  );
-  ```
-- **`LockTenantRequest`**:
-  ```csharp
-  public record LockTenantRequest(
-      string LockType,       // "soft" hoặc "hard"
-      string Reason          // Lý do khóa
-  );
-  ```
-- **`ExtendGraceRequest`**:
-  ```csharp
-  public record ExtendGraceRequest(
-      int AdditionalDays,    // Số ngày gia hạn thêm (vd: 7, 14, 30)
-      string Reason
-  );
-  ```
+#### `PlanFeatureDto`
+```csharp
+public record PlanFeatureDto(
+    bool FefoExpiryAlert,       // Quản lý date FEFO 3 mức màu
+    bool MultiUnitConversion,   // Quy đổi đa đơn vị thùng/lon
+    bool VietQrDynamic,         // VietQR động khớp tiền tự động
+    bool DebtZaloBook,          // Sổ nợ Zalo & Bán hàng nợ
+    bool BarcodeScanning,       // Quét mã vạch Barcode POS
+    bool FinancialReporting     // Báo cáo tài chính & Sổ quỹ chuyên sâu
+);
+```
 
----
+#### `CreatePlanRequest`
+```csharp
+public record CreatePlanRequest(
+    string Code,                // Regex: ^[A-Z0-9_]+$, ví dụ: PLAN_PRO_MAX
+    string Name,                // 3 - 100 ký tự
+    string Description,         // Mô tả gói
+    decimal MonthlyPrice,       // >= 0 VNĐ
+    decimal YearlyPrice,        // >= 0 VNĐ
+    PlanQuotaDto Quotas,
+    PlanFeatureDto Features
+);
+```
+**Quy tắc kiểm tra (FluentValidation)**:
+- `Code`: Bắt buộc, chữ in hoa/số/gạch dưới (`^[A-Z0-9_]+$`), kiểm tra duy nhất trong DB.
+- `MonthlyPrice` và `YearlyPrice`: Không được âm (`>= 0`).
+- `Quotas.MaxBranches`: `>= 1` hoặc `== -1`.
+- `Quotas.MaxEmployees`: `>= 1` hoặc `== -1`.
+- `Quotas.MaxStorageGb`: `>= 1`.
 
-### Phân hệ 3: Master Dashboard & KPI Thống kê (`/api/admin/dashboard`)
+#### `UpdatePlanRequest`
+```csharp
+public record UpdatePlanRequest(
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    decimal YearlyPrice,
+    PlanQuotaDto Quotas,
+    PlanFeatureDto Features
+);
+```
+*(Không cho phép sửa `Code` để bảo toàn tính toàn vẹn liên kết tenant).*
 
-| Phương thức | Đường dẫn API | Request | Response DTO | Mô tả nghiệp vụ |
-|---|---|---|---|---|
-| `GET` | `/api/admin/dashboard/kpis` | `(None)` | `ApiResponse<List<KpiMetricResponse>>` | 4 chỉ số tài chính và vận hành cốt lõi |
-| `GET` | `/api/admin/dashboard/plan-distribution` | `(None)` | `ApiResponse<List<PlanDistributionResponse>>` | Tỷ trọng khách thuê và doanh thu theo gói |
-| `GET` | `/api/admin/dashboard/urgent-alerts` | `(None)` | `ApiResponse<List<UrgentAlertResponse>>` | Cảnh báo khẩn cấp các tenant cần can thiệp |
-| `GET` | `/api/admin/dashboard/analytics` | `(None)` | `ApiResponse<List<MonthlyAnalyticsResponse>>` | Doanh thu MRR/ARR và tăng trưởng 12 tháng |
+#### `PlanKpiBannerResponse`
+```csharp
+public record PlanKpiBannerResponse(
+    int TotalPlans,             // Tổng số gói hiện có
+    int ActivePlans,            // Số gói đang mở kích hoạt
+    int TotalActiveTenants,     // Tổng số cửa hàng đang thuê gói
+    decimal EstimatedMrr        // Doanh thu định kỳ hàng tháng ước tính
+);
+```
 
----
+#### `PlanSummaryResponse` & `PlanDetailResponse`
+```csharp
+public record PlanTenantSummaryDto(
+    string Id,
+    string Name,
+    string Subdomain,
+    int ActiveBranches,
+    int ActiveEmployees,
+    DateTime JoinedDate,
+    DateTime? ExpiryDate
+);
 
-## 3. Phân tích Chi tiết Logic Nghiệp vụ của các Services
+public record PlanSummaryResponse(
+    string Id,
+    string Code,
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    decimal YearlyPrice,
+    string Status,             // "Active" | "Inactive"
+    int ActiveTenantCount,
+    PlanQuotaDto Quotas,
+    PlanFeatureDto Features,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
+);
 
-### A. Logic Service Gói cước (`SubscriptionPlanService`)
-1. **Lấy danh sách (`GetAllPlansAsync`)**:
-   - Query toàn bộ `SubscriptionPlans` từ DB.
-   - Với mỗi gói cước, đếm số `Tenants` đang liên kết có `Status == "ACTIVE"`.
-   - Parse `EnabledModulesJson` để ánh xạ ra `PlanQuotaDto` và `PlanFeatureDto`.
-2. **Tạo mới gói (`CreatePlanAsync`)**:
-   - Kiểm tra `PlanCode` có bị trùng trong DB không (nếu trùng throw `ConflictException`).
-   - Validate giá: `MonthlyPrice >= 0`, `YearlyPrice >= 0`.
-   - Đóng gói Quotas và Features thành chuỗi JSON lưu vào `EnabledModulesJson`.
-   - Lưu vào DB, trả về thông tin gói vừa tạo.
-3. **Cập nhật gói (`UpdatePlanAsync`)**:
-   - Tìm gói theo Id, nếu không thấy throw `NotFoundException`.
-   - Giữ nguyên `PlanCode` (không cho sửa mã để tránh gãy liên kết dữ liệu lịch sử).
-   - Cập nhật `PlanName`, `Description`, `PriceMonthly`, `PriceYearly`, `MaxBranches`, `MaxStaff`, `EnabledModulesJson`, `UpdatedAt = DateTime.UtcNow`.
-4. **Bật/Tắt kích hoạt (`ToggleStatusAsync`)**:
-   - Nếu chuyển từ Active sang Inactive: Kiểm tra xem có Tenant nào đang Active trên gói này không. Nếu có, vẫn cho phép đổi trạng thái nhưng gói sẽ không hiển thị cho Tenant mới đăng ký.
-
----
-
-### B. Logic Service Khách thuê (`TenantService`)
-1. **Truy vấn danh sách có phân trang và bộ lọc (`GetPagedTenantsAsync`)**:
-   - Query `Tenants` kèm `SubscriptionPlan`, `Branches`, `TenantUsers`.
-   - Áp dụng lọc theo từ khóa: tìm kiếm gần đúng trên `Name`, `Subdomain`, `TaxCode`, `Code`.
-   - Áp dụng logic lọc theo trạng thái tính toán động:
-     - `locked`: `LockType != null`
-     - `expiring`: Chưa bị khóa và `SubscriptionExpiresAt` còn lại từ 0 đến 7 ngày.
-     - `grace`: Chưa bị khóa, đã quá hạn thuê nhưng còn trong thời gian ân hạn (`SubscriptionExpiresAt < Now <= GracePeriodExpiresAt`).
-     - `active`: Đang hoạt động bình thường và chưa đến hạn cảnh báo.
-   - Phân trang chuẩn: `Skip((page - 1) * pageSize).Take(pageSize)`.
-2. **Khóa khách thuê (`LockTenantAsync`)**:
-   - Tìm tenant theo Id. Nếu không tồn tại throw `NotFoundException`.
-   - Ghi nhận `LockType` ("soft" / "hard"), `LockReason` (lý do do Admin nhập), `LockedAt = DateTime.UtcNow`, `LockedBy = currentAdminUser`.
-   - Cập nhật `Status = "LOCKED"`.
-3. **Mở khóa khách thuê (`UnlockTenantAsync`)**:
-   - Xóa bỏ `LockType = null`, `LockReason = null`, `LockedAt = null`, `LockedBy = null`.
-   - Tính toán lại `Status`: Nếu còn hạn thì trả về `"ACTIVE"`, nếu đang trong ân hạn thì `"GRACE"`.
-4. **Gia hạn ân hạn (`ExtendGracePeriodAsync`)**:
-   - Xác định mốc thời gian bắt đầu gia hạn: Nếu `GracePeriodExpiresAt` hiện tại lớn hơn `DateTime.UtcNow` thì cộng tiếp từ mốc đó, ngược lại cộng từ `DateTime.UtcNow`.
-   - Cập nhật `GracePeriodExpiresAt = baseDate.AddDays(additionalDays)`.
-   - Cập nhật `Status = "GRACE"` nếu trước đó bị quá hạn.
+public record PlanDetailResponse(
+    string Id,
+    string Code,
+    string Name,
+    string Description,
+    decimal MonthlyPrice,
+    decimal YearlyPrice,
+    string Status,
+    int ActiveTenantCount,
+    PlanQuotaDto Quotas,
+    PlanFeatureDto Features,
+    List<PlanTenantSummaryDto> Tenants,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
+);
+```
 
 ---
 
-### C. Logic Service Thống kê (`AdminDashboardService`)
-1. **Tính toán KPIs (`GetKpisAsync`)**:
-   - **MRR**: Tổng `PriceMonthly` của tất cả tenant đang `Status == "ACTIVE"`.
-   - **Active Tenants**: Đếm số tenant có trạng thái Active.
-   - **Total Branches**: Đếm tổng số chi nhánh của toàn bộ các chuỗi cửa hàng trong hệ thống.
-   - **Expiring / Grace Tenants**: Đếm số tenant có nguy cơ ngưng hoạt động để Admin chủ động hỗ trợ.
-2. **Phân bổ gói cước (`GetPlanDistributionAsync`)**:
-   - Gom nhóm (Group by) các tenant theo `CurrentPlan` hoặc `SubscriptionPlan.PlanName`.
-   - Tính tỷ lệ phần trăm tenant và tổng doanh thu ước tính theo từng gói.
-3. **Cảnh báo khẩn cấp (`GetUrgentAlertsAsync`)**:
-   - Lọc ra Top các tenant có `Status` là `locked`, `grace`, hoặc `expiring` sắp xếp theo mức độ ưu tiên thời gian hết hạn gần nhất.
+### 2.4. Logic Chi tiết trong `SubscriptionPlanService`
+
+1. **Lấy danh sách gói (`GetAllPlansAsync`)**:
+   - Query danh sách `SubscriptionPlans` chưa bị xóa (`IsDeleted == false`).
+   - Hỗ trợ lọc theo `Keyword` (tìm trong `PlanCode`, `PlanName`) và `Status` (`Active` / `Inactive`).
+   - Đếm số `Tenants` liên kết đang hoạt động (`Status == "ACTIVE"`).
+   - Parse `EnabledModulesJson` để trích xuất `Description`, `Quotas`, `Features`.
+2. **Lấy số liệu KPI Banner (`GetPlanKpisAsync`)**:
+   - Đếm tổng số gói, số gói `IsActive == true`.
+   - Tính tổng số tenant active và tổng doanh thu ước tính `EstimatedMrr = SUM(PriceMonthly của các tenant active)`.
+3. **Xem chi tiết gói (`GetPlanByIdAsync`)**:
+   - Tìm gói theo Id (nếu không thấy throw `NotFoundException`).
+   - Lấy danh sách tenant đang dùng gói này kèm số chi nhánh và nhân sự thực tế.
+4. **Tạo mới gói (`CreatePlanAsync`)**:
+   - Chuyển `Code` về chữ hoa, kiểm tra trùng lặp trong CSDL (nếu trùng throw `409 Conflict`).
+   - Đóng gói DTO thành chuỗi JSON `EnabledModulesJson`.
+   - Lưu vào DB, trả về thông tin chi tiết gói vừa tạo (`201 Created`).
+5. **Cập nhật gói (`UpdatePlanAsync`)**:
+   - Tìm gói theo Id, cập nhật các trường thông tin và serialize lại `EnabledModulesJson`.
+6. **Bật/Tắt kích hoạt (`TogglePlanStatusAsync`)**:
+   - Cập nhật cờ `IsActive = request.IsActive`, gán `UpdatedAt = DateTime.UtcNow`.
+7. **Xóa gói cước (`DeletePlanAsync`)**:
+   - **Quy tắc an toàn**: Đếm số `Tenants` đang liên kết với gói cước này. Nếu `ActiveTenantCount > 0`, hệ thống **CHẶN XÓA** và ném lỗi nghiệp vụ:
+     `"Không thể xóa gói dịch vụ đang có {activeTenantCount} cửa hàng sử dụng."` (HTTP 400 Bad Request).
+   - Nếu `ActiveTenantCount == 0`, tiến hành Soft Delete (`IsDeleted = true`).
 
 ---
 
-## 4. Bảo mật & Phân quyền (Security & Authorization)
-- Tất cả các Controller `AdminPlansController`, `AdminTenantsController`, `AdminDashboardController` đều được gán thuộc tính:
-  ```csharp
-  [Authorize(Roles = "ADMIN")]
-  ```
-- Token JWT khi gửi lên bắt buộc phải chứa Claim `"role": "ADMIN"`. Nếu sai quyền -> trả về HTTP 403 Forbidden; nếu thiếu token -> trả về HTTP 401 Unauthorized.
+## 3. Phân hệ Quản lý Khách thuê & Dashboard (Tổng hợp tóm tắt)
+*(Chi tiết như đã thiết lập: `AdminTenantsController` cho vòng đời khách thuê Soft/Hard Lock/Gia hạn ân hạn và `AdminDashboardController` cho KPI/Alerts/Analytics).*
