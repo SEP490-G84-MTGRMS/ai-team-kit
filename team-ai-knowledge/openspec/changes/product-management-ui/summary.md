@@ -35,3 +35,7 @@ Duyệt review đa persona và danh sách 9 tasks. Bắt đầu triển khai hi�
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 15:11
 
 Đã duyệt kế hoạch và 6 tasks cho Cụm 1 (Product List & Category Filter)
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 15:23
+
+Đã duyệt Verify Spec với 4 tasks tinh gọn cho Tiểu cụm 1.1 & 1.2 không dùng custom hook.

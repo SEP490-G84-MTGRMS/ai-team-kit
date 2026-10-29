@@ -23,3 +23,7 @@ Chia nhỏ phân hệ thành 4 cụm độc lập: Cụm 1 (Danh sách & Bộ l�
 ## Verify Spec · 2026-10-29 15:11
 
 Tách nhỏ các cụm chức năng giúp giảm thiểu conflict và dễ verify từng phần
+
+## Verify Spec · 2026-10-29 15:23
+
+Loại bỏ custom hook, dùng trực tiếp useState/useEffect/useCallback đồng bộ style codebase.
