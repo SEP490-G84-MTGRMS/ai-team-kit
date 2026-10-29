@@ -19,3 +19,7 @@ User xac nhan hoan thanh cac buoc tiep theo. Toan bo 8 tasks da hoan tat, npm ru
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-29 14:16
 
 Đã hoàn thành exploration, design-brief, specs khớp 100% với ProductsController và CategoriesController của Backend
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 14:22
+
+User đồng ý duyệt verify-spec và yêu cầu bắt đầu bằng việc tạo DTOs bên front end
