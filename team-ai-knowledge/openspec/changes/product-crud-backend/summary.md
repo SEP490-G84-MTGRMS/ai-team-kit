@@ -7,3 +7,7 @@ User duyệt proposal cho product-crud-backend và chuyển sang bước /sep-br
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-29 10:40
 
 User duyệt kết quả brainstorm cho product-crud-backend và chuyển sang bước /sep-verify-spec.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 10:47
+
+User duyệt verify-spec và chuyển sang bước /sep-apply để triển khai code cho product-crud-backend.
