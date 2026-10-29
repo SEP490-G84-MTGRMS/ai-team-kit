@@ -1,18 +1,15 @@
-# Tasks: product-management-ui
+# Tasks: product-management-ui (Cụm 1: Product List & Category Filter)
 
-## Types & API Client Layer
-- [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` khớp 100% với DTOs C# (`ProductResponse`, `ProductCreateRequest`, `ProductUpdateRequest`, `ProductQueryFilter`, `CategoryDto`) (REQ-01, REQ-02)
-- [x] T2 — Xây dựng `src/features/product/api/productApi.ts` & `categoryApi.ts` kết nối `/api/products` và `/api/categories` qua `httpClient` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06)
+## Layer 1: Types & API Client (Cụm 1)
+- [ ] T1 — Chuẩn hóa `src/features/product/types/index.ts` cho Product Response, Paged Result, Product Query Filter và Flat Category (REQ-01, REQ-03)
+- [ ] T2 — Xây dựng `src/features/product/api/productApi.ts` (`getProducts`) và `src/features/product/api/categoryApi.ts` (`getCategories`) sử dụng `httpClient` chuẩn (REQ-01, REQ-03)
 
-## React Query Hooks Layer
-- [x] T3 — Xây dựng custom hooks `useProducts`, `useProductDetail`, `useProductMutations`, `useCategories` hỗ trợ cache và invalidate (REQ-01, REQ-03, REQ-04, REQ-05, REQ-06)
+## Layer 2: React Query Hooks (Cụm 1)
+- [ ] T3 — Xây dựng custom hooks `useProducts(filterParams)` và `useCategories()` với cơ chế caching chuẩn TanStack Query v5 (REQ-01, REQ-03)
 
-## UI Components & Integration Layer
-- [x] T4 — Cập nhật `CategorySidebar.tsx` tải dữ liệu danh mục phẳng từ API, hỗ trợ lọc theo CategoryId (REQ-06)
-- [ ] T5 — Nâng cấp `ProductListPage.tsx` tích hợp tìm kiếm debounced, phân trang server-side và ẩn cột Giá vốn theo BR-SEC-01 (REQ-01)
-- [ ] T6 — Nâng cấp `ProductFormModal.tsx` hỗ trợ tạo mới (`POST /api/products`) và cập nhật (`PUT /api/products/{id}`), kiểm soát trường `CostPrice` và validate input (REQ-02, REQ-04)
-- [ ] T7 — Nâng cấp `ProductDetailModal.tsx` hiển thị chi tiết 360 độ và danh sách Nhà cung cấp liên kết (`GET /api/products/{id}/suppliers`) (REQ-03)
-- [ ] T8 — Tích hợp thao tác Xóa mềm sản phẩm (`DELETE /api/products/{id}`) với hộp thoại xác nhận bảo toàn dữ liệu BR-DATA-01 (REQ-05)
+## Layer 3: UI Integration (Cụm 1)
+- [ ] T4 — Nâng cấp `CategorySidebar.tsx` hiển thị danh mục phẳng từ API Backend và kích hoạt callback chọn danh mục (REQ-03)
+- [ ] T5 — Nâng cấp `ProductListPage.tsx` & bảng hiển thị: tích hợp debounced search (300ms), phân trang server-side, và ẩn cột "Giá vốn" với vai trò Cashier/Staff theo BR-SEC-01 (REQ-01, REQ-02, REQ-04)
 
-## Verification & Testing
-- [ ] T9 — Viết và chạy unit tests cho `productApi` và các scenarios chính (phân trang, tạo, sửa, xóa, phân quyền giá vốn) (REQ-01 đến REQ-06)
+## Layer 4: Verification & Test (Cụm 1)
+- [ ] T6 — Viết và chạy unit test cho API mapping, logic phân trang, debounced search và phân quyền ẩn giá vốn (REQ-01 đến REQ-04)
