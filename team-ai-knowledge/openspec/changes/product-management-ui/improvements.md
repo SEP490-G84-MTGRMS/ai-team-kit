@@ -19,3 +19,7 @@ Chia task theo thứ tự: types -> api -> hooks -> components -> page để cod
 ## Brainstorm · 2026-10-29 15:08
 
 Chia nhỏ phân hệ thành 4 cụm độc lập: Cụm 1 (Danh sách & Bộ lọc), Cụm 2 (Thêm mới), Cụm 3 (Chi tiết & NCC), Cụm 4 (Sửa & Xóa). Giúp review và test nhanh, chuẩn xác hơn.
+
+## Verify Spec · 2026-10-29 15:11
+
+Tách nhỏ các cụm chức năng giúp giảm thiểu conflict và dễ verify từng phần
