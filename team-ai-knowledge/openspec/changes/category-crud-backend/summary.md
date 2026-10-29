@@ -11,3 +11,7 @@ User chấp thuận kết quả brainstorm và chuyển sang bước /sep-verify
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 09:32
 
 User duyệt kết quả verify-spec và chuyển sang bước /sep-apply để triển khai code theo tasks.md.
+
+## Apply — ✅ Approve bởi @minhtamhtyb · 2026-10-29 10:05
+
+User duyệt kết quả code bước Apply và chuyển sang bước /sep-test để lập test report.
