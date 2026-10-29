@@ -7,3 +7,7 @@ User đã duyệt proposal.md cho change category-crud-backend: Xây dựng tr�
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-29 09:27
 
 User chấp thuận kết quả brainstorm và chuyển sang bước /sep-verify-spec.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 09:32
+
+User duyệt kết quả verify-spec và chuyển sang bước /sep-apply để triển khai code theo tasks.md.
