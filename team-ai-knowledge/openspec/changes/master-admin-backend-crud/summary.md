@@ -11,3 +11,7 @@ User duyệt thiết kế chi tiết DTOs, logic service và API cho Subscriptio
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-10-29 14:58
 
 User duyệt kết quả verify-spec và danh sách 14 task trong tasks.md.
+
+## Apply — ✅ Approve bởi @Ortus24 · 2026-10-29 15:25
+
+Hoàn thành code toàn bộ 15 task backend CRUD (Plans, Tenants, Dashboard) và vượt qua 102/102 Unit Tests & Integration Tests (100% xanh).
