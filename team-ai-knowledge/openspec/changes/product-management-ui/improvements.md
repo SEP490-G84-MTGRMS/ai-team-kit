@@ -3,3 +3,7 @@
 ## Spec · 2026-10-13 07:41
 
 Bám sát đặc tả nghiệp vụ FE-01 và SRS trong quan ly hang hoa.md cho các bước tiếp theo
+
+## Brainstorm · 2026-10-29 14:16
+
+Đồng bộ trực tiếp types giữa C# DTOs và TypeScript interfaces để tránh lỗi mapping

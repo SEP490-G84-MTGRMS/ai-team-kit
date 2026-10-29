@@ -15,3 +15,7 @@ User yeu cau hoan thanh cac buoc tiep theo va code giao dien. Skeptic review dat
 ## Apply — ✅ Approve bởi @minhtamhtyb · 2026-10-13 09:14
 
 User xac nhan hoan thanh cac buoc tiep theo. Toan bo 8 tasks da hoan tat, npm run build thanh cong 0 loi. Duyet apply.
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-29 14:16
+
+Đã hoàn thành exploration, design-brief, specs khớp 100% với ProductsController và CategoriesController của Backend
