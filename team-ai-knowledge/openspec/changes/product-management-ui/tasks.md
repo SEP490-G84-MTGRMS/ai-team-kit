@@ -5,7 +5,7 @@
 - [x] T2 — Xây dựng `src/features/product/api/productApi.ts` & `categoryApi.ts` kết nối `/api/products` và `/api/categories` qua `httpClient` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06)
 
 ## React Query Hooks Layer
-- [ ] T3 — Xây dựng custom hooks `useProducts`, `useProductDetail`, `useProductMutations`, `useCategories` hỗ trợ cache và invalidate (REQ-01, REQ-03, REQ-04, REQ-05, REQ-06)
+- [x] T3 — Xây dựng custom hooks `useProducts`, `useProductDetail`, `useProductMutations`, `useCategories` hỗ trợ cache và invalidate (REQ-01, REQ-03, REQ-04, REQ-05, REQ-06)
 
 ## UI Components & Integration Layer
 - [ ] T4 — Cập nhật `CategorySidebar.tsx` tải dữ liệu danh mục phẳng từ API, hỗ trợ lọc theo CategoryId (REQ-06)
