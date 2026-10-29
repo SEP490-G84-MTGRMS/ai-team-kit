@@ -1,16 +1,14 @@
-# Skeptic Review: product-management-ui
+# Skeptic Review: product-management-ui (Cụm 1: Product List & Category Filter)
 
 | Chiều | Điểm (1–5) | Nhận xét |
 |---|---|---|
-| **D1 Completeness** | 5/5 | Đã bao phủ toàn bộ 6 Use Case tương ứng của phân hệ Product: danh sách phân trang, tìm kiếm, tạo mới, xem chi tiết & NCC, sửa, xóa mềm và lọc danh mục. Các edge case về trùng barcode, empty state và role security đều có scenario chi tiết. |
-| **D2 Correctness** | 5/5 | Các endpoint (`GET/POST/PUT/DELETE /api/products`, `GET /api/products/{id}/suppliers`, `GET /api/categories`) và cấu trúc trường DTO khớp 100% với implementation thực tế của Backend C#. |
-| **D3 Coherence** | 5/5 | Khảo sát (`exploration.md`), thiết kế (`design-brief.md`) và đặc tả (`specs.md`) đồng nhất về mặt thuật ngữ và kiến trúc tích hợp. |
-| **D4 Constraints** | 5/5 | Đảm bảo triệt để các Business Rules: BR-SEC-01 (ẩn giá vốn), BR-DATA-01 (xóa mềm bảo toàn sổ cái), BR-PROD-01 (bất biến base unit sau giao dịch). |
-| **D5 Blast Radius** | 5/5 | Phạm vi thay đổi khu biệt gọn gàng trong `MT_GRMS_FRONTEND/src/features/product/`, không làm ảnh hưởng tới Backend hay các module Frontend khác. |
+| **D1 Completeness** | 5/5 | Phạm vi Cụm 1 đã được giới hạn rõ ràng: Danh sách phân trang, tìm kiếm debounced, lọc danh mục phẳng, và phân quyền giá vốn. Các kịch bản tải trang, đổi trang, lọc và empty state đều có scenario chi tiết. |
+| **D2 Correctness** | 5/5 | Endpoint `GET /api/products` và `GET /api/categories` khớp 100% với Backend `ProductsController.cs` và `CategoriesController.cs`. |
+| **D3 Coherence** | 5/5 | Kế hoạch chia nhỏ (Milestones) trong proposal được phản ánh đồng bộ trong exploration, design-brief và specs. |
+| **D4 Constraints** | 5/5 | Tuân thủ nghiêm ngặt quy tắc [BR-SEC-01](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/doc/Report/Report-3_Software%20Requirement%20Specification.docx.md#L4759): Bảo vệ dữ liệu giá vốn theo vai trò người dùng (Cashier/Staff không thấy giá vốn). |
+| **D5 Blast Radius** | 5/5 | Rất nhỏ và an toàn. Chỉ chỉnh sửa trang danh sách và sidebar, không tác động tới các modal hay các chức năng khác chưa cần chạm tới. |
 
 ## Vấn đề
-- [LOW] REQ-01: Trong ô tìm kiếm, người dùng gõ nhanh có thể gây bắn liên tục nhiều request $\rightarrow$ Đã xử lý: Đã quy định cơ chế `useDebounce` 300ms trong `design-brief.md` và `specs.md`.
-- [LOW] REQ-06: Danh mục sản phẩm ở Backend đã chuyển sang Flat List (danh mục phẳng), cần đảm bảo `CategorySidebar` không render dạng cây lồng nhau phức tạp $\rightarrow$ Đã xử lý: Quy định rõ trong spec hiển thị danh sách phẳng với số lượng sản phẩm.
+- Không phát hiện vấn đề mức HIGH. Thiết kế chia nhỏ cụm 1 rất gọn và an toàn để bắt đầu code.
 
 ## Kết luận: Chấp nhận
-Specs đã sẵn sàng để lập task và tiến hành triển khai code.
