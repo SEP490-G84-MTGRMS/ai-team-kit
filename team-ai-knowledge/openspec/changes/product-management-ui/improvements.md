@@ -3,3 +3,27 @@
 ## Spec · 2026-10-13 07:41
 
 Bám sát đặc tả nghiệp vụ FE-01 và SRS trong quan ly hang hoa.md cho các bước tiếp theo
+
+## Brainstorm · 2026-10-29 14:16
+
+Đồng bộ trực tiếp types giữa C# DTOs và TypeScript interfaces để tránh lỗi mapping
+
+## Verify Spec · 2026-10-29 14:22
+
+Đồng bộ chặt chẽ DTOs TypeScript với C# Records ngay từ đầu để tránh lỗi runtime mapping
+
+## Verify Spec · 2026-10-29 14:52
+
+Chia task theo thứ tự: types -> api -> hooks -> components -> page để code liền mạch và dễ test
+
+## Brainstorm · 2026-10-29 15:08
+
+Chia nhỏ phân hệ thành 4 cụm độc lập: Cụm 1 (Danh sách & Bộ lọc), Cụm 2 (Thêm mới), Cụm 3 (Chi tiết & NCC), Cụm 4 (Sửa & Xóa). Giúp review và test nhanh, chuẩn xác hơn.
+
+## Verify Spec · 2026-10-29 15:11
+
+Tách nhỏ các cụm chức năng giúp giảm thiểu conflict và dễ verify từng phần
+
+## Verify Spec · 2026-10-29 15:23
+
+Loại bỏ custom hook, dùng trực tiếp useState/useEffect/useCallback đồng bộ style codebase.

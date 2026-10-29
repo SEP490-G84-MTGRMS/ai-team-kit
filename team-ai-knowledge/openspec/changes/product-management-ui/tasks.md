@@ -1,25 +1,31 @@
-# Tasks: product-management-ui (FE-01 Product Catalog Management)
+# Tasks: product-management-ui
 
-## 1. Domain Types & Mock Data Contract
-- [x] T1 — Khởi tạo Data Types, DTOs & Mock Service (`src/features/product/types/index.ts`, `src/features/product/services/mockData.ts`) (REQ-01, REQ-02, REQ-03, REQ-06)
+> **Quy định kỹ thuật:** KHÔNG dùng custom hook. Theo đúng style hiện tại của dự án (như `SupplierProductManagementPage.tsx`): sử dụng trực tiếp `useState`, `useEffect`, `useCallback` trong Page component để gọi `productApi`.
+> **Phạm vi Change:** Tập trung hoàn thành dứt điểm **Tiểu cụm 1.1 & 1.2: Nền tảng API & Bảng Danh sách Phân trang Server-side (Read-only)**.
 
-## 2. Category Tree Management
-- [x] T2 — Xây dựng Category Sidebar & Modals Quản lý nhóm hàng (`CategorySidebar.tsx`, `CategoryModal.tsx`) theo prototype `create_category.html` & `edit_category.html` (REQ-06)
+---
 
-## 3. Product List Screen
-- [x] T3 — Xây dựng Màn hình Danh sách Hàng hóa (`ProductListPage.tsx`) theo prototype `product_management.html` với bộ lọc đa tiêu chí, bảo mật che giá vốn theo vai trò (BR-SEC-01), phân trang và tổng hợp tồn kho (REQ-01)
+## Danh sách Tasks cho Tiểu cụm 1.1 & 1.2 (Không dùng Custom Hook)
 
-## 4. Standard Product Creation & Editing
-- [x] T4 — Xây dựng Màn hình / Modal Thêm & Sửa Hàng hóa chuẩn (`ProductFormModal.tsx`, `CreateProductPage.tsx`) theo prototype `create_product.html`: tự sinh SKU, cấu hình bảng quy đổi ĐVT đa cấp, định mức an toàn, khóa bất biến Base UOM sau giao dịch (BR-PROD-01) (REQ-02, REQ-04)
+### Task T1: Core Types Synchronization (Tiểu cụm 1.1)
+- [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` chỉ chứa các interface cốt lõi cho danh sách: `ProductResponse`, `PagedResult<T>`, `ProductQueryFilter` khớp 100% với DTOs C#. (REQ-01)
 
-## 5. Combo Product Management
-- [x] T5 — Xây dựng Màn hình / Modal Thêm Hàng Combo - Đóng gói (`ComboFormModal.tsx`, `CreateComboPage.tsx`) theo prototype `create_combosproduct.html`: chọn hàng thành phần, tự tính giá vốn và tồn kho khả dụng động (REQ-03)
+### Task T2: Product API Service (Tiểu cụm 1.1)
+- [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 
-## 6. Product 360 Detail View & Actions
-- [x] T6 — Xây dựng Panel / Modal Xem chi tiết sản phẩm 360 độ (`ProductDetailModal.tsx`) theo prototype `detail/product_detail.html`: Tab Thông tin & Bảng quy đổi ĐVT, Tab Thẻ kho (Stock Ledger), Tab Tồn kho chi nhánh & Lô hạn dùng FEFO, cơ chế Soft/Hard Delete an toàn (BR-DATA-01) (REQ-01, REQ-04, REQ-05)
+### Task T3: Server-side Paginated Product Table Integration (Tiểu cụm 1.2)
+- [ ] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` (không dùng custom hook) gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng (Mã hàng, Mã vạch, Tên hàng, ĐVT, Giá bán, Trạng thái) và bộ điều khiển phân trang server-side (trang 1, 2,...). (REQ-01)
 
-## 7. Routing & Layout Integration
-- [x] T7 — Tích hợp module vào `StoreOwnerLayout`, gắn link trong `AppTopNav.tsx` (Menu "Hàng hóa" > "Danh mục hàng hóa") và cấu hình route trong `router.tsx` (REQ-01)
+### Task T4: Unit Test for Core API & Pagination Mapping (Tiểu cụm 1.1 & 1.2)
+- [ ] T4 — Viết test kiểm thử `productApi.getProductsPaged` và logic phân trang để đảm bảo dữ liệu map đúng từ API Backend. (REQ-01)
 
-## 8. Build & Verification
-- [x] T8 — Chạy `npm run build` kiểm tra TypeScript và bundle, xác minh hoàn thiện 100% các màn hình và không có lỗi runtime (REQ-01 -> REQ-06)
+---
+
+## Lộ trình các Tiểu cụm tiếp theo (Backlog)
+- **Tiểu cụm 1.3:** Phân quyền ẩn cột Giá vốn theo vai trò người dùng (BR-SEC-01).
+- **Tiểu cụm 1.4:** Ô tìm kiếm đa tiêu chí debounced (300ms) theo SKU, Barcode, Tên.
+- **Tiểu cụm 1.5:** Lọc theo Danh mục phẳng từ `GET /api/categories` (`CategorySidebar`).
+- **Tiểu cụm 2.1 & 2.2:** Form tạo mới sản phẩm chuẩn và tự sinh mã SKU (`POST /api/products`).
+- **Tiểu cụm 3.1 & 3.2:** Modal xem chi tiết 360° và danh sách Nhà cung cấp liên kết (`GET /api/products/{id}/suppliers`).
+- **Tiểu cụm 4.1:** Cập nhật thông tin sản phẩm và khóa Base UOM (BR-PROD-01).
+- **Tiểu cụm 4.2:** Xóa mềm an toàn chuyển trạng thái Discontinued (BR-DATA-01).
