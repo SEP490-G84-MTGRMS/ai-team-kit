@@ -1,6 +1,6 @@
 # Tasks: product-management-ui
 
-> **Quy định kỹ thuật:** KHÔNG dùng custom hook. Theo đúng style hiện tại của dự án (như `SupplierProductManagementPage.tsx`): sử dụng trực tiếp `useState`, `useEffect`, `useCallback` trong Page component để gọi `productApi`.
+> **Quy định kỹ thuật:** KHÔNG dùng custom hook. Theo đúng style hiện tại của dự án: sử dụng trực tiếp `useState`, `useEffect`, `useCallback` trong Page component để gọi `productApi`. Tích hợp component chung `TablePagination` của dự án (`src/components/common/TablePagination`).
 > **Phạm vi Change:** Tập trung hoàn thành dứt điểm **Tiểu cụm 1.1 & 1.2: Nền tảng API & Bảng Danh sách Phân trang Server-side (Read-only)**.
 
 ---
@@ -14,7 +14,7 @@
 - [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 
 ### Task T3: Server-side Paginated Product Table Integration (Tiểu cụm 1.2)
-- [x] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` (không dùng custom hook) gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng (Mã hàng, Mã vạch, Tên hàng, ĐVT, Giá bán, Trạng thái) và bộ điều khiển phân trang server-side (trang 1, 2,...). (REQ-01)
+- [x] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng và tích hợp component phân trang dùng chung `TablePagination` của dự án. (REQ-01)
 
 ### Task T4: Unit Test for Core API & Pagination Mapping (Tiểu cụm 1.1 & 1.2)
 - [ ] T4 — Viết test kiểm thử `productApi.getProductsPaged` và logic phân trang để đảm bảo dữ liệu map đúng từ API Backend. (REQ-01)
