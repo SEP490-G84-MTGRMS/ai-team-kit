@@ -14,8 +14,8 @@
 
 ## ADDED Requirements
 
-### Requirement: REQ-CAT-01 Lấy danh sách nhóm hàng kèm số lượng sản phẩm
-Hệ thống **MUST** cung cấp endpoint `GET /api/categories` trả về toàn bộ danh mục hàng hóa chưa bị xóa (`IsDeleted == false`) thuộc `TenantId` của người dùng hiện tại, sắp xếp theo `DisplayOrder` tăng dần rồi đến `Name`. Mỗi danh mục **MUST** đi kèm số lượng sản phẩm đang hoạt động (`productCount = COUNT(Products where IsDeleted == false)`).
+### Requirement: REQ-CAT-01 Lấy danh sách nhóm hàng kèm số lượng sản phẩm (Mô hình phẳng)
+Hệ thống **MUST** cung cấp endpoint `GET /api/categories` trả về toàn bộ danh mục hàng hóa dạng phẳng (Flat List, không có quan hệ phân cấp cha - con), chưa bị xóa (`IsDeleted == false`) thuộc `TenantId` của người dùng hiện tại, sắp xếp theo `DisplayOrder` tăng dần rồi đến `Name`. Mỗi danh mục **MUST** đi kèm số lượng sản phẩm đang hoạt động (`productCount = COUNT(Products where IsDeleted == false)`).
 
 #### Scenario: Lấy danh sách danh mục thành công
 - **GIVEN** Người dùng đã đăng nhập với vai trò hợp lệ trong Tenant `tenant_fpt_01`.
@@ -55,7 +55,6 @@ Hệ thống **MUST** cung cấp endpoint `POST /api/categories`. Người dùng
   {
     "name": "Sữa tươi & Sữa chua",
     "description": "Các chế phẩm từ sữa",
-    "parentId": null,
     "displayOrder": 1
   }
   ```
@@ -70,8 +69,8 @@ Hệ thống **MUST** cung cấp endpoint `POST /api/categories`. Người dùng
 
 ---
 
-### Requirement: REQ-CAT-04 Cập nhật thông tin nhóm hàng và chống đệ quy vòng lặp
-Hệ thống **MUST** cung cấp endpoint `PUT /api/categories/{id}` cho phép sửa `Name`, `Description`, `DisplayOrder`, `ParentId`. Hệ thống **MUST** ngăn chặn việc gán `ParentId` trỏ vào chính nó hoặc vào một nhóm con cháu của nó (Anti-Circular Dependency).
+### Requirement: REQ-CAT-04 Cập nhật thông tin nhóm hàng
+Hệ thống **MUST** cung cấp endpoint `PUT /api/categories/{id}` cho phép sửa `Name`, `Description`, `DisplayOrder`. Tên cập nhật **MUST NOT** trùng với nhóm hàng khác trong cùng Tenant.
 
 #### Scenario: Cập nhật thông tin thành công
 - **GIVEN** Nhóm hàng tồn tại với Id `cat_123`.
@@ -79,18 +78,13 @@ Hệ thống **MUST** cung cấp endpoint `PUT /api/categories/{id}` cho phép s
 - **THEN** Hệ thống cập nhật bản ghi, gán `UpdatedAt = UTC Now`.
 - **AND** Trả về HTTP `200 OK` kèm dữ liệu đã cập nhật.
 
-#### Scenario: Ngăn chặn circular dependency
-- **GIVEN** Danh mục A có Id `cat_A`.
-- **WHEN** Gửi `PUT /api/categories/cat_A` với `parentId: "cat_A"`.
-- **THEN** Hệ thống từ chối và trả về HTTP `400 Bad Request` với thông báo `"Nhóm cha không thể là chính nhóm hàng này"`.
-
 ---
 
 ### Requirement: REQ-CAT-05 Xóa mềm nhóm hàng có kiểm tra ràng buộc toàn vẹn dữ liệu
-Hệ thống **MUST** cung cấp endpoint `DELETE /api/categories/{id}`. Hệ thống **MUST NOT** cho phép xóa nhóm hàng nếu nhóm hàng đó đang chứa $\ge 1$ sản phẩm chưa bị xóa (`ProductCount > 0`) hoặc đang có nhóm hàng con (`SubCategories`). Khi xóa thành công, hệ thống **MUST** áp dụng Soft Delete (`IsDeleted = true`).
+Hệ thống **MUST** cung cấp endpoint `DELETE /api/categories/{id}`. Hệ thống **MUST NOT** cho phép xóa nhóm hàng nếu nhóm hàng đó đang chứa $\ge 1$ sản phẩm chưa bị xóa (`ProductCount > 0`). Khi xóa thành công, hệ thống **MUST** áp dụng Soft Delete (`IsDeleted = true`).
 
 #### Scenario: Xóa thành công nhóm hàng rỗng
-- **GIVEN** Nhóm hàng `cat_empty` không có sản phẩm nào (`productCount == 0`) và không có nhóm con.
+- **GIVEN** Nhóm hàng `cat_empty` không có sản phẩm nào (`productCount == 0`).
 - **WHEN** Gửi `DELETE /api/categories/cat_empty`.
 - **THEN** Hệ thống đánh dấu `IsDeleted = true` trong cơ sở dữ liệu.
 - **AND** Trả về HTTP `200 OK` với thông điệp `"Xóa nhóm hàng thành công"`.
@@ -100,11 +94,6 @@ Hệ thống **MUST** cung cấp endpoint `DELETE /api/categories/{id}`. Hệ th
 - **WHEN** Gửi `DELETE /api/categories/cat_with_products`.
 - **THEN** Hệ thống từ chối xóa và trả về mã HTTP `400 Bad Request` (hoặc `422 Unprocessable Entity`).
 - **AND** Thông báo lỗi: `"Không thể xóa nhóm hàng vì đang có 3 sản phẩm liên kết."`.
-
-#### Scenario: Chặn xóa khi nhóm hàng có danh mục con
-- **GIVEN** Nhóm hàng `cat_parent` có nhóm con `cat_child` (`IsDeleted == false`).
-- **WHEN** Gửi `DELETE /api/categories/cat_parent`.
-- **THEN** Hệ thống từ chối xóa và trả về mã HTTP `400 Bad Request` với thông báo `"Không thể xóa nhóm hàng đang chứa các nhóm con."`.
 
 ---
 
@@ -128,9 +117,9 @@ Mọi thao tác `GET`, `POST`, `PUT`, `DELETE` trên Category **MUST** tuân th�
 ---
 
 ## Acceptance checklist
-- [ ] REQ-CAT-01: API `GET /api/categories` trả về danh sách có trường `productCount` chính xác cho từng Category.
+- [ ] REQ-CAT-01: API `GET /api/categories` trả về danh sách dạng phẳng có trường `productCount` chính xác cho từng Category.
 - [ ] REQ-CAT-02: API `GET /api/categories/{id}` trả về chi tiết Category hoặc 404 nếu không tìm thấy.
 - [ ] REQ-CAT-03: API `POST /api/categories` tạo thành công Category mới, trả về 201 Created và chặn trùng tên.
-- [ ] REQ-CAT-04: API `PUT /api/categories/{id}` cập nhật thành công và chặn circular dependency.
-- [ ] REQ-CAT-05: API `DELETE /api/categories/{id}` xóa mềm thành công khi nhóm rỗng; chặn xóa khi có sản phẩm hoặc có nhóm con.
+- [ ] REQ-CAT-04: API `PUT /api/categories/{id}` cập nhật thành công và chặn trùng tên.
+- [ ] REQ-CAT-05: API `DELETE /api/categories/{id}` xóa mềm thành công khi nhóm rỗng; chặn xóa khi có sản phẩm.
 - [ ] REQ-CAT-06: Đảm bảo 100% dữ liệu được cô lập theo `TenantId`.
