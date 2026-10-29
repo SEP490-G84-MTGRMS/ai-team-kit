@@ -2,7 +2,7 @@
 
 ## Types & API Client Layer
 - [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` khớp 100% với DTOs C# (`ProductResponse`, `ProductCreateRequest`, `ProductUpdateRequest`, `ProductQueryFilter`, `CategoryDto`) (REQ-01, REQ-02)
-- [ ] T2 — Xây dựng `src/features/product/api/productApi.ts` & `categoryApi.ts` kết nối `/api/products` và `/api/categories` qua `httpClient` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06)
+- [x] T2 — Xây dựng `src/features/product/api/productApi.ts` & `categoryApi.ts` kết nối `/api/products` và `/api/categories` qua `httpClient` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05, REQ-06)
 
 ## React Query Hooks Layer
 - [ ] T3 — Xây dựng custom hooks `useProducts`, `useProductDetail`, `useProductMutations`, `useCategories` hỗ trợ cache và invalidate (REQ-01, REQ-03, REQ-04, REQ-05, REQ-06)
