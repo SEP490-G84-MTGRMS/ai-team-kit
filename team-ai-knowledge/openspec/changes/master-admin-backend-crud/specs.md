@@ -4,11 +4,13 @@
 
 | Method | Path | Request Body | Response Body | HTTP Status / Lỗi |
 |---|---|---|---|---|
-| `GET` | `/api/admin/plans` | Không | `ApiResponse<List<PlanSummaryResponse>>` | 200 OK, 401 Unauthorized, 403 Forbidden |
+| `GET` | `/api/admin/plans` | Query params (`keyword`, `status`) | `ApiResponse<List<PlanSummaryResponse>>` | 200 OK, 401 Unauthorized, 403 Forbidden |
+| `GET` | `/api/admin/plans/kpis` | Không | `ApiResponse<PlanKpiBannerResponse>` | 200 OK, 401 Unauthorized |
 | `GET` | `/api/admin/plans/{id}` | Không | `ApiResponse<PlanDetailResponse>` | 200 OK, 404 Not Found, 401 Unauthorized |
 | `POST` | `/api/admin/plans` | `CreatePlanRequest` | `ApiResponse<PlanDetailResponse>` | 201 Created, 400 Bad Request, 409 Conflict |
 | `PUT` | `/api/admin/plans/{id}` | `UpdatePlanRequest` | `ApiResponse<PlanDetailResponse>` | 200 OK, 400 Bad Request, 404 Not Found |
 | `PATCH` | `/api/admin/plans/{id}/status` | `UpdatePlanStatusRequest` | `ApiResponse<bool>` | 200 OK, 400 Bad Request, 404 Not Found |
+| `DELETE` | `/api/admin/plans/{id}` | Không | `ApiResponse<bool>` | 200 OK, 400 Bad Request, 404 Not Found |
 | `GET` | `/api/admin/tenants` | Query params (`TenantFilterRequest`) | `ApiResponse<PagedResult<TenantSummaryResponse>>` | 200 OK, 401 Unauthorized, 403 Forbidden |
 | `GET` | `/api/admin/tenants/{id}` | Không | `ApiResponse<TenantDetailResponse>` | 200 OK, 404 Not Found |
 | `PUT` | `/api/admin/tenants/{id}` | `UpdateTenantRequest` | `ApiResponse<TenantDetailResponse>` | 200 OK, 400 Bad Request, 404 Not Found |
@@ -24,27 +26,36 @@
 ## ADDED Requirements
 
 ### Requirement: REQ-ADMIN-BE-01: Quản lý Gói cước SaaS (Subscription Plans)
-Hệ thống MUST cung cấp các API cho phép Master Admin xem danh sách, chi tiết, tạo mới, cập nhật và bật/tắt kích hoạt các gói cước dịch vụ SaaS.
+Hệ thống MUST cung cấp trọn vẹn các API CRUD cho phép Master Admin xem danh sách, thẻ chỉ số KPI, xem chi tiết, tạo mới, chỉnh sửa, đổi trạng thái và xóa gói cước.
 
 #### Scenario: Lấy danh sách gói cước kèm số lượng tenant
-- **GIVEN** Master Admin đã đăng nhập và gửi token hợp lệ
-- **WHEN** Gọi `GET /api/admin/plans`
-- **THEN** Hệ thống trả về mã 200 OK cùng danh sách gói cước, mỗi gói có đầy đủ hạn mức (Quotas), tính năng (Features) và số khách thuê đang dùng (`ActiveTenantCount`).
+- **GIVEN** Master Admin đã đăng nhập với vai trò ADMIN
+- **WHEN** Gọi `GET /api/admin/plans?status=Active`
+- **THEN** Hệ thống trả về danh sách các gói cước đang kích hoạt, mỗi gói có đầy đủ hạn mức Quotas, tính năng Features và số lượng tenant đang dùng (`ActiveTenantCount`).
+
+#### Scenario: Lấy 4 chỉ số KPI trên màn hình gói cước
+- **WHEN** Gọi `GET /api/admin/plans/kpis`
+- **THEN** Hệ thống trả về: `TotalPlans` (tổng gói), `ActivePlans` (gói đang bật), `TotalActiveTenants` (tổng cửa hàng đang thuê), `EstimatedMrr` (doanh thu hàng tháng ước tính).
 
 #### Scenario: Tạo gói cước mới thành công
-- **GIVEN** Dữ liệu `CreatePlanRequest` có mã `Code = "PLAN_PREMIUM"` chưa tồn tại trong hệ thống, giá tháng và giá năm hợp lệ (≥ 0)
+- **GIVEN** Dữ liệu `CreatePlanRequest` có mã `Code = "PLAN_SUPER_MART"` theo đúng regex `^[A-Z0-9_]+$` chưa từng tồn tại trong hệ thống, giá tháng và giá năm không âm
 - **WHEN** Gọi `POST /api/admin/plans`
-- **THEN** Hệ thống lưu gói cước mới vào cơ sở dữ liệu và trả về mã 201 Created cùng thông tin gói cước vừa tạo.
+- **THEN** Hệ thống lưu gói cước mới vào bảng `SubscriptionPlans`, đóng gói Quotas và Features vào `EnabledModulesJson` và trả về mã 201 Created.
 
 #### Scenario: Từ chối tạo gói cước khi trùng mã Code (Edge Case)
-- **GIVEN** Mã `Code = "FREE"` đã tồn tại trong bảng `SubscriptionPlans`
-- **WHEN** Gọi `POST /api/admin/plans` với mã `Code = "FREE"`
-- **THEN** Hệ thống MUST từ chối lưu và trả về mã HTTP 409 Conflict với thông báo "Mã gói cước đã tồn tại trong hệ thống".
+- **GIVEN** Mã `Code = "PLAN_STARTER"` đã tồn tại trong CSDL
+- **WHEN** Gọi `POST /api/admin/plans` với mã `Code = "PLAN_STARTER"`
+- **THEN** Hệ thống MUST từ chối và trả về mã HTTP 409 Conflict với thông báo "Mã gói cước đã tồn tại trên hệ thống".
 
-#### Scenario: Bật/Tắt trạng thái kích hoạt của gói
-- **GIVEN** Gói cước đang ở trạng thái `IsActive = true`
-- **WHEN** Gọi `PATCH /api/admin/plans/{id}/status` với `IsActive = false`
-- **THEN** Hệ thống cập nhật trạng thái gói thành Inactive và trả về mã 200 OK.
+#### Scenario: Từ chối xóa gói cước khi đang có cửa hàng sử dụng (Edge Case)
+- **GIVEN** Gói cước đang có `ActiveTenantCount = 42` (> 0)
+- **WHEN** Gọi `DELETE /api/admin/plans/{id}`
+- **THEN** Hệ thống MUST chặn hành động xóa và trả về HTTP 400 Bad Request với thông báo: "Không thể xóa gói dịch vụ đang có 42 cửa hàng sử dụng".
+
+#### Scenario: Xóa thành công gói cước không có cửa hàng sử dụng
+- **GIVEN** Gói cước có `ActiveTenantCount = 0`
+- **WHEN** Gọi `DELETE /api/admin/plans/{id}`
+- **THEN** Hệ thống thực hiện Soft Delete (`IsDeleted = true`) và trả về HTTP 200 OK.
 
 ---
 
@@ -103,9 +114,11 @@ Hệ thống MUST ngăn chặn mọi truy cập trái phép hoặc không có qu
 ---
 
 ## Acceptance checklist
-- [ ] REQ-ADMIN-BE-01: API lấy danh sách gói cước trả về đầy đủ Quotas, Features và số Active Tenants.
-- [ ] REQ-ADMIN-BE-01: API tạo mới và cập nhật gói cước validate dữ liệu chặt chẽ, kiểm tra trùng mã.
-- [ ] REQ-ADMIN-BE-01: API bật/tắt kích hoạt gói cước hoạt động chính xác.
+- [ ] REQ-ADMIN-BE-01: API lấy danh sách gói cước (`GET /api/admin/plans`) lọc theo keyword và status.
+- [ ] REQ-ADMIN-BE-01: API thống kê KPI gói cước (`GET /api/admin/plans/kpis`) tính toán đúng TotalPlans, ActivePlans, ActiveTenants, MRR.
+- [ ] REQ-ADMIN-BE-01: API tạo mới (`POST /api/admin/plans`) kiểm tra định dạng regex mã gói và chặn trùng lặp.
+- [ ] REQ-ADMIN-BE-01: API cập nhật (`PUT /api/admin/plans/{id}`) và bật/tắt kích hoạt (`PATCH /api/admin/plans/{id}/status`).
+- [ ] REQ-ADMIN-BE-01: API xóa gói cước (`DELETE /api/admin/plans/{id}`) chặn xóa khi đang có khách thuê sử dụng.
 - [ ] REQ-ADMIN-BE-02: API danh sách khách thuê hỗ trợ lọc theo trạng thái (`active`, `expiring`, `grace`, `locked`) và phân trang.
 - [ ] REQ-ADMIN-BE-02: API khóa Soft/Hard lock lưu trữ đầy đủ lý do và người khóa.
 - [ ] REQ-ADMIN-BE-02: API mở khóa và gia hạn ân hạn (Extend Grace) cập nhật chính xác ngày tháng trong CSDL.
