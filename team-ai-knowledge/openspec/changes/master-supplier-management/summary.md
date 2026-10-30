@@ -27,3 +27,7 @@ Verify-spec FE-09: 4 persona (skeptic/guardian/advocate/codebase). HIGH đã s�
 ## Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:40
 
 User duyệt cập nhật spec cho tính năng tìm kiếm đa thực thể highlight (multi-select NCC, sản phẩm, liên hệ, SĐT) và xuất Excel định dạng chuẩn header/cột.
+
+## Brainstorm — ✅ Approve bởi @minhduc118a · 2026-10-30 16:42
+
+User duyệt thiết kế Brainstorm: API gợi ý tìm kiếm đa thực thể GET /suppliers/search-suggestions, lọc đa tiêu chí GET /suppliers, UI autocomplete highlight text + multi-select tags và xuất Excel chuyên nghiệp.
