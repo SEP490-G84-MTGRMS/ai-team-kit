@@ -12,5 +12,10 @@
 - [x] T7 — Xây dựng tab Thông tin gian hàng `StoreInfoTab.tsx` cho phép xem và cập nhật thông tin cửa hàng (REQ-01).
 - [x] T8 — Đăng ký route `/store-owner/subscriptions` và `/store-owner/settings` trong `src/app/router.tsx`, gắn link điều hướng từ `StoreOwnerTopbar.tsx` (REQ-01).
 
+## Backend APIs & Integration
+- [x] T10 — Xây dựng `TenantStoreController.cs` cung cấp `GET /api/v1/tenant/store-info`, `PUT /api/v1/tenant/store-info` và `GET /api/v1/tenant/pricing-plans`.
+- [x] T11 — Viết bộ unit tests `TenantStoreControllerTests.cs` (105/105 backend tests passed).
+- [x] T12 — Xây dựng frontend client `storeApi.ts` và tích hợp gọi API thật vào `StoreSettingsHubPage.tsx` và `StoreInfoTab.tsx`.
+
 ## Verification & Interactive Testing
 - [x] T9 — Kiểm thử giao diện trên trình duyệt (thay đổi kỳ hạn tính tiền, nạp tiền ví, thanh toán trừ số dư ví, cập nhật ngày hết hạn, kiểm tra responsive mobile/desktop) (REQ-01, REQ-02, REQ-03, REQ-04).
