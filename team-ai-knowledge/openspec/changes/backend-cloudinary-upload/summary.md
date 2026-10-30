@@ -7,3 +7,7 @@ User duyệt đề xuất proposal.md cho tính năng backend-cloudinary-upload:
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-30 10:26
 
 User duyệt bước Brainstorm: thống nhất phương án Server-side Proxy Upload với CloudinaryDotNet, endpoint POST /api/v1/media/upload, validation 5MB và tích hợp vào ProductFormModal.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-30 10:42
+
+User duyệt bước Verify Spec: chấp nhận kết quả review của Skeptic và danh sách 8 tasks T1-T8. Tiến hành bước Apply.
