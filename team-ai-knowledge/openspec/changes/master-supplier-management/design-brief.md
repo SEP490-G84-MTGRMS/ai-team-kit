@@ -1,4 +1,4 @@
-# Design Brief: Master Supplier Management (FE-09) — căn chỉnh 2 role
+# Design Brief: Master Supplier Management (FE-09) — căn chỉnh 2 role & Tìm kiếm đa thực thể / Xuất Excel
 
 ## 1. User Flows & System Interaction
 
@@ -6,7 +6,10 @@
 flowchart TD
     SO[Store Owner] -->|Toàn Tenant| L[SupplierListPage /store-owner/suppliers]
     BE[Branch Employee] -->|NCC được gán chi nhánh| L
-    L -->|Tìm mã/tên/SĐT/MST + lọc loại + trạng thái| API1[GET /api/v1/suppliers]
+    L -->|Gõ từ khóa tìm kiếm| AC[Auto-complete Dropdown: Highlight text khớp]
+    AC -->|Click chọn gợi ý| TAGS[Multi-select Tags: NCC / SP / Liên hệ / SĐT]
+    TAGS -->|Lọc kết hợp| API1[GET /api/v1/suppliers với đa tiêu chí]
+    SO -->|Xuất Excel| EXP[Professional Excel Exporter: Header + Styling + Auto Widths]
     SO -->|Thêm NCC| M[SupplierFormModal]
     M --> API2[POST /api/v1/suppliers]
     L -->|Chi tiết| D[SupplierDetailPage]
@@ -26,7 +29,8 @@ flowchart TD
 
 | Method | Endpoint | Description | Request / Query | Response | Error |
 |---|---|---|---|---|---|
-| `GET` | `/api/v1/suppliers` | List phạm vi role; search Code/Name/Phone/TaxCode; filter Type+Status | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` gồm `ContactPerson`, `Phone`; `CurrentDebt`/`OverdueDebt` chỉ Store Owner | `401` |
+| `GET` | `/api/v1/suppliers` | List phạm vi role; search đa tiêu chí; filter Type+Status | `SearchTerm`, `SupplierType`, `Status`, `SupplierIds`, `ProductIds`, `ContactPersons`, `Phones`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` gồm `ContactPerson`, `Phone`; `CurrentDebt`/`OverdueDebt` chỉ Store Owner | `401` |
+| `GET` | `/api/v1/suppliers/search-suggestions` | Gợi ý đa thực thể kèm khớp từ khóa | `query`, `limit` | `SupplierSearchSuggestionsDto` (Suppliers, Products, ContactPersons, Phones) | `401` |
 | `GET` | `/api/v1/suppliers/{id}` | Chi tiết; Branch Employee 404 nếu NCC không gán chi nhánh | — | `SupplierDetailDto` | `404` |
 | `POST` | `/api/v1/suppliers` | Tạo NCC — Store Owner | `CreateSupplierCommand` | `SupplierDetailDto` | `400`, `403` |
 | `PUT` | `/api/v1/suppliers/{id}` | Cập nhật — không sửa Code | `UpdateSupplierCommand` | `SupplierDetailDto` | `400`, `403`, `404` |
@@ -36,8 +40,6 @@ flowchart TD
 | `GET` | `/api/v1/suppliers/{id}/transactions` | Lịch sử PO + GRN theo phạm vi chi nhánh | page, branchId | paged history | `403`, `404` |
 | `GET` | `/api/v1/suppliers/{id}/ap/summary` | Tổng phải trả, đã trả, số dư, đến hạn — Store Owner | — | `SupplierOutstandingBalanceDto` | `403` |
 
-API AP ledger ghi giao dịch và Dual-role giữ nguyên như nền tảng nội bộ; không là thao tác chính trên list FE-09.
-
 ---
 
 ## 3. Frontend UI Component Design
@@ -46,11 +48,16 @@ Chuẩn KiotViet Brand Blue (`#0066FF`, `#F7FAFF`), font `Be Vietnam Pro` + `Jet
 
 ### `SupplierListPage` (`/store-owner/suppliers`)
 - Header: "Quản lý Nhà Cung Cấp".
-- Store Owner: nút **Thêm Nhà Cung Cấp**. Branch Employee: ẩn nút thêm/sửa/status.
-- Ẩn nút **Xuất Excel** stub và **Trả** stub (không thuộc FE-09).
-- Filter: search mã/tên/SĐT/MST; Loại NCC (Goods/Service/Both); Trạng thái Active/Inactive. Bỏ filter công nợ AP và phân loại ngành khỏi list FE-09.01.
+- Nút **Xuất Excel** chuyên nghiệp (Store Owner & Admin): Xuất bảng dữ liệu có Header trang trọng, viền kẻ ô, màu thương hiệu và kích thước cột vừa vặn tự động.
+- Nút **Thêm Nhà Cung Cấp** (Store Owner). Branch Employee: ẩn nút thêm/sửa/status.
+- **Thanh tìm kiếm nâng cao Multi-Entity Autocomplete**:
+  - Khi gõ từ khóa: xuất hiện dropdown nhóm kết quả (Nhà cung cấp, Sản phẩm, Người liên hệ, Số điện thoại).
+  - Ký tự trùng khớp được highlight nổi bật (`<mark>` hoặc class highlight màu xanh/vàng).
+  - Chọn gợi ý để thêm vào danh sách Tag Chips (có badge phân loại màu sắc).
+  - Hỗ trợ chọn đồng thời nhiều NCC, nhiều sản phẩm, nhiều người liên hệ, nhiều SĐT.
+  - Hỗ trợ xóa từng tag hoặc nút "Xóa tất cả".
 - Bảng: Mã NCC, Tên, Người liên hệ, SĐT, Trạng thái, Hành động (Chi tiết; Sửa chỉ Store Owner).
-- Cột hạn nợ / đang nợ / quá hạn: chỉ Store Owner, tùy chọn phụ — mặc định ẩn khỏi list chính theo FE-09.01.
+- Cột hạn nợ / đang nợ / quá hạn: chỉ Store Owner.
 - Phân trang server-side 10/20/30/50.
 - Loading / empty / error banner. **Cấm fallback mock** khi API lỗi.
 
@@ -62,52 +69,4 @@ Chuẩn KiotViet Brand Blue (`#0066FF`, `#F7FAFF`), font `Be Vietnam Pro` + `Jet
 
 ### `SupplierDetailPage`
 - Tabs: Hồ sơ chung | Điều khoản TT | Giao hàng & Cutoff | Ngày không giao | Sản phẩm | Chi nhánh | Lịch sử | Công nợ (Store Owner).
-- Delivery: `DeliveryDays`, `LeadTimeDays`, `CutoffDayOffset`, `OrderCutoffTime`. Ví dụ: giao T4, offset 1, 17:00 → hạn chót 17:00 ngày trước.
-- Branch assignment: multi-select chi nhánh cùng Tenant; empty = dùng chung.
-- History: mã PO, chi nhánh, ngày đặt, ngày giao, trạng thái, GRN, tổng giá trị nếu được xem. Branch Employee chỉ dòng chi nhánh mình.
 - Dữ liệu từ API thật; bỏ caption "Minh họa bố cục".
-
----
-
-## 4. Database Schema Changes
-
-Giữ bảng đã có (`Suppliers`, `SupplierCategories`, `SupplierDeliveryConfigs`, `SupplierBlackoutDates`, `SupplierAPLedgers`). Migration mới:
-
-### `SupplierBranchAssignments`
-```sql
-CREATE TABLE [SupplierBranchAssignments] (
-    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-    [TenantId] UNIQUEIDENTIFIER NOT NULL,
-    [SupplierId] UNIQUEIDENTIFIER NOT NULL,
-    [BranchId] UNIQUEIDENTIFIER NOT NULL,
-    [CreatedAtUtc] DATETIME2 NOT NULL
-);
-CREATE UNIQUE INDEX [IX_SupplierBranch_Tenant_Supplier_Branch]
-  ON [SupplierBranchAssignments]([TenantId], [SupplierId], [BranchId]);
-```
-Không có dòng nào = NCC dùng chung mọi chi nhánh cùng Tenant.
-
-### `SupplierDeliveryConfigs` — cột thêm
-- `LeadTimeDays` INT NOT NULL DEFAULT 1
-- `CutoffDayOffset` INT NOT NULL DEFAULT 1
-- `OrderCutoffTime` NVARCHAR(5) NOT NULL DEFAULT '17:00'
-Giữ `LeadTimeHours`/`CutoffTime` cũ nếu đã có; ưu tiên đọc field mới. Không được sửa migration cũ.
-
----
-
-## 5. Business Rules & RBAC
-
-- **BR-S01**: Mã NCC duy nhất trong Tenant; hệ thống tự sinh; không sửa mã đã phát hành.
-- **BR-S03 (cập nhật FE-09.05)**: Không xóa cứng NCC đã có lịch sử. Inactive không chọn cho PO mới. Ngừng hoạt động không xóa PO/GRN/công nợ. Còn PO đang xử lý → cảnh báo, không tự hủy đơn đã xác nhận. Cho phép Inactive kể khi còn dư nợ (cảnh báo).
-- **BR-S07**: Không thu hẹp `SupplierType` nếu đã có giao dịch loại bị loại.
-- **BR-S08**: AP ledger idempotent.
-- **BR-S11**: Dual-role không tự cấn trừ AR/AP.
-- **BR-S12 (cập nhật FE-09.07)**: Cutoff theo `Asia/Ho_Chi_Minh`. Tại/sau `OrderCutoffTime` của ngày chốt (`deliveryDate - CutoffDayOffset`) không tạo/sửa đơn thường cho ngày giao đó. `LeadTimeDays` chỉ mô tả thời gian dự kiến, không thay cutoff. Đổi cấu hình không sửa PO đã gửi/xác nhận.
-- **BR-S13**: Loại blackout khỏi ngày giao hợp lệ đơn mới; không tự đổi ngày giao đơn đã xác nhận.
-- **BR-S14**: Credit Limit là cấu hình; không mặc định chặn PO khi vượt hạn mức.
-- **BR-S15**: Giá/MOQ/điều khoản mới không áp ngược chứng từ đã phát sinh.
-- **BR-S16**: Gán chi nhánh chỉ cùng Tenant; đổi gán không xóa lịch sử.
-
-### RBAC
-- **Store Owner**: toàn quyền Tenant — CRUD NCC, status, payment, delivery, blackout, products, gán chi nhánh, xem lịch sử toàn Tenant, xem công nợ tổng hợp.
-- **Branch Employee**: xem list/detail NCC được phép tại chi nhánh; xem lịch sử thuộc chi nhánh; không tạo/sửa/status; không xem công nợ tổng hợp Tenant.
