@@ -1,40 +1,50 @@
-# Design Brief: purchase-order-grid-creation
+# Design Brief: purchase-order-grid-creation (FE-05 Ordering)
 
-## 1. Luồng Giao diện & Endpoint API
+## 1. Luồng Giao diện & Kiến trúc Thành phần (Vite + React 19 + TypeScript)
 
-### API Endpoints
-- `GET /api/v1/purchase-orders/grid-init`: Lấy cấu hình ma trận (Danh sách Supplier, Branch, danh mục Category, thông tin Credit AP/Limit của Supplier).
-- `GET /api/v1/purchase-orders/grid-products`: Lấy danh sách sản phẩm + MOQ + Lịch giao hàng của Supplier được chọn trong khoảng ngày `dateFrom` -> `dateTo`.
-- `POST /api/v1/purchase-orders/grid-submit`: Submit ma trận. Payload chứa danh sách các ô có số lượng đặt. Trả về danh sách mã đơn PO được khởi tạo.
-- `POST /api/v1/purchase-orders/grid-draft`: Lưu bản nháp ma trận đặt hàng.
-- `POST /api/v1/purchase-orders/grid-export-excel`: Xuất ma trận ra file CSV/XLSX.
-- `POST /api/v1/purchase-orders/grid-import-excel`: Đọc file CSV/XLSX tải lên và điền lại vào ma trận số lượng.
+### Hierarchy Thành phần Giao diện
+- **OrderMatrixPage** (`/store-owner/purchase-orders/create-matrix`): Container chính quản lý State toàn cục của ma trận.
+  - **OrderMatrixHeader**: Tiêu đề trang, trạng thái Draft, nút Quay lại, nút Lưu nháp, nút mở Hub Cutoff, và nút Chốt Đơn & Tách PO (`⚡ Chốt Đơn & Tách PO`).
+  - **OrderMatrixFilterBar**: Thanh công cụ 1 dòng gọn gàng đáp ứng `RULE_UI_DESIGN_SYSTEM.md`:
+    - Bộ chọn Chi nhánh nhận hàng (`Select` Branch).
+    - Bộ chọn Nhà cung cấp (`Select` Supplier - bao gồm option Tất cả NCC).
+    - Điều hướng & Khoảng thời gian: Preset thời gian (7 ngày, 14 ngày, 21 ngày, 31 ngày), Điều hướng tuần (Hôm nay, tuần trước, tuần tới), Bộ chọn ngày custom (tối đa 31 ngày).
+    - Tìm kiếm nhanh (Tên / SKU).
+    - Checkboxes lọc: "Dòng đã nhập", "Cảnh báo vi phạm (MOQ)", "Chủ đã sửa" (chỉ hiện các dòng có ghi đè từ Store Owner).
+    - Nút thao tác: "Gợi ý số lượng" (Auto-suggest), "Copy tuần trước", Xuất/Nhập Excel CSV/XLSX.
+  - **OrderMatrixTable**: Bảng ma trận dữ liệu phân cấp:
+    - **Header Ngày Giao Hàng**:
+      - Hiển thị Thứ (T2, T3...), Ngày/Tháng (DD/MM).
+      - Badge Trạng thái Cutoff: `Mở (Còn X ngày)`, `⚡ Đến hạn Cutoff`, `Đã chốt PO` (Khóa), `NCC Nghỉ` (Off).
+      - Tooltip hiển thị giờ chốt đơn chi tiết (`Cutoff lúc 15:00`).
+    - **Cột Cố Định Bên Trái**: Tên sản phẩm + SKU, Đơn vị tính, Đơn giá nhập snapshot, MOQ, (tùy chọn Tồn kho SOH & Tốc độ bán/ngày).
+    - **Ô Nhập Số Lượng 3 Lớp**:
+      - Hiển thị `final_qty`.
+      - Chỉ báo trực quan khi Store Owner ghi đè (`store_qty !== null && store_qty !== employee_qty`): viền màu nổi bật, icon chỉ báo, tooltip/popover hiển thị `EmployeeQty` ban đầu, `StoreQty` và nút "↩ Khôi phục đề xuất nhân viên".
+      - Ô vi phạm MOQ (`0 < final_qty < MOQ`): viền đỏ + tooltip cảnh báo.
+      - Ô bị khóa (Đã chốt PO / Ngoài ngày giao NCC): hiển thị disabled `—` kèm lý do.
+    - **Dòng Tổng**: Subtotal theo từng Nhà cung cấp & Footer Grand Total theo ngày giao.
+  - **OrderMatrixSplitModal**: Modal xem trước và thực hiện bóc tách PO độc lập:
+    - Hiển thị danh sách các PO dự kiến được tạo phân tách theo `[Chi nhánh + Nhà cung cấp + Ngày giao hàng]`.
+    - Phân loại rõ ràng: "Ngày đến hạn Cutoff (Sẵn sàng chốt)" vs "Ngày dự kiến tương lai (Tiếp tục lập kế hoạch)".
+    - Chức năng: "⚡ Chốt các ngày đến hạn Cutoff (Khuyến nghị)" hoặc "Chốt tất cả các ngày".
+  - **AdminToast**: Thông báo phản hồi trực quan.
 
-### UI Screens & Component Hierarchy (React + Antd)
-- **CreatePoGridPage**: Container chính quản lý state của ma trận.
-  - **HeaderActionSection**: Hiển thị tiêu đề, trạng thái (Draft / Pending Approval), nút "Back".
-  - **FilterBar**: `Select` Supplier, `Select` Branch, `DatePicker.RangePicker`, `Select` Category, `Input.Search` Keyword, Checkbox `MOQ only`, Checkbox `Ordered only`.
-  - **GridToolBar**: Nút Download/Upload Excel, Nút chuyển tuần (Prev Week, This Week, Next Week), Nút "Copy Prev Week", Nút "Order Status".
-  - **AvailabilityBanner**: Thẻ Alert/Banner hiển thị Lead time, Ngày lễ, Open AP vs Credit Limit.
-  - **MatrixTable**: Bảng ma trận dữ liệu:
-    - Cột cố định (Left): Tên sản phẩm + SKU, MOQ, Đơn vị tính, Giá nhập.
-    - Cột động (Middle): 14 ngày (Format `MM/DD (DoW)`). Nếu là ngày không giao (Lead time violation / Day off / Holiday) -> ô xám `—` disabled. Ô hợp lệ -> `InputNumber`. Nếu `0 < qty < MOQ` -> vi phạm MOQ (viền đỏ + dấu `!`).
-    - Cột tổng (Right): Total Qty từng dòng.
-    - Dòng tổng (Bottom): Subtotal theo Category & Daily Total Qty theo từng ngày.
-  - **ValidationIssueBox**: Danh sách các lỗi cần sửa trước khi Submit (Ví dụ: vi phạm MOQ, tổng số lượng ngày < DAY_MIN, chưa nhập ô nào).
-  - **PoPreviewTable**: Bảng xem trước danh sách PO sẽ được tạo (Delivery Date | Total Lines | Total Qty | Total Amount).
-  - **FooterBar**: Hiển thị Grand Total Amount, Grand Total Qty, Credit Status Label (Credit OK / Exceeded), Nút Cancel, Save Draft, Submit.
-
-## 2. Quy tắc Nghiệp vụ & Validation Rules
-- **Lead Time Rule**: Ngày giao hàng nhỏ hơn `Today + LeadDays` sẽ bị coi là không hợp lệ (ô xám `—`).
-- **Active Days Rule**: Ngày nằm ngoài danh sách `activeDays` của Supplier (ví dụ Chủ Nhật) -> ô xám `—`.
-- **Holiday Rule**: Ngày nằm trong mảng `holidays` -> ô xám `—`.
-- **MOQ Rule**: Nếu `0 < quantity < Product.MOQ` -> Đưa vào `ValidationIssueList`, hiển thị dấu `!` cảnh báo, Disable nút Submit.
-- **Daily Minimum Rule**: Nếu tổng số lượng đặt trong ngày `0 < DailyTotal < DAY_MIN` -> Đưa vào `ValidationIssueList`, Disable nút Submit.
-- **Credit Approval Rule**: Nếu `OpenAP + GrandAmount > CreditLimit` -> Cho phép Submit nhưng trạng thái PO được gán là `PENDING_CREDIT_APPROVAL` (cần Chủ chuỗi/Kế toán duyệt). Ngược lại là `PENDING_APPROVAL`.
+## 2. Quy tắc Nghiệp vụ Chính
+1. **Phân biệt Ngày Nhập - Ngày Giao - Ngày Chốt**:
+   - Ngày nhập: ngày thao tác.
+   - Ngày giao: ngày NCC giao hàng đến chi nhánh.
+   - Ngày chốt: Cutoff tính theo từng ngày giao.
+2. **Quy tắc 3 Trường Số Lượng**:
+   - `final_qty = (store_qty !== null) ? store_qty : employee_qty`.
+   - `store_qty = 0`: chủ động không đặt sản phẩm này, không tạo dòng PO.
+3. **Quy tắc Tách PO**:
+   - 1 PO cho mỗi `[BranchId + SupplierId + DeliveryDate]`.
+   - Tuyệt đối không gộp chung các ngày giao hàng khác nhau vào một PO.
+4. **Quy tắc Giới hạn Thời gian**:
+   - Tối đa 31 ngày (1 tháng).
 
 ## 3. Database & Entity Schema Impact
-- Sử dụng các Entity sẵn có: `PurchaseOrder` và `PurchaseOrderDetail`.
-- Khi Submit ma trận có N ngày có phát sinh hàng:
-  - Sinh N bản ghi `PurchaseOrder` với `DeliveryDate = Date_i`, `Status = PENDING_APPROVAL / PENDING_CREDIT_APPROVAL`, `SupplierId`, `BranchId`, `TotalAmount`.
-  - Sinh tương ứng các `PurchaseOrderDetail` liên kết với `PurchaseOrder` của ngày đó.
+- `BranchOrderItems`: lưu `branch_id`, `supplier_id`, `product_id`, `delivery_date`, `employee_qty`, `store_qty`, `final_qty`, `modified_by`, `row_version`.
+- `PurchaseOrders`: lưu `branch_id`, `supplier_id`, `delivery_date`, `order_date`, `status`, `total_quantity`, `total_amount`.
+- `PurchaseOrderDetails`: lưu snapshot `product_id`, `ordered_qty`, `unit_price`, `order_unit`, `line_total`.
