@@ -4,7 +4,8 @@
 
 | Method | Path | Request Body / Params | Response Body | Status & Error Codes |
 |---|---|---|---|---|
-| `GET` | `/api/v1/suppliers` | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize` | `PagedResult<SupplierSummaryDto>` (`Code`, `Name`, `ContactPerson`, `Phone`, `TaxCode`, `SupplierType`, `Status`). Không trả `CurrentDebt` cho Branch Employee | `200`, `401` |
+| `GET` | `/api/v1/suppliers` | `SearchTerm`, `SupplierType`, `Status`, `PageIndex`, `PageSize`, `SupplierIds`, `ProductIds`, `ContactPersons`, `Phones` | `PagedResult<SupplierSummaryDto>` (`Code`, `Name`, `ContactPerson`, `Phone`, `TaxCode`, `SupplierType`, `Status`). Không trả `CurrentDebt` cho Branch Employee | `200`, `401` |
+| `GET` | `/api/v1/suppliers/search-suggestions` | `query` (chuỗi tìm kiếm), `limit` (số kết quả tối đa, mặc định 10) | `SupplierSearchSuggestionsDto`: danh sách phân nhóm gợi ý (Suppliers, Products, ContactPersons, Phones) | `200`, `401` |
 | `GET` | `/api/v1/suppliers/{id}` | Route `id` | `SupplierDetailDto`. Ngoài phạm vi chi nhánh → `404` | `200`, `404` |
 | `POST` | `/api/v1/suppliers` | `CreateSupplierCommand` (bỏ qua `Code` nếu trống — hệ thống sinh) | `SupplierDetailDto` | `201`, `400`, `403` |
 | `PUT` | `/api/v1/suppliers/{id}` | `UpdateSupplierCommand` (không nhận `Code`) | `SupplierDetailDto` | `200`, `400`, `403`, `404` |
@@ -25,6 +26,55 @@ Change này **không** implement tạo/sửa PO. Cutoff được expose qua deli
 ---
 
 ## ADDED Requirements
+
+### Requirement: REQ-SEARCH-01 Multi-Entity Search with Text Highlighting & Multi-Select Tags (FE-09.01)
+Thanh tìm kiếm tại màn hình `/store-owner/suppliers` MUST hỗ trợ gợi ý thời gian thực (Real-time Suggestions) với các đặc tả:
+1. Khi người dùng nhập ký tự tìm kiếm vào ô input: hiển thị dropdown menu chứa kết quả gợi ý phân thành 4 nhóm rõ ràng:
+   - **Nhà cung cấp**: Mã NCC và Tên NCC
+   - **Sản phẩm**: Tên sản phẩm, SKU và tên NCC cung ứng tương ứng
+   - **Người liên hệ**: Họ tên người đại diện và tên NCC
+   - **Số điện thoại**: Số hotline/di động và tên NCC
+2. Trong danh sách gợi ý dropdown, tất cả các ký tự/chuỗi con trùng khớp với từ khóa tìm kiếm MUST được highlight nổi bật (màu vàng nhạt hoặc KiotViet blue gạch chân, dễ nhận diện).
+3. Người dùng MUST có thể click chọn bất kỳ gợi ý nào để thêm vào danh sách thẻ lọc (Multi-select Tags / Chips).
+4. Hệ thống MUST hỗ trợ chọn đồng thời nhiều NCC, nhiều sản phẩm, nhiều người liên hệ và nhiều số điện thoại. Mỗi tag hiển thị nhãn loại (Badge: NCC, SP, Liên hệ, SĐT), giá trị và nút 'x' để xóa.
+5. Danh sách thẻ lọc MUST có nút "Xóa tất cả" để hủy bỏ toàn bộ tiêu chí tìm kiếm đa thực thể.
+6. Khi có các thẻ tag được chọn, danh sách NCC bảng chính MUST tự động truy vấn lại với các tiêu chí lọc tương ứng (hỗ trợ OR giữa các mục cùng loại, AND giữa các nhóm loại).
+
+#### Scenario: Tìm kiếm và highlight gợi ý
+- **GIVEN** Người dùng nhập từ khóa "Hà" vào ô tìm kiếm.
+- **WHEN** Hệ thống trả về gợi ý NCC "Công ty Hà Nam", Liên hệ "Trần Văn Hà", Sản phẩm "Sữa chua Hà Lan".
+- **THEN** Chuỗi "Hà" trong các kết quả đều được bọc trong thẻ `<mark>` hoặc CSS highlight nổi bật.
+
+#### Scenario: Chọn nhiều thẻ lọc cùng lúc
+- **GIVEN** Người dùng click chọn 2 NCC ("NCC A", "NCC B") và 1 sản phẩm ("Bánh gạo").
+- **WHEN** Người dùng xác nhận tìm kiếm.
+- **THEN** Thanh filter hiển thị 3 tag chips riêng biệt, bảng danh sách lọc đúng các NCC thỏa mãn.
+
+---
+
+### Requirement: REQ-EXPORT-01 Professional Excel Export (FE-09.01)
+Chức năng xuất danh sách Nhà cung cấp ra tệp Excel (.xlsx) MUST tuân thủ định dạng bảng biểu báo cáo doanh nghiệp chuyên nghiệp:
+1. **Header báo cáo (Metadata Banner)**:
+   - Dòng 1: Tên đơn vị / Chi nhánh cửa hàng (In hoa, đậm).
+   - Dòng 2: Tiêu đề báo cáo "BÁO CÁO DANH SÁCH NHÀ CUNG CẤP" (Cỡ chữ 16pt, chữ đậm, căn giữa).
+   - Dòng 3: Thời gian xuất báo cáo (Định dạng `dd/MM/yyyy HH:mm:ss`) và Người xuất.
+2. **Tiêu đề bảng (Table Header Row)**:
+   - Nền màu KiotViet Brand Blue (`#0066FF`), màu chữ trắng sáng, in đậm (`font-weight: bold`).
+   - Có đường viền kẻ ô (thin borders) cho toàn bộ bảng.
+   - Gồm các cột: STT, Mã NCC, Tên Nhà Cung Cấp, Mã Số Thuế, Người Liên Hệ, Số Điện Thoại, Email, Loại NCC, Nhóm Ngành, Địa Chỉ, Trạng Thái.
+3. **Căn lề chuẩn (Data Formatting & Alignment)**:
+   - Căn giữa: STT, Mã NCC, Mã số thuế, Số điện thoại, Trạng thái.
+   - Căn trái: Tên NCC, Người liên hệ, Email, Địa chỉ, Loại NCC, Nhóm ngành.
+4. **Tối ưu kích thước cột (Auto Column Widths)**:
+   - Độ rộng của từng cột trong file Excel MUST được tính toán tự động dựa trên độ dài lớn nhất của nội dung dòng (kể cả Header) cộng thêm lề an toàn tối thiểu 3-5 ký tự để đảm bảo không có cột nào bị che khuất nội dung hoặc hiển thị `###`.
+5. **Quyền hạn**: Nút Xuất Excel chỉ hiển thị và cho phép thao tác đối với Store Owner và Admin.
+
+#### Scenario: Xuất file Excel thành công
+- **GIVEN** Store Owner xem danh sách 15 NCC đã lọc theo Loại Hàng hóa (`Goods`).
+- **WHEN** Nhấn nút "Xuất Excel".
+- **THEN** Trình duyệt tải xuống file `.xlsx` có đầy đủ header báo cáo, tiêu đề bảng màu xanh `#0066FF`, các cột có độ rộng vừa khít nội dung và đúng 15 dòng dữ liệu.
+
+---
 
 ### Requirement: REQ-RBAC-01 Two Roles Scope — Store Owner and Branch Employee
 Hệ thống MUST map Store Owner = role `STORE_OWNER`\|`ADMIN`; Branch Employee = user có `branchId` và không phải Store Owner. Mọi query MUST lọc `TenantId`. Write (create/update/status/delivery/blackout/branches) MUST Store Owner ở **Application layer** (403 nếu không). Branch Employee MUST chỉ thấy NCC có assignment chứa chi nhánh mình, hoặc NCC không có assignment (dùng chung). GET `{id}` ngoài phạm vi MUST `404` (không 403).
@@ -52,7 +102,7 @@ Hệ thống MUST map Store Owner = role `STORE_OWNER`\|`ADMIN`; Branch Employee
 ---
 
 ### Requirement: REQ-LIST-01 View Supplier List Screen FE-09.01
-Màn `/store-owner/suppliers` MUST tìm theo mã, tên, SĐT, MST; lọc `SupplierType` và `Status`; phân trang server-side. Bảng MUST: mã, tên, người liên hệ, SĐT, trạng thái, hành động. MUST NOT cột công nợ / nút Trả / Xuất Excel stub. Nút Thêm/Sửa chỉ Store Owner. `SupplierSummaryDto` MUST có `ContactPerson`. API lỗi MUST error banner, MUST NOT `INITIAL_SUPPLIERS`.
+Màn `/store-owner/suppliers` MUST tìm theo mã, tên, SĐT, MST; hỗ trợ tìm kiếm đa thực thể theo REQ-SEARCH-01; lọc `SupplierType` và `Status`; phân trang server-side. Bảng MUST: mã, tên, người liên hệ, SĐT, trạng thái, hành động. MUST NOT cột công nợ / nút Trả stub. Hỗ trợ nút Xuất Excel chuyên nghiệp theo REQ-EXPORT-01 cho Store Owner. Nút Thêm/Sửa chỉ Store Owner. `SupplierSummaryDto` MUST có `ContactPerson`. API lỗi MUST error banner, MUST NOT `INITIAL_SUPPLIERS`.
 
 #### Scenario: Tìm MST
 - **GIVEN** TaxCode `0312345678`.
@@ -202,8 +252,10 @@ REQ-02 type narrowing BR-S07; REQ-04 AP ledger idempotency; REQ-05 Dual-role (kh
 ---
 
 ## Acceptance checklist
+- [ ] REQ-SEARCH-01 Gợi ý đa thực thể Real-time + Highlight chữ khớp + Multi-select Tags (NCC, Sản phẩm, Liên hệ, SĐT) + Xóa từng tag / xóa tất cả
+- [ ] REQ-EXPORT-01 Xuất Excel (.xlsx) chuẩn doanh nghiệp: Header báo cáo, Tiêu đề màu Brand Blue #0066FF, viền ô, căn lề và tự động tính kích thước cột (Auto Column Widths)
 - [ ] REQ-RBAC-01 role map JWT + 404 ngoài phạm vi + 403 write Employee
-- [ ] REQ-LIST-01 search MST, filter type+status, cột FE-09.01, không AP/Trả/Excel, không mock
+- [ ] REQ-LIST-01 search MST, filter type+status, cột FE-09.01, không AP/nút Trả stub, không mock
 - [ ] REQ-BRANCH-01 gán chi nhánh cùng Tenant; rỗng = dùng chung
 - [ ] REQ-PAY-01 điều khoản không âm
 - [ ] REQ-HIST-01 lịch sử theo chi nhánh, không mock nếu API trống
