@@ -23,3 +23,7 @@ User Approve Brainstorm: căn chỉnh FE-09 trên change cũ — 2 role Store Ow
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-27 15:15
 
 Verify-spec FE-09: 4 persona (skeptic/guardian/advocate/codebase). HIGH đã sửa: map STORE_OWNER|ADMIN vs Employee+branchId; list không cột công nợ; cutoff chỉ lưu config (không chặn PO trong change này); GET ngoài phạm vi 404; không mock list. tasks.md T20–T33.
+
+## Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:40
+
+User duyệt cập nhật spec cho tính năng tìm kiếm đa thực thể highlight (multi-select NCC, sản phẩm, liên hệ, SĐT) và xuất Excel định dạng chuẩn header/cột.
