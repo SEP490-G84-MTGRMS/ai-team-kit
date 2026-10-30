@@ -4,24 +4,22 @@
 
 ---
 
-## 1. Tiểu cụm đã hoàn thành (1.1 & 1.2: Nền tảng API & Bảng Danh sách Phân trang Server-side)
+## 1. Tiểu cụm đã hoàn thành (1.1, 1.2 & 1.3)
 - [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` chỉ chứa các interface cốt lõi cho danh sách: `ProductResponse`, `PagedResult<T>`, `ProductQueryFilter` khớp 100% với DTOs C#. (REQ-01)
 - [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 - [x] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng và tích hợp component phân trang dùng chung `TablePagination` của dự án. (REQ-01)
 - [x] T4 — Viết test kiểm thử `productApi.getProductsPaged` và logic phân trang để đảm bảo dữ liệu map đúng từ API Backend. (REQ-01)
+- [x] T5 — Cập nhật phân quyền cột "Giá vốn" trên bảng danh sách sản phẩm trong `ProductListPage.tsx`:
+  - Lấy vai trò người dùng từ `useAuthStore` (hỗ trợ chuyển đổi nhanh vai trò trên thanh toolbar để kiểm thử).
+  - Nếu role là `StoreOwner` hoặc `Admin` / `Manager`: Hiển thị cột `Giá vốn` và giá trị tương ứng.
+  - Nếu role là `Cashier` hoặc `Staff`: Ẩn hoàn toàn cột `Giá vốn` (cả header `<th>` lẫn ô `<td>`), không hiển thị giá vốn và biên độ lãi. (REQ-04, BR-SEC-01)
+- [x] T6 — Bổ sung Unit test cho BR-SEC-01 trong `ProductListPage.test.tsx`:
+  - Test case: Khi vai trò là `Cashier`, xác minh chữ "Giá vốn" không xuất hiện trong bảng table header và DOM.
+  - Test case: Khi vai trò là `StoreOwner`, xác minh cột "Giá vốn" hiển thị đầy đủ. (REQ-04)
 
 ---
 
-## 2. Các Tiểu cụm tiếp theo (Tiểu cụm 1.3, 1.4, 1.5)
-
-### Tiểu cụm 1.3: Bảo mật Phân quyền hiển thị Giá vốn theo Vai trò (BR-SEC-01 / REQ-04)
-- [ ] T5 — Cập nhật phân quyền cột "Giá vốn" trên bảng danh sách sản phẩm trong `ProductListPage.tsx`:
-  - Lấy vai trò người dùng từ `useAuthStore` (hỗ trợ chuyển đổi nhanh vai trò trên thanh toolbar để kiểm thử).
-  - Nếu role là `StoreOwner` hoặc `Admin`: Hiển thị cột `Giá vốn` và giá trị tương ứng.
-  - Nếu role là `Cashier` hoặc `Staff`: Ẩn hoàn toàn cột `Giá vốn` (cả header `<th>` lẫn ô `<td>`), không hiển thị giá vốn và biên độ lãi. (REQ-04, BR-SEC-01)
-- [ ] T6 — Bổ sung Unit test cho BR-SEC-01 trong `ProductListPage.test.tsx`:
-  - Test case: Khi vai trò là `Cashier`, xác minh chữ "Giá vốn" không xuất hiện trong bảng table header và DOM.
-  - Test case: Khi vai trò là `StoreOwner`, xác minh cột "Giá vốn" hiển thị đầy đủ. (REQ-04)
+## 2. Các Tiểu cụm tiếp theo (Tiểu cụm 1.4, 1.5)
 
 ### Tiểu cụm 1.4: Tìm kiếm Đa tiêu chí Server-side Debounced 300ms (REQ-02)
 - [ ] T7 — Tích hợp cơ chế Debounce 300ms cho ô tìm kiếm sản phẩm trong `ProductListPage.tsx` bằng `useEffect` (không dùng custom hook):
