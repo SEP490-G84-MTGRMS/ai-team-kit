@@ -31,3 +31,7 @@ User duyệt cập nhật spec cho tính năng tìm kiếm đa thực thể high
 ## Brainstorm — ✅ Approve bởi @minhduc118a · 2026-10-30 16:42
 
 User duyệt thiết kế Brainstorm: API gợi ý tìm kiếm đa thực thể GET /suppliers/search-suggestions, lọc đa tiêu chí GET /suppliers, UI autocomplete highlight text + multi-select tags và xuất Excel chuyên nghiệp.
+
+## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:43
+
+User duyệt Verify Spec: Danh sách task T34 (Backend Search Suggestions & Multi-Entity Filter), T35 (Frontend Autocomplete Highlight & Multi-select Tags), T36 (Professional Excel Export), T26 (AP & Transactions scope), T31 (DetailPage real API), T32 & T33 (Unit test & build verification).
