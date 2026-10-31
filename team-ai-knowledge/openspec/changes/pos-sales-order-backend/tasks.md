@@ -1,8 +1,8 @@
-# Tasks: Phân Hệ Bán Hàng POS Backend & Tích Hợp Thiết Bị Phần Cứng
+# Tasks: Phân Hệ Bán Hàng POS Backend & Tích Hợp Thiết Bị Phần Cứng (Tạp Hóa / Siêu Thị Mini)
 
 ## 1. Backend Infrastructure & Printer Service
 - [ ] T1: Hiện thực hóa `RawPrinterHelper` (P/Invoke Win32 Spooler `winspool.drv` gửi byte nhị phân RAW) tại `MT_GRMS.Infrastructure/Services/Printer/RawPrinterHelper.cs` (REQ-POS-04).
-- [ ] T2: Hiện thực hóa `ThermalPrintService` (ESC/POS 58mm, 32 ký tự/dòng, in đậm, căn lề, format 2 cột, ngắt dòng tiền tỷ, cắt giấy tự động) tại `MT_GRMS.Infrastructure/Services/Printer/ThermalPrintService.cs` (REQ-POS-04).
+- [ ] T2: Hiện thực hóa `ThermalPrintService` (ESC/POS chuẩn khổ in 43mm siêu thị mini / tạp hóa trên giấy 58mm, Font B nhỏ gọn ~7.5pt, 32 ký tự/dòng, in đậm, căn lề, format giá, ngắt dòng, thông tin đổi trả trong 24h, cắt giấy tự động) tại `MT_GRMS.Infrastructure/Services/Printer/ThermalPrintService.cs` (REQ-POS-04).
 
 ## 2. Backend Application Layer (Logic Nghiệp Vụ)
 - [ ] T3: Bổ sung DTOs đầy đủ cho đơn hàng POS (`OrderCreateRequest`, `OrderItemCreateDto`, `OrderResponse`, `OrderItemResponse`, `OrderFilterRequest`) và Validator FluentValidation tại `MT_GRMS.Application/PosOrders/` (REQ-POS-01).
@@ -26,7 +26,7 @@
   - Báo lỗi khi sản phẩm không đủ tồn kho tại chi nhánh `BranchStocks`.
   - Trừ tồn kho thành công theo đúng thứ tự lô hạn sử dụng FEFO.
   - Tích điểm thành công cho khách hàng sau khi thanh toán.
-  - Kiểm thử `ThermalPrintService` sinh đúng mã lệnh nhị phân ESC/POS và cắt giấy.
+  - Kiểm thử `ThermalPrintService` sinh đúng mã lệnh nhị phân ESC/POS và cắt giấy khổ 43mm siêu thị mini.
 - [ ] T11: Chạy `dotnet test` và xác nhận đạt 100% Pass.
 
 ## 5. Frontend Hardware Hook & Tích Hợp Giao Diện
