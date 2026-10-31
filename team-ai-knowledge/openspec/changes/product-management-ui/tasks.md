@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Tiểu cụm đã hoàn thành (1.1 -> 1.6)
+## 1. Tiểu cụm đã hoàn thành (1.1 -> 1.7)
 - [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` chỉ chứa các interface cốt lõi cho danh sách: `ProductResponse`, `PagedResult<T>`, `ProductQueryFilter` khớp 100% với DTOs C#. (REQ-01)
 - [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 - [x] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng và tích hợp component phân trang dùng chung `TablePagination` của dự án. (REQ-01)
@@ -43,10 +43,6 @@
   - Nếu sản phẩm có `uomConversions`: hiển thị dropdown `[Tên SP] - [đơn vị] ⌵`.
   - Mở popover menu cho phép chọn chuyển đổi đơn vị và cập nhật hiển thị Giá bán tương ứng theo đơn vị được chọn. (REQ-07)
 - [x] T14 — Viết Unit test kiểm thử cho logic REQ-05, REQ-06 và REQ-07 trong `ProductListPage.test.tsx` và `ProductFormModal.test.tsx`.
-
----
-
-## 2. Tiểu cụm 1.7: Switch Đơn vị tính trong ProductDetailModal (REQ-08)
 - [x] T15 — Triển khai state `selectedUnitName` và derived selector trong `ProductDetailModal.tsx`:
   - Tính toán tức thời `displayCode`, `displayBarcode`, `displaySellingPrice`, `displayCostPrice` (tuân thủ BR-SEC-01), `displayStock`, số lượng lẻ dư theo đơn vị cơ bản. (REQ-08)
 - [x] T16 — Xây dựng thanh Unit Switcher (Segmented Pills) trên Header và tương tác click chọn dòng trong Bảng "Đơn vị tính & Quy đổi giá" của `ProductDetailModal.tsx`:
@@ -56,3 +52,22 @@
 - [x] T18 — Viết Unit test kiểm thử cho REQ-08 trong `ProductDetailModal.test.tsx`:
   - Test case 1: Chuyển đổi đơn vị tính trên Pill hoặc Bảng ĐVT cập nhật đúng giá bán, mã hàng, mã vạch, tồn kho.
   - Test case 2: Vai trò `StoreOwner` xem được giá vốn quy đổi; vai trò `Cashier` bị ẩn hoàn toàn giá vốn (BR-SEC-01).
+
+---
+
+## 2. Tiểu cụm 1.8: Cập nhật Hàng hóa & Đồng bộ Đơn vị tính (REQ-09)
+- [ ] T19 — Bổ sung hàm `updateProductUnit` và types `ProductUnitUpdatePayload` vào `src/features/product/api/productApi.ts` gọi `PUT /api/v1/product-units/{id}`. (REQ-09)
+- [ ] T20 — Cập nhật `ProductFormModal.tsx` ở chế độ chỉnh sửa:
+  - Khóa ô nhập Mã hàng (`productCode`) với `disabled`, nền xám `#F1F5F9`.
+  - Tự động nạp đơn vị quy đổi qua `productApi.getProductUnits` nếu `productToEdit.uomConversions` rỗng.
+  - Quản lý danh sách `deletedUnitIds: string[]` khi xóa đơn vị cũ trong bảng "Hàng cùng loại".
+  - Truyền `deletedUnitIds` vào tham số thứ 3 của callback `onSave(payload, saveAndAddNew, deletedUnitIds)`. (REQ-09)
+- [ ] T21 — Cập nhật `handleSaveProduct` trong `ProductListPage.tsx` điều phối lưu chỉnh sửa:
+  - Gọi `productApi.updateProduct(id, payload)` cập nhật thông tin sản phẩm.
+  - Gọi `productApi.deleteProductUnit(id)` cho các đơn vị trong `deletedUnitIds`.
+  - Duyệt `uomConversions`: tạo mới (`POST /units`) nếu là ID tạm, hoặc cập nhật (`PUT /product-units/{id}`) nếu là GUID.
+  - Refresh danh mục & bảng sản phẩm, đóng modal và hiển thị Toast thành công. (REQ-09)
+- [ ] T22 — Viết Unit test kiểm thử cho REQ-09 trong `ProductFormModal.test.tsx` và `ProductListPage.test.tsx`:
+  - Ô Mã hàng bị disabled khi chỉnh sửa.
+  - Ghi nhận `deletedUnitIds` khi xóa đơn vị quy đổi đã có trong DB.
+  - Đồng bộ gọi đúng các API khi lưu sản phẩm chỉnh sửa. (REQ-09)
