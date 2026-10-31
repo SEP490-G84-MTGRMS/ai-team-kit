@@ -59,3 +59,7 @@ Duyệt kết quả verify-spec và danh sách các task T15-T18 cho chức năn
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 15:56
 
 Duyệt phương án brainstorm REQ-09: Cập nhật Hàng hóa và Đồng bộ Đơn vị tính Quy đổi (khóa mã hàng, thêm/sửa/xóa đơn vị tính theo REST API chuẩn).
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 16:06
+
+Duyệt verify-spec cho REQ-09 Update Product & Units. Skeptic 5.0/5 PASS, 4 tasks T19-T22 đã sẵn sàng thực thi.
