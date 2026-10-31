@@ -55,3 +55,7 @@ Duyệt phương án thiết kế REQ-08: Cho phép chuyển đổi đơn vị t
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:58
 
 Duyệt kết quả verify-spec và danh sách các task T15-T18 cho chức năng Switch đơn vị tính trong ProductDetailModal (REQ-08).
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 15:56
+
+Duyệt phương án brainstorm REQ-09: Cập nhật Hàng hóa và Đồng bộ Đơn vị tính Quy đổi (khóa mã hàng, thêm/sửa/xóa đơn vị tính theo REST API chuẩn).
