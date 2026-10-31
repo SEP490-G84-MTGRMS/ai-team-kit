@@ -12,25 +12,23 @@
    - Bấm vào thumbnail để mở Lightbox phóng to ảnh xem chi tiết.
 3. Khi Lưu sản phẩm: Gửi mảng `imageUrls: string[]` lên Backend API. Trường `imageUrl` chính của sản phẩm tự động tương thích với ảnh đầu tiên `imageUrls[0]`.
 
-### Flow 2: Tự Động Sinh Mã Hàng cho Đơn Vị Quy Đổi
-1. Tại phần "Đơn vị tính" trong `ProductFormModal`, người dùng nhập tên đơn vị quy đổi (ví dụ: "Thùng").
-2. Bảng "Hàng cùng loại" tự động sinh mã gợi ý: `{Mã SP}-THUNG`.
-3. Người dùng có thể chỉnh sửa mã này trực tiếp trong ô input Mã hàng của dòng đơn vị quy đổi.
-4. Khi bấm Lưu:
-   - Backend kiểm tra trường `UnitCode`. Nếu rỗng, tự động sinh `{product.ProductCode}-{unitSlug}`.
-   - Backend lưu `UnitCode` vào bản ghi `ProductUnit`.
+### Flow 2: Đơn Vị Quy Đổi & Hiển Thị Mã Hàng Mặc Định
+1. Tại phần "Đơn vị tính" trong `ProductFormModal`, người dùng thêm đơn vị quy đổi (ví dụ: "Thùng").
+2. Bảng "Hàng cùng loại": Cột "Mã hàng" hiển thị mặc định theo mã hàng của sản phẩm (`productCode`) ở trạng thái disabled.
+3. Entity `ProductUnit` trên Backend không lưu trường mã hàng, tránh trùng lặp và phân mảnh mã định danh.
 
 ### Flow 3: Xem Chi Tiết Hàng Hóa với Modal Cố Định W-H & Gallery Ảnh
 1. Người dùng click vào dòng sản phẩm trên bảng `ProductListPage`.
 2. Mở `ProductDetailModal` với kích thước chuẩn cố định: `maxWidth: 1160px, width: '96vw', height: '88vh'`.
 3. **Cấu trúc 3 tầng**:
-   - **Header cố định** (`flexShrink: 0`): Tên hàng hóa, mã hàng, barcode, thanh pills chuyển đổi ĐVT nhanh.
+   - **Header cố định** (`flexShrink: 0`): Tên hàng hóa, mã hàng (mặc định theo sản phẩm), barcode, thanh pills chuyển đổi ĐVT nhanh.
    - **Body cuộn độc lập** (`flex: 1, overflowY: 'auto'`): Chứa các tab (Thông tin chung, Đơn vị tính & Quy đổi giá, Thẻ kho, Tồn kho chi nhánh).
      - Khi chuyển đổi giữa tab "Thông tin chung" và "Thẻ kho", khung modal không bị nhảy giật hay co giãn kích thước.
      - Tab "Thông tin chung":
        - Gallery ảnh: Hiển thị ảnh chính lớn bên trên kèm nhãn "Chính" + dải thumbnail bên dưới. Bấm vào thumbnail đổi ảnh đang hiển thị. Bấm vào ảnh lớn mở Lightbox phóng to.
        - "Mô tả": Hiển thị dữ liệu thực tế `product.description` (nếu rỗng: `Chưa có mô tả chi tiết cho hàng hóa này.`).
        - "Ghi chú nội bộ": Hiển thị dữ liệu thực tế `product.internalNote` (nếu rỗng: `Chưa có ghi chú nội bộ.`).
+       - Bảng Đơn vị tính: Cột mã hàng hiển thị mặc định theo mã sản phẩm cha `product.productCode`.
    - **Footer cố định** (`flexShrink: 0`): Chứa các nút Thao tác (In mã vạch, Chỉnh sửa, Đóng).
 
 ---
@@ -47,12 +45,11 @@ ALTER TABLE "Products"
 ADD "ImageUrls" text[] NOT NULL DEFAULT '{}';
 ```
 
-### Bảng cập nhật: `ProductUnits`
+### Bảng: `ProductUnits`
+Entity `ProductUnit` không lưu `ProductCode`/`UnitCode` trong cơ sở dữ liệu:
 ```sql
-ALTER TABLE "ProductUnits"
-ADD "UnitCode" character varying(100) NULL;
-
-CREATE INDEX "IX_ProductUnits_UnitCode" ON "ProductUnits"("UnitCode");
+-- ProductUnits không có cột UnitCode/ProductCode
+-- Cột UnitCode (nếu đã tạo trước đó) đã được drop qua migration RemoveUnitCodeFromProductUnit
 ```
 
 ### EF Core Configuration (Npgsql):
@@ -62,9 +59,11 @@ builder.Property(x => x.ImageUrls)
     .HasColumnType("text[]");
 
 // ProductUnitConfiguration.cs
-builder.Property(x => x.UnitCode)
-    .HasMaxLength(100);
-builder.HasIndex(x => x.UnitCode);
+builder.ToTable("ProductUnits");
+builder.Property(x => x.UnitName).HasMaxLength(50).IsRequired();
+builder.Property(x => x.ConversionRate).HasColumnType("decimal(10,2)").HasDefaultValue(1.00m);
+builder.Property(x => x.Price).HasColumnType("decimal(18,2)").HasDefaultValue(0.00m);
+builder.Property(x => x.Barcode).HasMaxLength(50);
 ```
 
 ---
@@ -97,17 +96,18 @@ public record ProductUpdateRequest(
 ```csharp
 public record ProductUnitResponse(
     Guid Id,
+    Guid ProductId,
     string UnitName,
-    string? UnitCode,
     decimal ConversionRate,
     decimal Price,
     string? Barcode,
-    bool IsBaseUnit
+    bool IsBaseUnit,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
 );
 
 public record ProductUnitCreateRequest(
     string UnitName,
-    string? UnitCode,
     decimal ConversionRate,
     decimal Price,
     string? Barcode,
@@ -116,7 +116,6 @@ public record ProductUnitCreateRequest(
 
 public record ProductUnitUpdateRequest(
     string UnitName,
-    string? UnitCode,
     decimal ConversionRate,
     decimal Price,
     string? Barcode,
