@@ -56,18 +56,18 @@
 ---
 
 ## 2. Tiểu cụm 1.8: Cập nhật Hàng hóa & Đồng bộ Đơn vị tính (REQ-09)
-- [ ] T19 — Bổ sung hàm `updateProductUnit` và types `ProductUnitUpdatePayload` vào `src/features/product/api/productApi.ts` gọi `PUT /api/v1/product-units/{id}`. (REQ-09)
-- [ ] T20 — Cập nhật `ProductFormModal.tsx` ở chế độ chỉnh sửa:
+- [x] T19 — Bổ sung hàm `updateProductUnit` và types `ProductUnitUpdatePayload` vào `src/features/product/api/productApi.ts` gọi `PUT /api/v1/product-units/{id}`. (REQ-09)
+- [x] T20 — Cập nhật `ProductFormModal.tsx` ở chế độ chỉnh sửa:
   - Khóa ô nhập Mã hàng (`productCode`) với `disabled`, nền xám `#F1F5F9`.
   - Tự động nạp đơn vị quy đổi qua `productApi.getProductUnits` nếu `productToEdit.uomConversions` rỗng.
   - Quản lý danh sách `deletedUnitIds: string[]` khi xóa đơn vị cũ trong bảng "Hàng cùng loại".
   - Truyền `deletedUnitIds` vào tham số thứ 3 của callback `onSave(payload, saveAndAddNew, deletedUnitIds)`. (REQ-09)
-- [ ] T21 — Cập nhật `handleSaveProduct` trong `ProductListPage.tsx` điều phối lưu chỉnh sửa:
+- [x] T21 — Cập nhật `handleSaveProduct` trong `ProductListPage.tsx` điều phối lưu chỉnh sửa:
   - Gọi `productApi.updateProduct(id, payload)` cập nhật thông tin sản phẩm.
   - Gọi `productApi.deleteProductUnit(id)` cho các đơn vị trong `deletedUnitIds`.
   - Duyệt `uomConversions`: tạo mới (`POST /units`) nếu là ID tạm, hoặc cập nhật (`PUT /product-units/{id}`) nếu là GUID.
   - Refresh danh mục & bảng sản phẩm, đóng modal và hiển thị Toast thành công. (REQ-09)
-- [ ] T22 — Viết Unit test kiểm thử cho REQ-09 trong `ProductFormModal.test.tsx` và `ProductListPage.test.tsx`:
+- [x] T22 — Viết Unit test kiểm thử cho REQ-09 trong `ProductFormModal.test.tsx` và `ProductListPage.test.tsx`:
   - Ô Mã hàng bị disabled khi chỉnh sửa.
   - Ghi nhận `deletedUnitIds` khi xóa đơn vị quy đổi đã có trong DB.
   - Đồng bộ gọi đúng các API khi lưu sản phẩm chỉnh sửa. (REQ-09)
