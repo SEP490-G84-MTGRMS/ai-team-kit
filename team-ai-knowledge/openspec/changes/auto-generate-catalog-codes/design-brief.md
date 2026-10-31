@@ -6,17 +6,18 @@ Người dùng (Web / POS)
    │
    ├── (Không nhập Mã) ──> POST /api/v1/categories (Code = null / "")
    │                         └── CategoryService.CreateAsync()
-   │                               ├── CategoryRepo.GetMaxCodeNumberAsync("CAT", length=9)
+   │                               ├── CategoryRepo.GetMaxSequentialCodeAsync("CAT", length=9)
    │                               ├── nextNum = maxNum + 1 -> "CAT000001"
    │                               ├── Vòng lặp kiểm tra ExistsByCodeAsync("CAT000001")
    │                               └── Lưu Category (CategoryCode = "CAT000001")
    │
-   └── (Không nhập Mã) ──> POST /api/v1/products (ProductCode = null / "")
+   └── (Không nhập Mã / Không nhập Barcode) ──> POST /api/v1/products (ProductCode = null, Barcode = null)
                              └── CatalogService.CreateProductAsync()
-                                   ├── ProductRepo.GetMaxCodeNumberAsync("SP", length=8)
+                                   ├── ProductRepo.GetMaxSequentialCodeAsync("SP", length=8)
                                    ├── nextNum = maxNum + 1 -> "SP000001"
                                    ├── Vòng lặp kiểm tra ExistsByCodeAsync("SP000001")
-                                   └── Lưu Product (ProductCode = "SP000001", Barcode = Barcode ?? "SP000001")
+                                   ├── Xử lý Barcode: string.IsNullOrWhiteSpace(request.Barcode) ? null : request.Barcode.Trim()
+                                   └── Lưu Product (ProductCode = "SP000001", Barcode = null)
 ```
 
 ## 2. Thiết kế Tầng Repository
@@ -53,8 +54,21 @@ Task<string?> GetMaxSequentialCodeAsync(string prefix, int totalLength, Cancella
           .FirstOrDefaultAsync(cancellationToken);
   }
   ```
+- **Cập nhật `ExistsByBarcodeAsync`**:
+  ```csharp
+  public async Task<bool> ExistsByBarcodeAsync(string barcode, Guid? excludeId = null, CancellationToken cancellationToken = default)
+  {
+      if (string.IsNullOrWhiteSpace(barcode)) return false;
+      var normalizedBarcode = barcode.Trim();
+      return await _dbSet.AnyAsync(p =>
+          !p.IsDeleted &&
+          p.Barcode == normalizedBarcode &&
+          (!excludeId.HasValue || p.Id != excludeId.Value),
+          cancellationToken);
+  }
+  ```
 
-## 3. Thiết kế Tầng Service (Logic Sinh mã)
+## 3. Thiết kế Tầng Service (Logic Sinh mã & Barcode)
 ### 3.1. `CategoryService.cs`
 - Khi `string.IsNullOrWhiteSpace(request.Code)`:
   1. `var maxCode = await _categoryRepository.GetMaxSequentialCodeAsync("CAT", 9, cancellationToken);`
@@ -62,7 +76,7 @@ Task<string?> GetMaxSequentialCodeAsync(string prefix, int totalLength, Cancella
      - Nếu `maxCode` hợp lệ và `int.TryParse(maxCode.Substring(3), out var currentMax)`: `nextNumber = currentMax + 1`.
      - Ngược lại: `nextNumber = 1`.
   3. Format `code = $"CAT{nextNumber:D6}"`.
-  4. Vòng lặp an toàn:
+  4. Vòng lặp an toàn chống trùng:
      ```csharp
      while (await _categoryRepository.ExistsByCodeAsync(code, null, cancellationToken))
      {
@@ -81,7 +95,7 @@ Task<string?> GetMaxSequentialCodeAsync(string prefix, int totalLength, Cancella
      - Nếu `maxCode` hợp lệ và `int.TryParse(maxCode.Substring(2), out var currentMax)`: `nextNumber = currentMax + 1`.
      - Ngược lại: `nextNumber = 1`.
   3. Format `code = $"SP{nextNumber:D6}"`.
-  4. Vòng lặp an toàn:
+  4. Vòng lặp an toàn chống trùng:
      ```csharp
      while (await _productRepository.ExistsByCodeAsync(code, null, cancellationToken))
      {
@@ -89,16 +103,19 @@ Task<string?> GetMaxSequentialCodeAsync(string prefix, int totalLength, Cancella
          code = $"SP{nextNumber:D6}";
      }
      ```
-- Xử lý Barcode mặc định:
-  - `var barcode = string.IsNullOrWhiteSpace(request.Barcode) ? code : request.Barcode.Trim();`
+- Xử lý Barcode:
+  - `string? barcode = string.IsNullOrWhiteSpace(request.Barcode) ? null : request.Barcode.Trim();`
+  - Nếu `!string.IsNullOrWhiteSpace(barcode)`: Kiểm tra `ExistsByBarcodeAsync(barcode)`. Nếu trùng ném `PRODUCT_BARCODE_EXISTS`.
+  - Nếu `barcode` là `null`: Cho phép lưu `null` vào CSDL.
 
 ## 4. Thay đổi Cơ sở dữ liệu (Database Schema)
-- **Không thay đổi schema bảng**: Các bảng `Categories` và `Products` đã có các trường `CategoryCode` và `ProductCode` với kiểu `string` (varchar/text) và index unique/tenant.
-- Không cần sinh thêm EF Core migration.
+- **`Product.cs`**: Thuộc tính `public string? Barcode { get; set; }` chuyển thành nullable.
+- **`ProductResponse`**: Thuộc tính `string? Barcode` chuyển thành nullable.
+- **`ProductConfiguration.cs`**:
+  - `builder.Property(x => x.Barcode).HasMaxLength(50).IsRequired(false);`
+  - Index `builder.HasIndex(x => x.Barcode).IsUnique();` (Trong PostgreSQL, unique index cho phép nhiều dòng có giá trị NULL).
+- **EF Core Migration**: Tạo migration `MakeProductBarcodeNullable` chuyển cột `Barcode` trong bảng `Products` từ `NOT NULL` sang `NULL`.
 
 ## 5. Quy tắc Nghiệp vụ & Phân quyền
 - **Phân quyền**: Chỉ người dùng có role quản lý (`SUPER_ADMIN`, `STORE_OWNER`, `BRANCH_MANAGER`, `WAREHOUSE_STAFF`) mới được quyền thêm mới nhóm hàng và sản phẩm.
-- **Tenant Isolation**: Các câu truy vấn trong Repository kế thừa từ `GenericRepository` tự động gán bộ lọc `TenantId == _tenantContext.CurrentTenantId`, đảm bảo:
-  - Cửa hàng Tenant A bắt đầu từ `CAT000001`, `SP000001`.
-  - Cửa hàng Tenant B cũng bắt đầu độc lập từ `CAT000001`, `SP000001`.
-  - Không có tình trạng nhảy cóc số do cửa hàng khác tạo mã.
+- **Tenant Isolation**: Các câu truy vấn trong Repository kế thừa từ `GenericRepository` tự động gán bộ lọc `TenantId == _tenantContext.CurrentTenantId`.
