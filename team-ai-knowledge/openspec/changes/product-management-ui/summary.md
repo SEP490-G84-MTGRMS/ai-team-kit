@@ -51,3 +51,7 @@ Duyệt bước Verify Spec: Đã review skeptic và cập nhật tasks.md với
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:55
 
 Duyệt phương án thiết kế REQ-08: Cho phép chuyển đổi đơn vị tính trong ProductDetailModal, tự động cập nhật Giá bán, Giá vốn (StoreOwner BR-SEC-01), Tồn kho, Mã hàng và Mã vạch tức thời.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:58
+
+Duyệt kết quả verify-spec và danh sách các task T15-T18 cho chức năng Switch đơn vị tính trong ProductDetailModal (REQ-08).
