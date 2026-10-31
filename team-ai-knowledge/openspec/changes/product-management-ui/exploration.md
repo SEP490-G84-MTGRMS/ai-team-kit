@@ -1,70 +1,76 @@
-# EXP-2026-10-31-002: Khảo sát Triển khai Chức năng Switch Đơn vị tính trong Chi tiết Hàng hóa (Product Detail Switch Unit)
+# EXP-2026-10-31-003: Khảo sát Triển khai Chức năng Cập nhật Hàng hóa (Update Product & Product Units)
 
 ## 1. Problem Statement
-Hiện tại, [`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductDetailModal.tsx) chỉ hiển thị thông tin sản phẩm (Mã hàng, Mã vạch, Giá bán, Giá vốn, Tồn kho) cố định theo Đơn vị cơ bản (`baseUnit`). 
-Khi hàng hóa có nhiều đơn vị tính quy đổi (ví dụ: chai / lốc / thùng):
-- Người dùng chỉ thấy được danh sách tỷ lệ quy đổi trong bảng tĩnh ở cuối tab Thông tin.
-- Người dùng không thể xem được Giá bán, Giá vốn (StoreOwner), Số lượng tồn kho quy đổi, Mã hàng (SKU riêng) và Mã vạch riêng của từng đơn vị quy đổi ngay trong giao diện chi tiết.
-- Cần bổ sung khả năng chuyển đổi đơn vị tính (Switch Unit) linh hoạt ngay trong `ProductDetailModal`, giúp tự động cập nhật toàn bộ các chỉ số chi tiết tương ứng với đơn vị được chọn.
+Hiện tại, chức năng sửa hàng hóa trong [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx) và [`ProductListPage.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/pages/ProductListPage.tsx) chỉ mới gọi `PUT /api/v1/products/{id}` để cập nhật các thông tin cơ bản của sản phẩm. Việc quản lý các Đơn vị tính quy đổi (Product Units) trong quá trình chỉnh sửa còn nhiều thiếu sót:
+1. **Thiếu API & Logic sửa Đơn vị quy đổi đã có**: Khi người dùng sửa giá bán, tỷ lệ quy đổi hoặc mã vạch của một đơn vị đã tồn tại trong DB, hệ thống chưa có API `updateProductUnit` (`PUT /api/v1/product-units/{id}`), dẫn đến các thay đổi bị bỏ qua.
+2. **Thiếu cơ chế xóa Đơn vị quy đổi đã tồn tại**: Khi người dùng bấm xóa một đơn vị quy đổi đã lưu trong DB khỏi bảng "Hàng cùng loại", hệ thống chưa ghi nhận ID để gọi `DELETE /api/v1/product-units/{id}` lên backend.
+3. **Mã hàng (`productCode`) chưa được khóa khi Sửa**: Theo nghiệp vụ quản lý kho và DTO Backend `ProductUpdateRequest`, mã hàng SKU là định danh bất biến sau khi tạo. Ô nhập mã hàng trong `ProductFormModal` cần được vô hiệu hóa (`disabled`) khi ở chế độ Edit.
+4. **Tải thiếu Đơn vị quy đổi khi mở Form Sửa**: Nếu sản phẩm được click sửa từ danh sách khi chưa nạp `uomConversions`, modal mở lên bị thiếu danh sách đơn vị đã lưu.
 
 ---
 
 ## 2. Context & Tech Stack
-- **Frontend Codebase:**
-  - `src/features/product/components/ProductDetailModal.tsx`: Component hiển thị chi tiết sản phẩm.
-  - `src/features/product/types/index.ts`: Các type `ProductItem`, `UomConversion`, `ProductUnitResponse`.
-  - `src/features/product/api/productApi.ts`: API `getProductUnits(productId: string)`.
-- **Backend API:**
-  - `GET /api/v1/products/{id}/units`: Đã có sẵn trong [`ProductUnitsController.cs`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_BACKEND/src/MT_GRMS.Api/Controllers/ProductUnitsController.cs) trả về danh sách đơn vị tính quy đổi.
+- **Backend Endpoints:**
+  - `PUT /api/v1/products/{id}`: Cập nhật thông tin chính sản phẩm qua `ProductUpdateRequest`.
+  - `POST /api/v1/products/{productId:guid}/units`: Thêm đơn vị quy đổi mới.
+  - `PUT /api/v1/product-units/{id:guid}`: Cập nhật đơn vị quy đổi qua `ProductUnitUpdateRequest` (`unitName`, `conversionRate`, `price`, `barcode`, `isBaseUnit`).
+  - `DELETE /api/v1/product-units/{id:guid}`: Xóa đơn vị quy đổi.
+  - `GET /api/v1/products/{productId:guid}/units`: Lấy toàn bộ đơn vị tính của sản phẩm.
+- **Frontend Components:**
+  - `src/features/product/components/ProductFormModal.tsx`: Form tạo mới & chỉnh sửa hàng hóa.
+  - `src/features/product/pages/ProductListPage.tsx`: Quản lý lưu sản phẩm `handleSaveProduct`.
+  - `src/features/product/api/productApi.ts`: Client gọi các API sản phẩm và đơn vị tính.
 
 ---
 
 ## 3. Assumptions & Non-Goals
 
 ### Assumptions
-1. Sản phẩm luôn có ít nhất một đơn vị cơ bản (`product.baseUnit`).
-2. Tồn kho trong hệ thống (`product.onHand`) được lưu trữ chuẩn hóa theo đơn vị cơ bản.
-3. Khi chuyển sang đơn vị quy đổi với tỷ lệ $K$ (`conversionRate`):
-   - Tồn kho quy đổi = $\lfloor \text{onHand} / K \rfloor$.
-   - Số lượng lẻ còn lại = $\text{onHand} \pmod K$ (được hiển thị chú thích chi tiết nếu có).
-   - Giá vốn quy đổi (nếu là StoreOwner) = $\text{costPrice} \times K$.
-   - Giá bán quy đổi = Giá bán riêng của đơn vị quy đổi (`uom.price`).
-4. Quyền xem giá vốn tuân thủ nghiêm ngặt **BR-SEC-01**: Chỉ `StoreOwner` mới được xem giá vốn cơ bản và giá vốn quy đổi.
+1. Mã hàng (`productCode`) không được phép chỉnh sửa ở chế độ Edit (`disabled`, nền xám).
+2. Khi sửa hàng hóa, danh sách đơn vị quy đổi chia làm 3 nhóm:
+   - **Thêm mới**: Có `id` tạm (`uom-*`) -> gọi `POST /api/v1/products/{id}/units`.
+   - **Cập nhật**: Có `id` là GUID đã tồn tại trong DB -> gọi `PUT /api/v1/product-units/{id}`.
+   - **Xóa**: Đơn vị có `id` là GUID bị người dùng xóa khỏi form -> gọi `DELETE /api/v1/product-units/{id}`.
+3. Đơn vị cơ bản không được phép xóa (luôn cố định tỷ lệ quy đổi = 1).
+4. Phân quyền giá vốn: `Cashier` / `Staff` không được xem/sửa giá vốn, giá vốn được giữ nguyên theo dữ liệu gốc.
 
 ### Non-Goals
-1. Không sửa đổi dữ liệu sản phẩm trong modal xem chi tiết (việc sửa thông tin do `ProductFormModal` đảm nhiệm).
-2. Không thay đổi schema cơ sở dữ liệu backend.
+1. Không thay đổi endpoint backend hay tạo endpoint batch mới.
+2. Không cho phép đổi trạng thái giao dịch kho trong form sửa (lịch sử giao dịch là bất biến).
 
 ---
 
 ## 4. Các Phương án Thiết kế
 
-### Phương án 1: Local Derived State + Unit Selector Pills & Bảng ĐVT tương tác (Đề xuất)
-- `ProductDetailModal` duy trì state `selectedUnitName` (khởi tạo mặc định = `product.baseUnit`).
-- Bổ sung thanh chọn đơn vị (Pill Switcher) nổi bật trên thanh Header hoặc ngay trên đầu tab Thông tin:
-  `[ chai (Cơ sở) ]  [ thung (x24) ]`
-- Đồng thời cho phép click vào bất kỳ hàng nào trong bảng "Đơn vị tính & Quy đổi giá" để chuyển sang đơn vị đó (highlight dòng đang chọn).
-- Tính toán derived state tức thời:
-  - `displayCode`: mã hàng của đơn vị hoặc mã hàng chính.
-  - `displayBarcode`: mã vạch riêng của đơn vị hoặc mã vạch chính.
-  - `displayPrice`: giá bán của đơn vị.
-  - `displayCost`: giá vốn tính theo tỷ lệ (chỉ hiện khi vai trò là StoreOwner).
-  - `displayStock`: tồn kho quy đổi + chú thích số lượng lẻ theo đơn vị cơ bản.
-- **Ưu điểm:** Phản hồi tức thời (0ms delay), trải nghiệm người dùng cực tốt, an toàn, dễ bảo trì và viết Unit test.
-- **Nhược điểm:** Cần đảm bảo nạp đủ `uomConversions` nếu sản phẩm mở từ danh sách chưa có sẵn đơn vị tính.
+### Phương án 1: Client-side Diffing & Điều phối REST API hiện có (Đề xuất)
+- Bổ sung hàm `updateProductUnit` vào `src/features/product/api/productApi.ts`.
+- `ProductFormModal.tsx`:
+  - Khóa ô nhập `productCode` khi `isEditing === true`.
+  - Nếu `productToEdit.id` là GUID và `uomConversions` rỗng, tự động gọi `productApi.getProductUnits` để nạp đầy đủ đơn vị.
+  - Theo dõi danh sách `deletedUnitIds: string[]` khi người dùng bấm xóa đơn vị có sẵn trong DB.
+  - Truyền `deletedUnitIds` trong payload khi gọi `onSave`.
+- `ProductListPage.tsx` (`handleSaveProduct`):
+  - Bước 1: Gọi `productApi.updateProduct(id, payload)` cập nhật thông tin sản phẩm.
+  - Bước 2: Gọi `productApi.deleteProductUnit(unitId)` cho các đơn vị trong `deletedUnitIds`.
+  - Bước 3: Duyệt `uomConversions`:
+    - Nếu `id` bắt đầu bằng `uom-`: gọi `productApi.createProductUnit`.
+    - Nếu `id` là GUID: gọi `productApi.updateProductUnit`.
+  - Bước 4: Refresh danh sách và đóng modal.
+- **Ưu điểm:** Khớp 100% với kiến trúc backend hiện có, xử lý triệt để bài toán đồng bộ đơn vị tính, không cần sửa code C#.
+- **Nhược điểm:** Phát sinh nhiều request tuần tự/song song khi có nhiều đơn vị thay đổi (tuy nhiên thực tế mỗi sản phẩm chỉ có 1–3 đơn vị nên tổng thời gian xử lý < 200ms).
 
-### Phương án 2: Gọi API fetch riêng mỗi lần chuyển đơn vị tính
-- Mỗi khi người dùng bấm chọn một đơn vị, gửi request lên Backend để truy vấn thông tin riêng của đơn vị đó.
-- **Ưu điểm:** Độc lập với dữ liệu truyền từ ngoài vào.
-- **Nhược điểm:** Tốn tài nguyên mạng và tạo độ trễ (delay) không cần thiết khi người dùng lướt xem các đơn vị, vì thông tin quy đổi đã có sẵn trong cấu trúc sản phẩm.
+### Phương án 2: Backend Batch Synchronization API
+- Tạo một endpoint gộp ở Backend `PUT /api/v1/products/{id}/full` nhận toàn bộ sản phẩm và danh sách đơn vị để xử lý trong 1 transaction EF Core.
+- **Ưu điểm:** 1 HTTP request duy nhất.
+- **Nhược điểm:** Đòi hỏi sửa backend, viết thêm DTO, service, repository và unit test backend, vi phạm nguyên tắc "Đơn giản trước" và kéo dài thời gian hoàn thành.
 
 ---
 
-## 5. Phương án Lựa chọn & Rủi ro
-- **Phương án lựa chọn:** Chọn **Phương án 1** (kết hợp tự động gọi `productApi.getProductUnits(product.id)` trong `useEffect` nếu sản phẩm chưa có `uomConversions`).
+## 5. Phương án Lựa chọn & Đánh giá Rủi ro
+- **Phương án lựa chọn:** **Phương án 1** (Client-side Diffing).
 - **Đánh giá rủi ro & Giải pháp:**
   | Rủi ro | Giải pháp |
   |---|---|
-  | `product.uomConversions` bị `undefined` hoặc rỗng khi mở modal | Kiểm tra nếu `uomConversions` chưa có, tự động gọi `getProductUnits(product.id)` để lấy danh sách đầy đủ. |
-  | Phép chia cho 0 khi tính tỷ lệ quy đổi | Bắt buộc `conversionRate` tối thiểu là 1 (`Math.max(1, uom.conversionRate)`). |
-  | Lộ giá vốn quy đổi cho thu ngân (BR-SEC-01) | Áp dụng triệt để điều kiện `userRole === 'StoreOwner'` cho cả giá vốn cơ bản và giá vốn quy đổi. |
+  | Lỗi khi xóa đơn vị đang có giao dịch | Backend sẽ trả lỗi nếu đơn vị không được phép xóa -> bắt lỗi `catch` và hiển thị cảnh báo toast rõ ràng. |
+  | Nạp thiếu đơn vị khi mở form sửa | `useEffect` kiểm tra nếu `productToEdit.uomConversions` rỗng thì tự động gọi `getProductUnits(productToEdit.id)`. |
+  | Trùng mã vạch đơn vị khi cập nhật | Backend kiểm tra unique barcode -> hiển thị thông báo lỗi cụ thể từ response. |
