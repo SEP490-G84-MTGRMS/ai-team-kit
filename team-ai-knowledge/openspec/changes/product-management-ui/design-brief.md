@@ -1,86 +1,67 @@
-# Design Brief: product-management-ui (Cụm 1)
-## Giao diện Danh sách Hàng hóa & Bộ lọc (Product List & Category Filter)
+# Design Brief: product-management-ui
+## Giao diện Danh sách Hàng hóa, Bộ lọc & Quản lý Đơn vị tính (Hàng cùng loại)
 
-## 1. Luồng Tương tác Người dùng (Sequence Diagram)
+## 1. Luồng Tương tác Người dùng
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Chủ tiệm / Thu ngân
     participant UI as ProductListPage (/dashboard/products)
-    participant Side as CategorySidebar
-    participant Hook as useProducts / useCategories
+    participant Modal as ProductFormModal
+    participant Table as Bảng Hàng cùng loại
     participant API as productApi / categoryApi
     participant BE as Backend (.NET 8 ProductsController)
 
     User->>UI: Truy cập trang Quản lý Hàng hóa
-    UI->>Hook: useCategories() & useProducts({ pageIndex: 1, pageSize: 20 })
-    Hook->>API: GET /api/categories & GET /api/products?...
-    API->>BE: Gửi HTTP Request kèm Bearer Token
+    UI->>API: GET /api/categories & GET /api/products?...
+    API->>BE: Gửi HTTP Request
     BE-->>API: Trả về Danh mục phẳng & PagedResult<ProductResponse>
-    API-->>Hook: Data đã unwrap
-    Hook-->>Side: Render danh mục phẳng và badge số lượng
-    Hook-->>UI: Render bảng dữ liệu và phân trang
-    Note over UI: Nếu user là Cashier/Staff -> Cột "Giá vốn" bị ẩn hoàn toàn (BR-SEC-01)
+    API-->>UI: Render bảng dữ liệu và phân trang
 
-    alt Tìm kiếm sản phẩm
-        User->>UI: Gõ từ khóa "Lavie" vào ô tìm kiếm
-        Note over UI: Debounce 300ms
-        UI->>Hook: useProducts({ searchTerm: "Lavie", pageIndex: 1 })
-        Hook->>API: GET /api/products?searchTerm=Lavie&pageIndex=1
-        API-->>UI: Cập nhật danh sách kết quả phù hợp
-    else Lọc theo danh mục
-        User->>Side: Click chọn danh mục "Nước giải khát"
-        Side->>UI: onSelectCategory(categoryId)
-        UI->>Hook: useProducts({ categoryId, pageIndex: 1 })
-        Hook->>API: GET /api/products?categoryId=...&pageIndex=1
-        API-->>UI: Cập nhật danh sách sản phẩm thuộc danh mục
-    else Chuyển trang
-        User->>UI: Click trang 2
-        UI->>Hook: useProducts({ pageIndex: 2 })
-        API-->>UI: Hiển thị 20 sản phẩm tiếp theo
+    alt Thao tác Đơn vị tính trong ProductListPage
+        User->>UI: Click icon dropdown cạnh tên hàng "Test - chai ⌵"
+        UI->>User: Mở popover menu danh sách đơn vị quy đổi ("thung")
+        User->>UI: Chọn "thung"
+        UI->>UI: Cập nhật tên hiển thị "Test - thung ⌵" và Giá bán tương ứng của đơn vị thùng
+    else Thêm Đơn vị tính & Bảng Hàng cùng loại trong ProductFormModal
+        User->>UI: Bấm "+ Thêm hàng hóa"
+        UI->>Modal: Mở ProductFormModal
+        User->>Modal: Chưa nhập "Tên đơn vị cơ bản"
+        Note over Modal: Nút "+ Thêm đơn vị" bị disabled (REQ-05)
+        User->>Modal: Nhập Tên đơn vị cơ bản "chai"
+        Note over Modal: Nút "+ Thêm đơn vị" kích hoạt sáng xanh
+        User->>Modal: Bấm "+ Thêm đơn vị" và nhập "thung", quy đổi 24, giá bán 450,000
+        Modal->>Table: Hiển thị bảng "Hàng cùng loại" (REQ-06)
+        Note over Table: Dòng chai (Quy đổi 1, Giá vốn/bán đồng bộ)<br/>Dòng thung (Quy đổi 24, Giá vốn tự tính nền xám, Giá bán riêng)
     end
 ```
 
 ---
 
-## 2. Kiến trúc Component Cụm 1
+## 2. Kiến trúc & Mockup Giao diện
 
-```
-src/features/product/
-├── api/
-│   ├── productApi.ts          # getProducts(filter: ProductQueryFilter)
-│   └── categoryApi.ts         # getCategories()
-├── types/
-│   └── index.ts               # ProductResponse, ProductListItem, ProductQueryFilter, CategoryDto
-├── hooks/
-│   ├── useProducts.ts         # React Query hook lấy danh sách sản phẩm phân trang
-│   └── useCategories.ts       # React Query hook lấy danh mục phẳng
-├── components/
-│   ├── CategorySidebar.tsx    # Sidebar danh mục phẳng, lọc theo CategoryId
-│   └── ProductTable.tsx       # Bảng danh sách sản phẩm, ẩn cột Giá vốn theo role (BR-SEC-01)
-├── pages/
-│   └── ProductListPage.tsx    # Trang danh sách chính kết nối API, phân trang, debounced search
-├── product.css                # Style tùy chỉnh
-└── index.ts                   # Export components
-```
+### 2.1 Bảng "Hàng cùng loại" trong Modal Thêm hàng hóa (`ProductFormModal.tsx`)
+- Vị trí: Hiển thị ngay dưới phần Đơn vị tính khi `uomConversions.length > 0`.
+- Các cột:
+  - `Đơn vị`: Dòng 1: `baseUnit` (text), Dòng 2+: `uom.unitName` (text).
+  - `Quy đổi`: Dòng 1: `1` (disabled, bg xám), Dòng 2+: input tỷ lệ quy đổi.
+  - `Mã hàng`: Dòng 1: `productCode` / `Tự động`, Dòng 2+: input mã hàng.
+  - `Mã vạch`: Dòng 1: `barcode` chính, Dòng 2+: `uom.barcode`.
+  - `Giá vốn`: Dòng 1: `costPrice`, Dòng 2+: `costPrice * conversionRate` (readonly, bg xám).
+  - `Giá bán`: Dòng 1: `sellingPrice`, Dòng 2+: `uom.price`.
+  - `Tồn kho`: Dòng 1: `initialStock`, Dòng 2+: `initialStock / conversionRate` (readonly, bg xám).
+  - Nút Xóa: Dòng 1 ẩn/disabled, Dòng 2+ có icon Trash2 xóa đơn vị.
 
----
-
-## 3. Endpoints Backend sử dụng trong Cụm 1
-
-| Endpoint | Method | Tham số | Dữ liệu trả về | Mục đích |
-|---|---|---|---|---|
-| `/api/products` | `GET` | `searchTerm`, `categoryId`, `status`, `pageIndex`, `pageSize` | `ApiResponse<PagedResult<ProductResponse>>` | Lấy danh sách sản phẩm phân trang và tìm kiếm |
-| `/api/categories` | `GET` | Không | `ApiResponse<IReadOnlyList<CategoryDto>>` | Lấy danh sách danh mục phẳng |
+### 2.2 Dropdown Đơn vị tính trong Danh sách Hàng hóa (`ProductListPage.tsx`)
+- Cột "Tên hàng hóa":
+  - Nếu có đơn vị quy đổi: Hiển thị `[Tên SP] - [Đơn vị] ⌵`.
+  - Click vào mở popover hiển thị danh sách đơn vị.
+  - Khi người dùng click chọn đơn vị: Đổi đơn vị hiển thị và cập nhật giá bán hiển thị trên cột "Giá bán" tương ứng.
 
 ---
 
-## 4. Quy tắc Nghiệp vụ trong Cụm 1
-- **BR-SEC-01 (Data Privilege Segregation):**
-  - Thu ngân (`Cashier`) và Nhân viên (`Staff`) chỉ xem giá bán (`SellingPrice`), tuyệt đối không thấy giá vốn (`CostPrice`).
-  - Giao diện kiểm tra `canViewCostPrice`: chỉ hiển thị cột "Giá vốn" khi người dùng là `StoreOwner` hoặc `Admin`.
-- **Phân trang & Trạng thái Rỗng:**
-  - Hiển thị Skeleton loading khi đang tải.
-  - Hiển thị Empty state nếu không tìm thấy kết quả sau khi tìm kiếm hoặc lọc.
-  - Reset `pageIndex = 1` mỗi khi đổi từ khóa tìm kiếm hoặc đổi danh mục.
+## 3. Quy tắc Nghiệp vụ (Business Rules)
+1. **REQ-05**: Bắt buộc nhập tên đơn vị cơ bản trước khi thêm đơn vị quy đổi.
+2. **REQ-06**: Hiển thị bảng Hàng cùng loại đồng bộ 2 chiều với dữ liệu đơn vị tính.
+3. **REQ-07**: Cho phép xem giá và thông tin theo từng đơn vị quy đổi ngay trên bảng danh sách hàng hóa.
