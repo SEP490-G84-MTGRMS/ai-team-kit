@@ -1,48 +1,70 @@
-# EXP-2026-10-29-001: Khảo sát Triển khai Cụm 1 — Danh sách Hàng hóa & Bộ lọc (Product List & Category Filter)
+# EXP-2026-10-31-002: Khảo sát Triển khai Chức năng Switch Đơn vị tính trong Chi tiết Hàng hóa (Product Detail Switch Unit)
 
 ## 1. Problem Statement
-Để kiểm soát rủi ro và tăng tốc độ nghiệm thu, thay vì thực hiện toàn bộ module quản lý hàng hóa cùng một lúc, chúng ta chia thành các cụm chức năng nhỏ.
-Trọng tâm bước đầu tiên là **Cụm 1**: Kết nối giao diện danh sách hàng hóa với Backend API thật (`GET /api/products` và `GET /api/categories`), giải quyết bài toán:
-- Phân trang server-side chuẩn xác.
-- Tìm kiếm tức thời có debounce (300ms) để không gây nghẽn mạng.
-- Lọc theo danh mục sản phẩm (mô hình danh mục phẳng đã làm ở backend).
-- Bảo vệ dữ liệu nhạy cảm theo quy tắc **BR-SEC-01**: Nhân viên thu ngân (`Cashier`, `Staff`) không được xem giá vốn (`CostPrice`).
+Hiện tại, [`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductDetailModal.tsx) chỉ hiển thị thông tin sản phẩm (Mã hàng, Mã vạch, Giá bán, Giá vốn, Tồn kho) cố định theo Đơn vị cơ bản (`baseUnit`). 
+Khi hàng hóa có nhiều đơn vị tính quy đổi (ví dụ: chai / lốc / thùng):
+- Người dùng chỉ thấy được danh sách tỷ lệ quy đổi trong bảng tĩnh ở cuối tab Thông tin.
+- Người dùng không thể xem được Giá bán, Giá vốn (StoreOwner), Số lượng tồn kho quy đổi, Mã hàng (SKU riêng) và Mã vạch riêng của từng đơn vị quy đổi ngay trong giao diện chi tiết.
+- Cần bổ sung khả năng chuyển đổi đơn vị tính (Switch Unit) linh hoạt ngay trong `ProductDetailModal`, giúp tự động cập nhật toàn bộ các chỉ số chi tiết tương ứng với đơn vị được chọn.
 
 ---
 
 ## 2. Context & Tech Stack
-- **Backend:** .NET 8 Web API:
-  - `GET /api/products`: nhận `ProductQueryFilter` (`searchTerm`, `categoryId`, `status`, `pageIndex`, `pageSize`), trả về `ApiResponse<PagedResult<ProductResponse>>`.
-  - `GET /api/categories`: trả về `ApiResponse<IReadOnlyList<CategoryDto>>` (danh mục phẳng).
-- **Frontend:**
-  - `src/features/product/pages/ProductListPage.tsx`: Màn hình danh sách chính.
-  - `src/features/product/components/CategorySidebar.tsx`: Sidebar lọc danh mục.
-  - `src/features/product/components/ProductTable.tsx`: Bảng hiển thị sản phẩm.
-  - `@tanstack/react-query`: Quản lý query state, caching và refetching.
-  - `httpClient`: Axios client tại `src/api/httpClient.ts`.
+- **Frontend Codebase:**
+  - `src/features/product/components/ProductDetailModal.tsx`: Component hiển thị chi tiết sản phẩm.
+  - `src/features/product/types/index.ts`: Các type `ProductItem`, `UomConversion`, `ProductUnitResponse`.
+  - `src/features/product/api/productApi.ts`: API `getProductUnits(productId: string)`.
+- **Backend API:**
+  - `GET /api/v1/products/{id}/units`: Đã có sẵn trong [`ProductUnitsController.cs`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_BACKEND/src/MT_GRMS.Api/Controllers/ProductUnitsController.cs) trả về danh sách đơn vị tính quy đổi.
 
 ---
 
-## 3. Scope & Non-Goals của Cụm 1
-### In Scope
-- Đồng bộ TypeScript interfaces cho Product List Item, Paged Result và Category trong `src/features/product/types/index.ts`.
-- Tạo `src/features/product/api/productApi.ts` với hàm `getProducts(params)`.
-- Tạo `src/features/product/api/categoryApi.ts` với hàm `getCategories()`.
-- Tạo hook `useProducts(filterParams)` và `useCategories()`.
-- Cập nhật `CategorySidebar.tsx` đọc danh mục từ API thật, hỗ trợ chọn nhóm hàng hoặc "Tất cả".
-- Cập nhật `ProductListPage.tsx` kết nối dữ liệu thật, hỗ trợ chuyển trang, thay đổi kích thước trang, và ẩn cột Giá vốn theo role (BR-SEC-01).
+## 3. Assumptions & Non-Goals
 
-### Non-Goals (Dành cho các Cụm sau)
-- Không đụng tới logic gửi form tạo mới (`POST /api/products`).
-- Không đụng tới logic cập nhật sản phẩm (`PUT /api/products/{id}`).
-- Không đụng tới logic xóa sản phẩm (`DELETE /api/products/{id}`).
-- Giữ nguyên các modal ở trạng thái hiện tại hoặc mock callback nếu người dùng bấm vào.
+### Assumptions
+1. Sản phẩm luôn có ít nhất một đơn vị cơ bản (`product.baseUnit`).
+2. Tồn kho trong hệ thống (`product.onHand`) được lưu trữ chuẩn hóa theo đơn vị cơ bản.
+3. Khi chuyển sang đơn vị quy đổi với tỷ lệ $K$ (`conversionRate`):
+   - Tồn kho quy đổi = $\lfloor \text{onHand} / K \rfloor$.
+   - Số lượng lẻ còn lại = $\text{onHand} \pmod K$ (được hiển thị chú thích chi tiết nếu có).
+   - Giá vốn quy đổi (nếu là StoreOwner) = $\text{costPrice} \times K$.
+   - Giá bán quy đổi = Giá bán riêng của đơn vị quy đổi (`uom.price`).
+4. Quyền xem giá vốn tuân thủ nghiêm ngặt **BR-SEC-01**: Chỉ `StoreOwner` mới được xem giá vốn cơ bản và giá vốn quy đổi.
+
+### Non-Goals
+1. Không sửa đổi dữ liệu sản phẩm trong modal xem chi tiết (việc sửa thông tin do `ProductFormModal` đảm nhiệm).
+2. Không thay đổi schema cơ sở dữ liệu backend.
 
 ---
 
-## 4. Đánh giá Rủi ro & Giải pháp
-| Rủi ro | Giải pháp |
-|---|---|
-| **Lộ giá vốn (BR-SEC-01)** | Ẩn hoàn toàn cột "Giá vốn" trên bảng khi vai trò người dùng không phải là `StoreOwner` hoặc `Admin`. Backend đã trả `costPrice = null` đối với role thu ngân. |
-| **Gõ phím tìm kiếm bắn request liên tục** | Dùng kỹ thuật debounced query (300ms) trước khi truyền `searchTerm` vào params của React Query. |
-| **Chuyển danh mục không reset trang** | Mỗi khi thay đổi `categoryId` hoặc `searchTerm`, tự động đặt `pageIndex = 1`. |
+## 4. Các Phương án Thiết kế
+
+### Phương án 1: Local Derived State + Unit Selector Pills & Bảng ĐVT tương tác (Đề xuất)
+- `ProductDetailModal` duy trì state `selectedUnitName` (khởi tạo mặc định = `product.baseUnit`).
+- Bổ sung thanh chọn đơn vị (Pill Switcher) nổi bật trên thanh Header hoặc ngay trên đầu tab Thông tin:
+  `[ chai (Cơ sở) ]  [ thung (x24) ]`
+- Đồng thời cho phép click vào bất kỳ hàng nào trong bảng "Đơn vị tính & Quy đổi giá" để chuyển sang đơn vị đó (highlight dòng đang chọn).
+- Tính toán derived state tức thời:
+  - `displayCode`: mã hàng của đơn vị hoặc mã hàng chính.
+  - `displayBarcode`: mã vạch riêng của đơn vị hoặc mã vạch chính.
+  - `displayPrice`: giá bán của đơn vị.
+  - `displayCost`: giá vốn tính theo tỷ lệ (chỉ hiện khi vai trò là StoreOwner).
+  - `displayStock`: tồn kho quy đổi + chú thích số lượng lẻ theo đơn vị cơ bản.
+- **Ưu điểm:** Phản hồi tức thời (0ms delay), trải nghiệm người dùng cực tốt, an toàn, dễ bảo trì và viết Unit test.
+- **Nhược điểm:** Cần đảm bảo nạp đủ `uomConversions` nếu sản phẩm mở từ danh sách chưa có sẵn đơn vị tính.
+
+### Phương án 2: Gọi API fetch riêng mỗi lần chuyển đơn vị tính
+- Mỗi khi người dùng bấm chọn một đơn vị, gửi request lên Backend để truy vấn thông tin riêng của đơn vị đó.
+- **Ưu điểm:** Độc lập với dữ liệu truyền từ ngoài vào.
+- **Nhược điểm:** Tốn tài nguyên mạng và tạo độ trễ (delay) không cần thiết khi người dùng lướt xem các đơn vị, vì thông tin quy đổi đã có sẵn trong cấu trúc sản phẩm.
+
+---
+
+## 5. Phương án Lựa chọn & Rủi ro
+- **Phương án lựa chọn:** Chọn **Phương án 1** (kết hợp tự động gọi `productApi.getProductUnits(product.id)` trong `useEffect` nếu sản phẩm chưa có `uomConversions`).
+- **Đánh giá rủi ro & Giải pháp:**
+  | Rủi ro | Giải pháp |
+  |---|---|
+  | `product.uomConversions` bị `undefined` hoặc rỗng khi mở modal | Kiểm tra nếu `uomConversions` chưa có, tự động gọi `getProductUnits(product.id)` để lấy danh sách đầy đủ. |
+  | Phép chia cho 0 khi tính tỷ lệ quy đổi | Bắt buộc `conversionRate` tối thiểu là 1 (`Math.max(1, uom.conversionRate)`). |
+  | Lộ giá vốn quy đổi cho thu ngân (BR-SEC-01) | Áp dụng triệt để điều kiện `userRole === 'StoreOwner'` cho cả giá vốn cơ bản và giá vốn quy đổi. |
