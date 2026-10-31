@@ -1,4 +1,4 @@
-# Specifications: Phân Hệ Bán Hàng POS Backend & Tích Hợp Phần Cứng
+# Specifications: Phân Hệ Bán Hàng POS Backend & Tích Hợp Phần Cứng (Tạp Hóa / Siêu Thị Mini)
 
 ## ADDED Requirements
 
@@ -52,50 +52,40 @@ The system MUST provide an API endpoint `GET /api/products/barcode/{barcode}` al
 
 ---
 
-### Requirement: REQ-POS-04 In hóa đơn nhiệt 1-Click (ESC/POS 58mm)
-The system MUST provide an API endpoint `POST /api/orders/{id}/print` that converts the order into an ESC/POS 58mm binary byte stream (32 characters per line) and sends it directly to Windows Print Spooler (`winspool.drv`) using `RAW` mode without showing browser print dialogs.
+### Requirement: REQ-POS-04 In hóa đơn nhiệt 1-Click (Chuẩn 43mm - Siêu Thị Mini / Cửa Hàng Tạp Hóa)
+The system MUST provide an API endpoint `POST /api/orders/{id}/print` that converts the order into an ESC/POS binary byte stream formatted for 43mm printable area on 58mm thermal rolls (~32-38 characters per line, Font B / ~7.5pt small compact font) following grocery / mini-supermarket bill layout and sends it directly to Windows Print Spooler (`winspool.drv`) using `RAW` mode without showing browser print dialogs.
 
-#### Scenario: In hóa đơn thành công ra máy in nhiệt USB
+#### Layout hóa đơn siêu thị mini / tạp hóa:
+1. **Header**:
+   - Tên cửa hàng / siêu thị mini: "SIÊU THỊ MINI MT-GROCERY" (Căn giữa, in hoa đậm)
+   - Địa chỉ chi nhánh & Hotline CSKH
+   - Wifi / Mật khẩu (dành cho khách hàng)
+2. **Metadata**:
+   - Dòng phân cách nét đứt: `--------------------------------` (32 ký tự)
+   - Mã hóa đơn & Mã vạch hóa đơn (Barcode Code128 ESC/POS hoặc text)
+   - Thời gian mua hàng: dd/MM/yyyy HH:mm:ss
+   - Thu ngân: Tên thu ngân
+   - Khách hàng: Tên KH & Điểm thưởng hiện tại
+3. **Chi tiết hàng hóa (Căn lề khổ 43mm compact ~7.5pt)**:
+   - Dòng 1: Tên sản phẩm rút gọn
+   - Dòng 2: `[SL] x [Đơn giá]` (căn trái) ........... `[Thành tiền]` (căn phải)
+4. **Tổng thanh toán**:
+   - Phân cách nét đứt: `--------------------------------`
+   - Tổng tiền hàng: `... đ`
+   - Giảm giá / Chiết khấu: `- ... đ`
+   - Thuế GTGT (VAT): `... đ`
+   - **TỔNG THANH TOÁN**: `... đ` (In hoa, Double-Width / In đậm)
+   - Tiền khách đưa: `... đ` (nếu tiền mặt)
+   - Tiền trả lại: `... đ` (nếu tiền mặt)
+   - Hình thức: Tiền mặt / Chuyển khoản VietQR / Nợ
+5. **Footer & Chính sách cửa hàng**:
+   - Điểm tích lũy mới sau giao dịch
+   - "Quý khách vui lòng kiểm tra lại hóa đơn và hàng hóa trước khi rời quầy."
+   - "Đổi trả hàng trong 24h kèm hóa đơn (chưa bóc seal)."
+   - "CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!"
+   - Đẩy giấy 4 dòng (`LF`) và Lệnh cắt giấy tự động (`0x1D 0x56 0x42 0x00`).
+
+#### Scenario: In hóa đơn siêu thị mini 43mm thành công
 **GIVEN** Đơn hàng `HD001` đã thanh toán và máy in `POS-58` đã cắm cổng USB máy tính  
 **WHEN** Gửi yêu cầu `POST /api/orders/{id}/print`  
-**THEN** Hệ thống gọi P/Invoke `winspool.drv`, gửi chuỗi byte nhị phân ESC/POS, đẩy giấy 4 dòng và cắt giấy tự động, trả về `200 OK`
-
-#### Scenario: Xử lý in số tiền lớn hàng tỷ không bị vỡ layout
-**GIVEN** Đơn hàng có tổng tiền `2.500.000.000 đ`  
-**WHEN** Hệ thống sinh mã byte hóa đơn ESC/POS  
-**THEN** Dòng TỔNG CỘNG tự động tách thành 2 dòng (Dòng 1: `TONG CONG:`, Dòng 2: căn phải `2.500.000.000 d`) để đảm bảo không bị vượt quá giới hạn 32 ký tự
-
----
-
-### Requirement: REQ-POS-05 Kiểm soát bán nợ và hạn mức nợ khách hàng
-The system MUST validate customer identification and credit debt limits when `paymentMethod = "DEBT"`.
-
-#### Scenario: Bán nợ thành công cho khách hàng có hạn mức hợp lệ
-**GIVEN** Khách hàng "Nguyễn Văn A" được cấu hình `AllowDebt = true`, nợ hiện tại `1.000.000 đ`, hạn mức nợ `5.000.000 đ`  
-**WHEN** Thu ngân tạo đơn bán nợ với giá trị `2.000.000 đ`  
-**THEN** Hệ thống lưu đơn hàng với `PaymentStatus = "DEBT"`, cập nhật nợ khách hàng thành `3.000.000 đ` và trả về `200 OK`
-
-#### Scenario: Chặn bán nợ khi nợ vượt quá hạn mức cho phép
-**GIVEN** Khách hàng có nợ hiện tại `4.500.000 đ` và hạn mức nợ `5.000.000 đ`  
-**WHEN** Thu ngân tạo đơn bán nợ với giá trị `1.000.000 đ` (tổng nợ mới = `5.500.000 đ` > hạn mức)  
-**THEN** Hệ thống MUST từ chối giao dịch với mã lỗi `400 Bad Request` và thông báo "Nợ vượt quá hạn mức cho phép"
-
----
-
-### Requirement: REQ-POS-06 Tích lũy và tiêu điểm thưởng khách hàng
-The system SHALL compute earned loyalty reward points upon successful payment and deduct redeemed points if requested by customer.
-
-#### Scenario: Tích điểm tự động sau khi thanh toán
-**GIVEN** Khách hàng thành viên thanh toán đơn hàng có giá trị cuối cùng là `350.000 đ` (tỷ lệ 10.000đ = 1 điểm)  
-**WHEN** Đơn hàng hoàn tất thanh toán  
-**THEN** Hệ thống tự động cộng `+35 điểm` thưởng vào tài khoản khách hàng `Customer.RewardPoints`
-
----
-
-## Acceptance Checklist
-- [ ] `POST /api/orders` xử lý thành công tiền mặt, VietQR, và bán nợ.
-- [ ] Tự động trừ tồn kho `BranchStocks` theo chi nhánh & FEFO; chặn giao dịch nếu không đủ hàng.
-- [ ] `POST /api/orders/{id}/print` gửi lệnh RAW ESC/POS thành công xuống máy in nhiệt.
-- [ ] `GET /api/products/barcode/{barcode}` tra cứu chính xác sản phẩm theo mã vạch.
-- [ ] `useBarcodeScanner.ts` bắt được sự kiện máy quét USB HID và thêm hàng vào giỏ.
-- [ ] Toàn bộ logic tính toán tiền, nợ và tồn kho được kiểm thử qua bộ Unit Tests với tỷ lệ Pass 100%.
+**THEN** Hệ thống tạo luồng byte ESC/POS layout siêu thị mini khổ 43mm và gửi trực tiếp qua `winspool.drv` RAW, máy in in ngay lập tức không bật hộp thoại trình duyệt
