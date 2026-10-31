@@ -11,8 +11,14 @@
 | Method | Path | Request Body / Query Params | Response (Success) | Lỗi xử lý |
 |---|---|---|---|---|
 | `GET` | `/api/products` | Query: `searchTerm`, `categoryId`, `status`, `pageIndex`, `pageSize` | `200 OK`<br>`ApiResponse<PagedResult<ProductResponse>>` | `400 Bad Request`, `401 Unauthorized` |
+| `POST` | `/api/products` | Body: `ProductCreatePayload` | `201 Created`<br>`ApiResponse<ProductResponse>` | `400 Bad Request`, `409 Conflict` |
+| `PUT` | `/api/products/{id}` | Body: `ProductUpdatePayload` | `200 OK`<br>`ApiResponse<ProductResponse>` | `400 Bad Request`, `404 Not Found` |
+| `DELETE` | `/api/products/{id}` | Không | `200 OK`<br>`ApiResponse<object>` | `404 Not Found` |
 | `GET` | `/api/categories` | Không | `200 OK`<br>`ApiResponse<IReadOnlyList<CategoryDto>>` | `401 Unauthorized` |
 | `GET` | `/api/v1/products/{id}/units` | Không | `200 OK`<br>`ApiResponse<IReadOnlyList<ProductUnitResponse>>` | `404 Not Found` |
+| `POST` | `/api/v1/products/{id}/units` | Body: `ProductUnitCreatePayload` | `201 Created`<br>`ApiResponse<ProductUnitResponse>` | `400 Bad Request` |
+| `PUT` | `/api/v1/product-units/{id}` | Body: `ProductUnitUpdatePayload` | `200 OK`<br>`ApiResponse<ProductUnitResponse>` | `400 Bad Request`, `404 Not Found` |
+| `DELETE` | `/api/v1/product-units/{id}` | Không | `200 OK`<br>`ApiResponse<object>` | `404 Not Found` |
 
 ---
 
@@ -54,7 +60,7 @@ Nút `+ Thêm đơn vị` trong phần "Đơn vị tính" của [`ProductFormMod
 Khi sản phẩm có thêm đơn vị tính quy đổi (`uomConversions.length > 0`), modal MUST hiển thị bảng **"Hàng cùng loại"** bên dưới phần đơn vị tính.
 - Cấu trúc bảng gồm 8 cột: Đơn vị, Quy đổi, Mã hàng, Mã vạch, Giá vốn, Giá bán, Tồn kho, Xóa.
 - Dòng đơn vị cơ bản: Quy đổi cố định 1 (disabled bg xám), Mã hàng tự động, Giá vốn/bán/tồn kho đồng bộ 2 chiều với các trường chính.
-- Dòng đơn vị quy đổi: Quy đổi nhập, Mã vạch nhập, Giá vốn & Tồn kho tự động tính hiển thị nền xám, Giá bán nhập riêng, nút Xóa hàng.
+- Dòng đơn vị quy đổi: Quy đổi nhập, Mã vạch nhập, Giá vốn & Tồn kho tự tính hiển thị nền xám, Giá bán nhập riêng, nút Xóa hàng.
 
 ---
 
@@ -69,30 +75,50 @@ Trong bảng danh sách sản phẩm ([`ProductListPage.tsx`](file:///d:/FPT_uni
 
 ### Requirement: REQ-08 Chuyển đổi Đơn vị tính và Cập nhật Chi tiết Hàng hóa (ProductDetailModal)
 Trong modal xem chi tiết sản phẩm ([`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductDetailModal.tsx)):
-1. Hệ thống MUST cung cấp bộ chọn đơn vị tính (Segmented Pills) trên thanh Header tổng quan hoặc đầu Tab Thông tin khi sản phẩm có đơn vị quy đổi (`uomConversions && uomConversions.length > 0`).
+1. Hệ thống MUST cung cấp bộ chọn đơn vị tính (Segmented Pills) trên thanh Header khi sản phẩm có đơn vị quy đổi (`uomConversions && uomConversions.length > 0`).
 2. Hệ thống MUST cho phép click trực tiếp vào từng dòng trong bảng "Đơn vị tính & Quy đổi giá" để chuyển sang đơn vị đó.
 3. Khi người dùng chuyển đổi đơn vị tính:
-   - **Tên hiển thị**: Cập nhật thành `[Tên sản phẩm] - [Đơn vị]` (nếu là đơn vị cơ bản thì chỉ hiển thị `[Tên sản phẩm]`).
-   - **Mã hàng**: Hiển thị `uom.productCode` (nếu có) hoặc `product.productCode`.
-   - **Mã vạch**: Hiển thị `uom.barcode` (nếu có) hoặc `product.barcode` (nếu đơn vị cơ bản) hoặc `'—'`.
-   - **Giá bán**: Cập nhật hiển thị giá bán của đơn vị đang chọn (`uom.price` hoặc `product.sellingPrice`).
-   - **Giá vốn (BR-SEC-01)**: Nếu `userRole === 'StoreOwner'`, giá vốn tự động nhân theo tỷ lệ quy đổi: $\text{costPrice} \times \text{conversionRate}$. Nếu `Cashier` / `Staff`: ẩn hoàn toàn giá vốn.
-   - **Tồn kho hiện tại**: Hiển thị số lượng nguyên theo đơn vị đang chọn $\lfloor \text{onHand} / \text{conversionRate} \rfloor$ kèm chú thích số lượng đơn vị cơ bản còn dư (nếu có).
-   - **Highlight Bảng ĐVT**: Dòng của đơn vị đang chọn trong bảng ĐVT được highlight nền xanh nhẹ và gắn nhãn `Đang xem`.
+   - Toàn bộ các chỉ số Mã hàng, Mã vạch, Giá bán, Giá vốn (StoreOwner BR-SEC-01), Tồn kho nguyên kèm số lượng lẻ dư được cập nhật đồng bộ tức thời.
 
-#### Scenario: Chủ cửa hàng xem chi tiết sản phẩm và chuyển sang đơn vị thùng
-- **GIVEN** Sản phẩm "Bia Tiger" có đơn vị cơ bản "chai" (Giá bán: 20,000 đ, Giá vốn: 15,000 đ, Tồn kho: 50 chai) và đơn vị quy đổi "thung" (Quy đổi: 24, Giá bán: 450,000 đ)
-- **WHEN** Người dùng có quyền `StoreOwner` mở xem chi tiết và click chọn pill "thung"
-- **THEN** Giao diện cập nhật:
-  - Giá bán hiển thị: `450,000 đ`
-  - Giá vốn hiển thị: `360,000 đ` (15,000 * 24)
-  - Tồn kho hiển thị: `2 thung` (kèm chú thích: `còn dư 2 chai`)
-  - Bảng ĐVT highlight dòng "thung" với nhãn "Đang xem".
+---
 
-#### Scenario: Thu ngân xem chi tiết sản phẩm và chuyển đơn vị (BR-SEC-01)
-- **GIVEN** Người dùng đăng nhập có vai trò `Cashier`
-- **WHEN** Người dùng mở modal chi tiết sản phẩm và chuyển sang đơn vị "thung"
-- **THEN** Giá bán hiển thị `450,000 đ`, Giá vốn bị ẩn hoàn toàn (không xuất hiện trên Header và Tab Thông tin).
+### Requirement: REQ-09 Cập nhật Hàng hóa và Đồng bộ Đơn vị tính Quy đổi (Update Product & Units)
+Khi người dùng thực hiện cập nhật thông tin hàng hóa trong [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx):
+1. **Khóa Mã hàng (ProductCode)**:
+   - Khi ở chế độ chỉnh sửa (`isEditing === true`), ô nhập "Mã hàng" MUST ở trạng thái `disabled` (nền xám nhẹ `#F1F5F9`, con trỏ `not-allowed`).
+2. **Nạp đầy đủ Đơn vị tính khi Mở Form**:
+   - Nếu `productToEdit.id` là GUID và `productToEdit.uomConversions` rỗng, hệ thống MUST tự động gọi `productApi.getProductUnits` để nạp danh sách đơn vị quy đổi hiện có lên form.
+3. **Theo dõi Đơn vị bị Xóa (`deletedUnitIds`)**:
+   - Khi người dùng bấm xóa một đơn vị quy đổi đã có trong DB (ID không bắt đầu bằng `uom-`), hệ thống MUST ghi nhận ID vào danh sách `deletedUnitIds`.
+4. **Đồng bộ Lưu dữ liệu**:
+   - Khi người dùng bấm "Lưu":
+     - Gửi `PUT /api/v1/products/{id}` cập nhật thông tin sản phẩm.
+     - Gửi `DELETE /api/v1/product-units/{id}` cho từng ID trong `deletedUnitIds`.
+     - Với các đơn vị trong `uomConversions`:
+       - Đơn vị mới (`uom-*`): gửi `POST /api/v1/products/{id}/units`.
+       - Đơn vị đã có (GUID): gửi `PUT /api/v1/product-units/{id}` cập nhật `unitName`, `conversionRate`, `price`, `barcode`.
+5. **Cập nhật lại giao diện**:
+   - Đóng modal, làm mới danh sách sản phẩm và thông báo toast thành công: `Cập nhật hàng hóa "[Tên]" thành công.`
+
+#### Scenario: Cập nhật thông tin cơ bản và giá bán sản phẩm
+- **GIVEN** Sản phẩm "Bia Tiger" có giá bán 20,000 đ
+- **WHEN** Người dùng sửa giá bán thành 22,000 đ và đổi nhóm hàng sang "Bia & Rượu" rồi bấm "Lưu"
+- **THEN** Hệ thống gửi `PUT /api/v1/products/{id}`, hiển thị toast thành công và cập nhật bảng danh sách với giá 22,000 đ.
+
+#### Scenario: Sửa đơn vị tính cũ, thêm đơn vị mới và xóa một đơn vị đã có
+- **GIVEN** Sản phẩm đang có đơn vị cơ bản "chai", đơn vị quy đổi "loc" (GUID-1, rate 6) và "thung" (GUID-2, rate 24)
+- **WHEN** Người dùng xóa đơn vị "loc", sửa giá của "thung" từ 450,000 đ lên 480,000 đ, và thêm đơn vị mới "ket" (rate 30, giá 600,000 đ)
+- **THEN** Hệ thống thực thi:
+  1. `PUT /api/v1/products/{id}` cập nhật sản phẩm.
+  2. `DELETE /api/v1/product-units/GUID-1` xóa đơn vị "loc".
+  3. `PUT /api/v1/product-units/GUID-2` cập nhật giá thùng lên 480,000 đ.
+  4. `POST /api/v1/products/{id}/units` tạo đơn vị "ket".
+  5. Bảng danh sách và modal chi tiết hiển thị đầy đủ các thay đổi mới.
+
+#### Scenario: Kiểm tra khóa ô Mã hàng khi Chỉnh sửa
+- **GIVEN** Người dùng mở modal chỉnh sửa sản phẩm "SP000008"
+- **WHEN** Người dùng quan sát ô "Mã hàng"
+- **THEN** Ô có giá trị "SP000008", trạng thái `disabled`, không thể nhập hay sửa text.
 
 ---
 
@@ -105,3 +131,4 @@ Trong modal xem chi tiết sản phẩm ([`ProductDetailModal.tsx`](file:///d:/F
 - [ ] REQ-06: Bảng "Hàng cùng loại" xuất hiện và đồng bộ 2 chiều khi có đơn vị quy đổi.
 - [ ] REQ-07: Dropdown đơn vị tính trên danh sách sản phẩm cho phép đổi đơn vị hiển thị và giá.
 - [ ] REQ-08: Modal Chi tiết Sản phẩm (`ProductDetailModal`) cho phép switch đơn vị tính, cập nhật giá bán, giá vốn (StoreOwner), tồn kho, mã hàng, mã vạch tương ứng.
+- [ ] REQ-09: Chức năng Cập nhật Hàng hóa (`ProductFormModal` & `handleSaveProduct`) khóa mã hàng, đồng bộ đầy đủ các thao tác Thêm / Sửa / Xóa đơn vị tính quy đổi lên Backend API.
