@@ -22,34 +22,34 @@
 ## 2. Các Tiểu cụm tiếp theo
 
 ### Tiểu cụm 1.4: Tìm kiếm Đa tiêu chí Server-side Debounced 300ms (REQ-02)
-- [ ] T7 — Tích hợp cơ chế Debounce 300ms cho ô tìm kiếm sản phẩm trong `ProductListPage.tsx` bằng `useEffect`:
+- [x] T7 — Tích hợp cơ chế Debounce 300ms cho ô tìm kiếm sản phẩm trong `ProductListPage.tsx` bằng `useEffect`:
   - Khi người dùng nhập từ khóa tìm kiếm (Tên, SKU, Barcode), trì hoãn 300ms trước khi kích hoạt `fetchProducts`.
   - Tự động reset `pageIndex = 1` khi từ khóa tìm kiếm thay đổi.
   - Khi backend trả về kết quả rỗng (`totalCount === 0`), hiển thị Empty State "Không tìm thấy hàng hóa phù hợp". (REQ-02)
-- [ ] T8 — Bổ sung Unit test cho tìm kiếm Debounced trong `ProductListPage.test.tsx`:
+- [x] T8 — Bổ sung Unit test cho tìm kiếm Debounced trong `ProductListPage.test.tsx`:
   - Test case: Gõ liên tục vào ô tìm kiếm thì chỉ kích hoạt gọi API 1 lần sau 300ms dừng gõ.
   - Test case: Kiểm tra reset `pageIndex = 1` khi thay đổi từ khóa.
   - Test case: Hiển thị giao diện Empty State khi không có sản phẩm nào khớp từ khóa. (REQ-02)
 
 ### Tiểu cụm 1.5: Lọc Danh mục Phẳng Server-side (REQ-03)
-- [ ] T9 — Kết nối bộ chọn danh mục trong `CategorySidebar` với Server-side Filter trong `ProductListPage.tsx`:
+- [x] T9 — Kết nối bộ chọn danh mục trong `CategorySidebar` với Server-side Filter trong `ProductListPage.tsx`:
   - Khi người dùng click chọn một nhóm hàng cụ thể, tự động reset `pageIndex = 1` và gọi `productApi.getProductsPaged({ categoryId, pageIndex: 1 })`.
   - Khi người dùng click nút "Bỏ chọn" hoặc chọn "Tất cả", gọi API lấy toàn bộ hàng hóa không kèm `categoryId`.
   - Đồng bộ số lượng sản phẩm `(productCount)` và trạng thái checkbox của danh mục. (REQ-03)
-- [ ] T10 — Bổ sung Unit test cho lọc danh mục Server-side trong `ProductListPage.test.tsx`:
+- [x] T10 — Bổ sung Unit test cho lọc danh mục Server-side trong `ProductListPage.test.tsx`:
   - Test case: Click chọn 1 nhóm hàng -> gọi API với đúng `categoryId` và `pageIndex = 1`.
   - Test case: Bỏ chọn nhóm hàng -> gọi API tải lại toàn bộ danh mục không truyền `categoryId`. (REQ-03)
 
 ### Tiểu cụm 1.6: Đơn vị tính & Bảng Hàng cùng loại & Dropdown ĐVT (REQ-05, REQ-06, REQ-07)
-- [ ] T11 — Bổ sung điều kiện cho nút `+ Thêm đơn vị` trong `ProductFormModal.tsx`:
+- [x] T11 — Bổ sung điều kiện cho nút `+ Thêm đơn vị` trong `ProductFormModal.tsx`:
   - Kiểm tra `baseUnit.trim() !== ''`.
-  - Nếu rỗng: vô hiệu hóa nút (disabled style: opacity 0.5, cursor: not-allowed) và hiển thị tooltip/thông báo "Vui lòng nhập tên đơn vị cơ bản trước khi thêm đơn vị quy đổi". (REQ-05)
-- [ ] T12 — Xây dựng bảng `Hàng cùng loại` trong `ProductFormModal.tsx` khi có đơn vị quy đổi (`uomConversions.length > 0`):
+  - Nếu rỗng: vô hiệu hóa nút (disabled style: opacity 0.6, cursor: not-allowed) và hiển thị tooltip/thông báo "(Cần nhập tên đơn vị cơ bản trước)". (REQ-05)
+- [x] T12 — Xây dựng bảng `Hàng cùng loại` trong `ProductFormModal.tsx` khi có đơn vị quy đổi (`uomConversions.length > 0`):
   - Hiển thị theo mockup chuẩn: Đơn vị, Quy đổi, Mã hàng, Mã vạch, Giá vốn, Giá bán, Tồn kho, Nút xóa.
   - Hàng đơn vị cơ bản: Quy đổi cố định 1 (disabled bg xám), Mã hàng `Tự động`, Giá vốn/Giá bán/Tồn kho đồng bộ trực tiếp.
   - Hàng đơn vị quy đổi: Quy đổi nhập, Mã vạch nhập, Giá vốn & Tồn kho tự tính hiển thị nền xám, Giá bán nhập riêng, nút Xóa hàng.
   - Đồng bộ 2 chiều tức thời với phần Đơn vị tính. (REQ-06)
-- [ ] T13 — Cập nhật `ProductListPage.tsx` hiển thị dropdown chọn Đơn vị tính ở cột Tên hàng hóa:
+- [x] T13 — Cập nhật `ProductListPage.tsx` hiển thị dropdown chọn Đơn vị tính ở cột Tên hàng hóa:
   - Nếu sản phẩm có `uomConversions`: hiển thị dropdown `[Tên SP] - [đơn vị] ⌵`.
   - Mở popover menu cho phép chọn chuyển đổi đơn vị và cập nhật hiển thị Giá bán tương ứng theo đơn vị được chọn. (REQ-07)
-- [ ] T14 — Viết Unit test kiểm thử cho logic REQ-05, REQ-06 và REQ-07 trong `ProductListPage.test.tsx`.
+- [x] T14 — Viết Unit test kiểm thử cho logic REQ-05, REQ-06 và REQ-07 trong `ProductListPage.test.tsx` và `ProductFormModal.test.tsx`.
