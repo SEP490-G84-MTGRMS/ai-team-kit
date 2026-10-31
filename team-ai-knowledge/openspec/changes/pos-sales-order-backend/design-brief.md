@@ -14,8 +14,11 @@
                └──► Gọi POST /api/orders/{id}/print
                      │
 [2. Backend C# .NET Core (MT_GRMS_BACKEND)]
-      │  Biên dịch đơn hàng sang luồng nhị phân ESC/POS (32 ký tự/dòng khổ 58mm)
-      │  Gọi P/Invoke winspool.drv với pDataType = "RAW"
+      │  - Lưu Order và OrderDetails trong DbContext Transaction
+      │  - TỰ ĐỘNG TRỪ TỒN KHO: Truy vấn BranchStocks theo BranchId + ProductId (FEFO)
+      │    Trừ QuantityOnHand -= Qty; gán BatchCode & CostPrice vào OrderDetail
+      │  - Biên dịch đơn hàng sang luồng nhị phân ESC/POS (32 ký tự/dòng khổ 58mm)
+      │  - Gọi P/Invoke winspool.drv với pDataType = "RAW"
       ▼
 [3. Windows Print Spooler (C:\Windows\System32\winspool.drv)]
       │  Bắn thẳng luồng byte nhị phân qua cổng USB001
@@ -30,7 +33,7 @@
 ## 2. API Endpoints & DTOs
 
 ### 2.1. `POST /api/orders`
-- **Chức năng**: Tạo đơn hàng POS và lưu cơ sở dữ liệu.
+- **Chức năng**: Tạo đơn hàng POS, tự động trừ kho chi nhánh và lưu cơ sở dữ liệu.
 - **Request Body (`OrderCreateRequest`)**:
   ```json
   {
@@ -63,27 +66,20 @@
 
 ### 2.4. `POST /api/orders/{id}/print`
 - **Chức năng**: Bắn luồng byte nhị phân ESC/POS trực tiếp xuống máy in nhiệt `POS-58` qua `winspool.drv`.
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "message": "Đã gửi lệnh in trực tiếp tới máy in POS-58 thành công!"
-  }
-  ```
 
 ### 2.5. `GET /api/products/barcode/{barcode}`
 - **Chức năng**: Tra cứu nhanh sản phẩm trong kho nội bộ của Tenant theo mã vạch `Barcode` hoặc `SKU`.
-- **Response**: Trả về `Id`, `Name`, `Sku`, `Barcode`, `RetailPrice`, `StockQuantity`, `UnitName`, `ImageUrl`.
 
-## 3. Thiết Kế Cơ Sở Dữ Liệu & Entity Mapping
-Tận dụng triệt để Entity hiện có trong `MT_GRMS.Domain.Entities.Sales`:
-- **`Order`**:
-  - `Id`, `TenantId`, `BranchId`, `CustomerId`, `OrderCode` (sinh tự động `HD{yyMMdd}{xxxx}`), `OrderDate`, `TotalAmount`, `DiscountAmount`, `FinalAmount`, `DepositAmount`, `PaymentMethod`, `PaymentStatus`, `Status`.
-- **`OrderDetail`**:
-  - `Id`, `OrderId`, `ProductId`, `LineNumber`, `Qty`, `UnitPrice`, `DiscountAmount`, `ActualPrice`, `IsGift`, `AppliedVatRate`, `VatAmount`.
-- **`Customer`**:
-  - Khi thanh toán thành công: Cập nhật `TotalSpending += FinalAmount`, `RewardPoints += PointsEarned - PointsUsed`.
-  - Nếu `paymentMethod == "DEBT"`: Cập nhật `TotalDebt += FinalAmount`.
+## 3. Thiết Kế Cơ Sở Dữ Liệu & Nghiệp Vụ Trừ Tồn Kho
+1. **Trừ tồn kho `BranchStocks` theo FEFO**:
+   - Khi thanh toán, hệ thống tìm các lô hàng của sản phẩm tại chi nhánh:
+     `BranchStocks.Where(s => s.BranchId == request.BranchId && s.ProductId == item.ProductId && s.QuantityOnHand > 0).OrderBy(s => s.ExpiryDate)`
+   - Trừ dần số lượng yêu cầu `QuantityOnHand -= qty`.
+   - Nếu tổng tồn kho của sản phẩm tại chi nhánh < số lượng mua: Ném ngoại lệ `ValidationException` hoặc `InvalidOperationException` thông báo "Sản phẩm [Tên SP] không đủ tồn kho tại chi nhánh (chỉ còn X)".
+   - Ghi nhận `OrderDetail.BatchNumber = stock.BatchCode`, `OrderDetail.CostPrice = stock.LandedCostPerUnit`.
+2. **`Customer`**:
+   - Khi thanh toán thành công: Cập nhật `TotalSpending += FinalAmount`, `RewardPoints += PointsEarned - PointsUsed`.
+   - Nếu `paymentMethod == "DEBT"`: Cập nhật `TotalDebt += FinalAmount`.
 
 ## 4. Thiết Kế Module In Nhiệt (Hardware ESC/POS)
 1. **`RawPrinterHelper` (`MT_GRMS.Infrastructure/Services/Printer/RawPrinterHelper.cs`)**:
