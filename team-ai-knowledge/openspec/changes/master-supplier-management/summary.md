@@ -35,3 +35,7 @@ User duyệt thiết kế Brainstorm: API gợi ý tìm kiếm đa thực thể 
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:43
 
 User duyệt Verify Spec: Danh sách task T34 (Backend Search Suggestions & Multi-Entity Filter), T35 (Frontend Autocomplete Highlight & Multi-select Tags), T36 (Professional Excel Export), T26 (AP & Transactions scope), T31 (DetailPage real API), T32 & T33 (Unit test & build verification).
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-10-31 01:06
+
+Hoàn tất triển khai backend API search-suggestions + multi-entity filter (SupplierIds, ProductIds, ContactPersons, Phones); hoàn tất frontend FilterBar autocomplete highlight + multi-select tag chips; xuất Excel chuyên nghiệp với header chuẩn và auto column width; tất cả 33 tasks đã tick và 32/32 unit tests pass.
