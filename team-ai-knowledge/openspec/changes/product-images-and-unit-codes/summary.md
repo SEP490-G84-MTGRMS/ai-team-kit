@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 18:10
 
 Đã duyệt exploration.md, design-brief.md và specs.md: đặc tả 5 REQ chi tiết cho multi-image, unit code auto-gen, và ProductDetailModal fixed W-H.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 18:15
+
+Đã duyệt review/skeptic.md và tasks.md (11 tasks: DB -> Backend -> Frontend -> Test). Sẵn sàng bắt đầu triển khai code.
