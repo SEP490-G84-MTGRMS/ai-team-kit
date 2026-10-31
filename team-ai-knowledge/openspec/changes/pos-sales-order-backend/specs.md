@@ -1,0 +1,85 @@
+# Specifications: Phân Hệ Bán Hàng POS Backend & Tích Hợp Phần Cứng
+
+## ADDED Requirements
+
+### Requirement: REQ-POS-01 Tạo đơn hàng bán lẻ POS
+The system MUST provide an API endpoint `POST /api/orders` to create and finalize a retail sales order. The system SHALL calculate item line totals, apply line-level and order-level discounts, compute final amount, validate payment, and record transaction in database.
+
+#### Scenario: Tạo đơn hàng thanh toán tiền mặt thành công
+**GIVEN** Thu ngân đã đăng nhập thuộc chi nhánh `BranchId` và giỏ hàng có 2 mặt hàng hợp lệ  
+**WHEN** Gửi yêu cầu `POST /api/orders` với `paymentMethod = "CASH"`, tiền khách đưa đủ hoặc lớn hơn tổng tiền  
+**THEN** Hệ thống lưu bản ghi `Order` với trạng thái `Completed`, `PaymentStatus = "PAID"`, tính tiền thối `ChangeAmount` chính xác và trả về mã hóa đơn `HD...`
+
+#### Scenario: Báo lỗi khi giỏ hàng rỗng
+**GIVEN** Thu ngân gửi yêu cầu thanh toán không có món hàng nào (`items = []`)  
+**WHEN** Gửi yêu cầu `POST /api/orders`  
+**THEN** Hệ thống MUST từ chối với mã lỗi `400 Bad Request` và thông báo "Giỏ hàng không được để trống"
+
+#### Scenario: Báo lỗi khi tiền khách đưa nhỏ hơn tổng tiền phải trả
+**GIVEN** Đơn hàng có tổng thanh toán là `150.000 đ` và phương thức là tiền mặt `CASH`  
+**WHEN** Thu ngân gửi `cashTendered = 100.000 đ`  
+**THEN** Hệ thống MUST từ chối với mã lỗi `400 Bad Request` và thông báo "Tiền khách đưa không đủ để thanh toán"
+
+---
+
+### Requirement: REQ-POS-02 Tra cứu sản phẩm theo mã vạch Barcode
+The system MUST provide an API endpoint `GET /api/products/barcode/{barcode}` allowing POS cashier or barcode scanner to lookup a product by Barcode or SKU within the current tenant.
+
+#### Scenario: Tìm thấy sản phẩm theo mã vạch hợp lệ
+**GIVEN** Sản phẩm "Nước ngọt Coca-Cola 330ml" có mã vạch `8935049500123` tồn tại trong kho của Tenant  
+**WHEN** Gửi yêu cầu `GET /api/products/barcode/8935049500123`  
+**THEN** Hệ thống trả về `200 OK` kèm thông tin `id`, `name`, `retailPrice`, `stockQuantity`, `sku`, `unitName`
+
+#### Scenario: Không tìm thấy sản phẩm theo mã vạch
+**GIVEN** Mã vạch `9999999999999` không tồn tại trong hệ thống  
+**WHEN** Gửi yêu cầu `GET /api/products/barcode/9999999999999`  
+**THEN** Hệ thống trả về `404 Not Found` kèm thông báo "Không tìm thấy sản phẩm với mã vạch này"
+
+---
+
+### Requirement: REQ-POS-03 In hóa đơn nhiệt 1-Click (ESC/POS 58mm)
+The system MUST provide an API endpoint `POST /api/orders/{id}/print` that converts the order into an ESC/POS 58mm binary byte stream (32 characters per line) and sends it directly to Windows Print Spooler (`winspool.drv`) using `RAW` mode without showing browser print dialogs.
+
+#### Scenario: In hóa đơn thành công ra máy in nhiệt USB
+**GIVEN** Đơn hàng `HD001` đã thanh toán và máy in `POS-58` đã cắm cổng USB máy tính  
+**WHEN** Gửi yêu cầu `POST /api/orders/{id}/print`  
+**THEN** Hệ thống gọi P/Invoke `winspool.drv`, gửi chuỗi byte nhị phân ESC/POS, đẩy giấy 4 dòng và cắt giấy tự động, trả về `200 OK`
+
+#### Scenario: Xử lý in số tiền lớn hàng tỷ không bị vỡ layout
+**GIVEN** Đơn hàng có tổng tiền `2.500.000.000 đ`  
+**WHEN** Hệ thống sinh mã byte hóa đơn ESC/POS  
+**THEN** Dòng TỔNG CỘNG tự động tách thành 2 dòng (Dòng 1: `TONG CONG:`, Dòng 2: căn phải `2.500.000.000 d`) để đảm bảo không bị vượt quá giới hạn 32 ký tự
+
+---
+
+### Requirement: REQ-POS-04 Kiểm soát bán nợ và hạn mức nợ khách hàng
+The system MUST validate customer identification and credit debt limits when `paymentMethod = "DEBT"`.
+
+#### Scenario: Bán nợ thành công cho khách hàng có hạn mức hợp lệ
+**GIVEN** Khách hàng "Nguyễn Văn A" được cấu hình `AllowDebt = true`, nợ hiện tại `1.000.000 đ`, hạn mức nợ `5.000.000 đ`  
+**WHEN** Thu ngân tạo đơn bán nợ với giá trị `2.000.000 đ`  
+**THEN** Hệ thống lưu đơn hàng với `PaymentStatus = "DEBT"`, cập nhật nợ khách hàng thành `3.000.000 đ` và trả về `200 OK`
+
+#### Scenario: Chặn bán nợ khi nợ vượt quá hạn mức cho phép
+**GIVEN** Khách hàng có nợ hiện tại `4.500.000 đ` và hạn mức nợ `5.000.000 đ`  
+**WHEN** Thu ngân tạo đơn bán nợ với giá trị `1.000.000 đ` (tổng nợ mới = `5.500.000 đ` > hạn mức)  
+**THEN** Hệ thống MUST từ chối giao dịch với mã lỗi `400 Bad Request` và thông báo "Nợ vượt quá hạn mức cho phép"
+
+---
+
+### Requirement: REQ-POS-05 Tích lũy và tiêu điểm thưởng khách hàng
+The system SHALL compute earned loyalty reward points upon successful payment and deduct redeemed points if requested by customer.
+
+#### Scenario: Tích điểm tự động sau khi thanh toán
+**GIVEN** Khách hàng thành viên thanh toán đơn hàng có giá trị cuối cùng là `350.000 đ` (tỷ lệ 10.000đ = 1 điểm)  
+**WHEN** Đơn hàng hoàn tất thanh toán  
+**THEN** Hệ thống tự động cộng `+35 điểm` thưởng vào tài khoản khách hàng `Customer.RewardPoints`
+
+---
+
+## Acceptance Checklist
+- [ ] `POST /api/orders` xử lý thành công tiền mặt, VietQR, và bán nợ.
+- [ ] `POST /api/orders/{id}/print` gửi lệnh RAW ESC/POS thành công xuống máy in nhiệt.
+- [ ] `GET /api/products/barcode/{barcode}` tra cứu chính xác sản phẩm theo mã vạch.
+- [ ] `useBarcodeScanner.ts` bắt được sự kiện máy quét USB HID và thêm hàng vào giỏ.
+- [ ] Toàn bộ logic tính toán tiền và nợ được kiểm thử qua bộ Unit Tests với tỷ lệ Pass 100%.
