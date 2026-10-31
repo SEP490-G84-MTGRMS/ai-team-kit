@@ -71,3 +71,11 @@
   - Ô Mã hàng bị disabled khi chỉnh sửa.
   - Ghi nhận `deletedUnitIds` khi xóa đơn vị quy đổi đã có trong DB.
   - Đồng bộ gọi đúng các API khi lưu sản phẩm chỉnh sửa. (REQ-09)
+
+---
+
+## 3. Tiểu cụm 1.9: Cải tiến UI/UX Form Thêm/Sửa Hàng Hóa (REQ-10)
+- [x] T23 — Tăng kích thước modal `ProductFormModal.tsx` lên `maxWidth: 1160px, width: '96vw'` và bổ sung Lightbox Modal phóng to ảnh sản phẩm khi nhấn vào thumbnail hoặc nút xem chi tiết ảnh. (REQ-10)
+- [x] T24 — Chuẩn hóa tiếng Việt bỏ dấu trong bộ lọc tìm kiếm nhóm hàng (`removeVietnameseTones`) và xử lý triệt để số 0 ở đầu các input số (giá vốn, giá bán, tồn kho, quy đổi, VAT) bằng placeholder `"0"` và `onFocus select()`. (REQ-10)
+- [x] T25 — Xóa giá trị mặc định `"chai"` của đơn vị cơ bản (thay bằng placeholder gợi ý), tự động tính giá bán đơn vị quy đổi `price = conversionRate * sellingPrice`, và cải tiến ô nhập thuế VAT với hàng nút chọn nhanh 0%, 5%, 8%, 10%. (REQ-10)
+- [x] T26 — Thay thế banner cảnh báo lỗi ở đầu form bằng Validation Alert Popup Modal nổi bật giữa màn hình; viết Unit test kiểm thử đầy đủ các cải tiến REQ-10 trong `ProductFormModal.test.tsx`. (REQ-10)
