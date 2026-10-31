@@ -47,3 +47,7 @@ Duyệt bước Brainstorm: Đã cập nhật specs.md và design-brief.md với
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 13:01
 
 Duyệt bước Verify Spec: Đã review skeptic và cập nhật tasks.md với REQ-05, REQ-06, REQ-07
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:55
+
+Duyệt phương án thiết kế REQ-08: Cho phép chuyển đổi đơn vị tính trong ProductDetailModal, tự động cập nhật Giá bán, Giá vốn (StoreOwner BR-SEC-01), Tồn kho, Mã hàng và Mã vạch tức thời.
