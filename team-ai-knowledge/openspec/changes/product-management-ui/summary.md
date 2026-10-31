@@ -39,3 +39,7 @@ Duyệt review đa persona và danh sách 9 tasks. Bắt đầu triển khai hi�
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 15:23
 
 Đã duyệt Verify Spec với 4 tasks tinh gọn cho Tiểu cụm 1.1 & 1.2 không dùng custom hook.
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 12:58
+
+Duyệt bước Brainstorm: Đã cập nhật specs.md và design-brief.md với REQ-05, REQ-06, REQ-07

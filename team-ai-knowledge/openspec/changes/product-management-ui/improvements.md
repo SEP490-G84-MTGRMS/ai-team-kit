@@ -27,3 +27,7 @@ Tách nhỏ các cụm chức năng giúp giảm thiểu conflict và dễ verif
 ## Verify Spec · 2026-10-29 15:23
 
 Loại bỏ custom hook, dùng trực tiếp useState/useEffect/useCallback đồng bộ style codebase.
+
+## Brainstorm · 2026-10-31 12:58
+
+Đã tích hợp đầy đủ yêu cầu UI cho Đơn vị tính và Hàng cùng loại theo mockup ảnh của người dùng
