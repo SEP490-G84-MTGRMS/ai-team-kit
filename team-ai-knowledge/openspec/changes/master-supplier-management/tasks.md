@@ -31,12 +31,12 @@
 - [x] T30 — FormModal: không nhập mã lúc tạo; tên bắt buộc; DueDays/CreditLimit >=0 (REQ-01, REQ-PAY-01)
 
 ## Delta Mới — Tìm kiếm Đa Thực Thể & Xuất Excel (Apply lần này)
-- [ ] T34 — Backend: API `GET /api/v1/suppliers/search-suggestions` trả về gợi ý phân nhóm (Suppliers, Products, ContactPersons, Phones) & Mở rộng `GET /api/v1/suppliers` hỗ trợ lọc theo mảng `SupplierIds`, `ProductIds`, `ContactPersons`, `Phones` (REQ-SEARCH-01)
-- [ ] T35 — Frontend: Phát triển bộ lọc Auto-complete Dropdown với Text Highlighting (`highlightMatch`) và thẻ Multi-select Tags / Chips (chọn nhiều NCC, SP, Người liên hệ, SĐT) trên `SupplierFilterBar` (REQ-SEARCH-01)
-- [ ] T36 — Frontend: Triển khai tính năng Xuất Excel chuyên nghiệp (`exportSuppliersToExcel`) gồm Header báo cáo, Bảng dữ liệu viền nét màu KiotViet Blue `#0066FF`, căn lề và tự động tính độ rộng cột (Auto Column Widths) trên `SupplierListPage` (REQ-EXPORT-01)
-- [ ] T26 — Backend: GET `/suppliers/{id}/ap/summary` Store Owner 403 Employee; GET `/suppliers/{id}/transactions` scope chi nhánh, rỗng thì empty không mock (REQ-AP-VIEW-01, REQ-HIST-01)
-- [ ] T31 — Frontend: DetailPage: load API thật; tab Chi nhánh (Store Owner); tab Công nợ chỉ Store Owner; lịch sử không mock; bỏ footer minh họa (REQ-BRANCH-01, REQ-HIST-01, REQ-AP-VIEW-01)
+- [x] T34 — Backend: API `GET /api/v1/suppliers/search-suggestions` trả về gợi ý phân nhóm (Suppliers, Products, ContactPersons, Phones) & Mở rộng `GET /api/v1/suppliers` hỗ trợ lọc theo mảng `SupplierIds`, `ProductIds`, `ContactPersons`, `Phones` (REQ-SEARCH-01)
+- [x] T35 — Frontend: Phát triển bộ lọc Auto-complete Dropdown với Text Highlighting (`highlightMatch`) và thẻ Multi-select Tags / Chips (chọn nhiều NCC, SP, Người liên hệ, SĐT) trên `SupplierFilterBar` (REQ-SEARCH-01)
+- [x] T36 — Frontend: Triển khai tính năng Xuất Excel chuyên nghiệp (`exportSuppliersToExcel`) gồm Header báo cáo, Bảng dữ liệu viền nét màu KiotViet Blue `#0066FF`, căn lề và tự động tính độ rộng cột (Auto Column Widths) trên `SupplierListPage` (REQ-EXPORT-01)
+- [x] T26 — Backend: GET `/suppliers/{id}/ap/summary` Store Owner 403 Employee; GET `/suppliers/{id}/transactions` scope chi nhánh, rỗng thì empty không mock (REQ-AP-VIEW-01, REQ-HIST-01)
+- [x] T31 — Frontend: DetailPage: load API thật; tab Chi nhánh (Store Owner); tab Công nợ chỉ Store Owner; lịch sử không mock; bỏ footer minh họa (REQ-BRANCH-01, REQ-HIST-01, REQ-AP-VIEW-01)
 
 ## Test & Verification
-- [ ] T32 — Cập nhật/bổ sung unit tests cho tìm kiếm đa thực thể, search-suggestions, RBAC 403/404 và export logic (REQ-03, REQ-SEARCH-01, REQ-EXPORT-01, REQ-RBAC-01)
-- [ ] T33 — Chạy `dotnet test` Backend và `npm run lint` / `npm run build` Frontend đạt 100% PASS
+- [x] T32 — Cập nhật/bổ sung unit tests cho tìm kiếm đa thực thể, search-suggestions, RBAC 403/404 và export logic (REQ-03, REQ-SEARCH-01, REQ-EXPORT-01, REQ-RBAC-01)
+- [x] T33 — Chạy `dotnet test` Backend và `npm run lint` / `npm run build` Frontend đạt 100% PASS
