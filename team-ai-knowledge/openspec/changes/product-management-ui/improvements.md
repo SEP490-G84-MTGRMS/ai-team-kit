@@ -31,3 +31,7 @@ Loại bỏ custom hook, dùng trực tiếp useState/useEffect/useCallback đ�
 ## Brainstorm · 2026-10-31 12:58
 
 Đã tích hợp đầy đủ yêu cầu UI cho Đơn vị tính và Hàng cùng loại theo mockup ảnh của người dùng
+
+## Verify Spec · 2026-10-31 13:01
+
+Bổ sung 4 tasks T11-T14 cho Đơn vị tính và Hàng cùng loại

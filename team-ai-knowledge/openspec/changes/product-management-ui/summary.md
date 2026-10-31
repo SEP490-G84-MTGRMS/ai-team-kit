@@ -43,3 +43,7 @@ Duyệt review đa persona và danh sách 9 tasks. Bắt đầu triển khai hi�
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 12:58
 
 Duyệt bước Brainstorm: Đã cập nhật specs.md và design-brief.md với REQ-05, REQ-06, REQ-07
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 13:01
+
+Duyệt bước Verify Spec: Đã review skeptic và cập nhật tasks.md với REQ-05, REQ-06, REQ-07
