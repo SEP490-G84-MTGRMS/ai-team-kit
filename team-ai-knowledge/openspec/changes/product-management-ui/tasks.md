@@ -47,12 +47,12 @@
 ---
 
 ## 2. Tiểu cụm 1.7: Switch Đơn vị tính trong ProductDetailModal (REQ-08)
-- [ ] T15 — Triển khai state `selectedUnitName` và derived selector trong `ProductDetailModal.tsx`:
+- [x] T15 — Triển khai state `selectedUnitName` và derived selector trong `ProductDetailModal.tsx`:
   - Tính toán tức thời `displayCode`, `displayBarcode`, `displaySellingPrice`, `displayCostPrice` (tuân thủ BR-SEC-01), `displayStock`, số lượng lẻ dư theo đơn vị cơ bản. (REQ-08)
-- [ ] T16 — Xây dựng thanh Unit Switcher (Segmented Pills) trên Header và tương tác click chọn dòng trong Bảng "Đơn vị tính & Quy đổi giá" của `ProductDetailModal.tsx`:
+- [x] T16 — Xây dựng thanh Unit Switcher (Segmented Pills) trên Header và tương tác click chọn dòng trong Bảng "Đơn vị tính & Quy đổi giá" của `ProductDetailModal.tsx`:
   - Hiển thị dải nút chọn đơn vị `[ chai (Cơ bản) ]  [ thung ]...` trên thanh Header.
   - Gắn nhãn `Đang xem` và highlight nền xanh `#F0FDFA` cho dòng đơn vị đang được kích hoạt. (REQ-08)
-- [ ] T17 — Bổ sung cơ chế tự động nạp đơn vị tính qua `productApi.getProductUnits(product.id)` trong `ProductDetailModal.tsx` nếu sản phẩm mở lên chưa có sẵn `uomConversions` (REQ-08).
-- [ ] T18 — Viết Unit test kiểm thử cho REQ-08 trong `ProductDetailModal.test.tsx`:
+- [x] T17 — Bổ sung cơ chế tự động nạp đơn vị tính qua `productApi.getProductUnits(product.id)` trong `ProductDetailModal.tsx` nếu sản phẩm mở lên chưa có sẵn `uomConversions` (REQ-08).
+- [x] T18 — Viết Unit test kiểm thử cho REQ-08 trong `ProductDetailModal.test.tsx`:
   - Test case 1: Chuyển đổi đơn vị tính trên Pill hoặc Bảng ĐVT cập nhật đúng giá bán, mã hàng, mã vạch, tồn kho.
   - Test case 2: Vai trò `StoreOwner` xem được giá vốn quy đổi; vai trò `Cashier` bị ẩn hoàn toàn giá vốn (BR-SEC-01).
