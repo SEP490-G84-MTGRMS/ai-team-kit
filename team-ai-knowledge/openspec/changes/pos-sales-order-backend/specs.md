@@ -22,7 +22,22 @@ The system MUST provide an API endpoint `POST /api/orders` to create and finaliz
 
 ---
 
-### Requirement: REQ-POS-02 Tra cứu sản phẩm theo mã vạch Barcode
+### Requirement: REQ-POS-02 Trừ tồn kho chi nhánh tự động theo lô (FEFO)
+The system MUST deduct inventory quantity from `BranchStocks` upon successful order creation. The system SHALL prioritize batches with earliest expiration date (FEFO rule), decrement `QuantityOnHand`, and record the batch code and cost price into `OrderDetail`.
+
+#### Scenario: Trừ kho thành công khi đủ số lượng tồn
+**GIVEN** Sản phẩm "Mì Hảo Hảo" tại chi nhánh `BranchId` có 2 lô: Lô A (hạn 01/2027) còn 10 gói, Lô B (hạn 06/2027) còn 20 gói  
+**WHEN** Thu ngân bán 15 gói Mì Hảo Hảo  
+**THEN** Hệ thống tự động trừ hết 10 gói ở Lô A (`QuantityOnHand = 0`) và trừ tiếp 5 gói ở Lô B (`QuantityOnHand = 15`), lưu vết thông tin lô vào chi tiết đơn hàng
+
+#### Scenario: Báo lỗi từ chối bán khi tồn kho tại chi nhánh không đủ
+**GIVEN** Sản phẩm "Nước ngọt Coca-Cola" tại chi nhánh `BranchId` chỉ còn tổng cộng 3 lon trong kho  
+**WHEN** Thu ngân cố gắng bán 5 lon Coca-Cola  
+**THEN** Hệ thống MUST từ chối giao dịch với mã lỗi `400 Bad Request` và thông báo "Sản phẩm Nước ngọt Coca-Cola không đủ tồn kho tại chi nhánh (chỉ còn 3)"
+
+---
+
+### Requirement: REQ-POS-03 Tra cứu sản phẩm theo mã vạch Barcode
 The system MUST provide an API endpoint `GET /api/products/barcode/{barcode}` allowing POS cashier or barcode scanner to lookup a product by Barcode or SKU within the current tenant.
 
 #### Scenario: Tìm thấy sản phẩm theo mã vạch hợp lệ
@@ -37,7 +52,7 @@ The system MUST provide an API endpoint `GET /api/products/barcode/{barcode}` al
 
 ---
 
-### Requirement: REQ-POS-03 In hóa đơn nhiệt 1-Click (ESC/POS 58mm)
+### Requirement: REQ-POS-04 In hóa đơn nhiệt 1-Click (ESC/POS 58mm)
 The system MUST provide an API endpoint `POST /api/orders/{id}/print` that converts the order into an ESC/POS 58mm binary byte stream (32 characters per line) and sends it directly to Windows Print Spooler (`winspool.drv`) using `RAW` mode without showing browser print dialogs.
 
 #### Scenario: In hóa đơn thành công ra máy in nhiệt USB
@@ -52,7 +67,7 @@ The system MUST provide an API endpoint `POST /api/orders/{id}/print` that conve
 
 ---
 
-### Requirement: REQ-POS-04 Kiểm soát bán nợ và hạn mức nợ khách hàng
+### Requirement: REQ-POS-05 Kiểm soát bán nợ và hạn mức nợ khách hàng
 The system MUST validate customer identification and credit debt limits when `paymentMethod = "DEBT"`.
 
 #### Scenario: Bán nợ thành công cho khách hàng có hạn mức hợp lệ
@@ -67,7 +82,7 @@ The system MUST validate customer identification and credit debt limits when `pa
 
 ---
 
-### Requirement: REQ-POS-05 Tích lũy và tiêu điểm thưởng khách hàng
+### Requirement: REQ-POS-06 Tích lũy và tiêu điểm thưởng khách hàng
 The system SHALL compute earned loyalty reward points upon successful payment and deduct redeemed points if requested by customer.
 
 #### Scenario: Tích điểm tự động sau khi thanh toán
@@ -79,7 +94,8 @@ The system SHALL compute earned loyalty reward points upon successful payment an
 
 ## Acceptance Checklist
 - [ ] `POST /api/orders` xử lý thành công tiền mặt, VietQR, và bán nợ.
+- [ ] Tự động trừ tồn kho `BranchStocks` theo chi nhánh & FEFO; chặn giao dịch nếu không đủ hàng.
 - [ ] `POST /api/orders/{id}/print` gửi lệnh RAW ESC/POS thành công xuống máy in nhiệt.
 - [ ] `GET /api/products/barcode/{barcode}` tra cứu chính xác sản phẩm theo mã vạch.
 - [ ] `useBarcodeScanner.ts` bắt được sự kiện máy quét USB HID và thêm hàng vào giỏ.
-- [ ] Toàn bộ logic tính toán tiền và nợ được kiểm thử qua bộ Unit Tests với tỷ lệ Pass 100%.
+- [ ] Toàn bộ logic tính toán tiền, nợ và tồn kho được kiểm thử qua bộ Unit Tests với tỷ lệ Pass 100%.
