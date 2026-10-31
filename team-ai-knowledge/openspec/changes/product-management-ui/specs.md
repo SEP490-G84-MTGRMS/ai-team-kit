@@ -45,78 +45,63 @@ Hệ thống Frontend MUST tuân thủ nghiêm ngặt quy tắc [BR-SEC-01](file
 
 ### Requirement: REQ-05 Điều kiện kích hoạt Thêm Đơn vị Quy đổi trong Modal Hàng hóa (ProductFormModal)
 Nút `+ Thêm đơn vị` trong phần "Đơn vị tính" của [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx) MUST yêu cầu người dùng đã nhập "Tên đơn vị cơ bản" (`baseUnit.trim() !== ''`).
-- Nếu chưa nhập `baseUnit`:
-  - Nút `+ Thêm đơn vị` bị vô hiệu hóa (disabled với style xám mờ `opacity: 0.5`, `cursor: not-allowed`), đồng thời hiển thị tooltip hoặc thông báo lỗi: "Vui lòng nhập tên đơn vị cơ bản trước khi thêm đơn vị quy đổi."
-- Khi `baseUnit` có giá trị hợp lệ: Nút `+ Thêm đơn vị` chuyển sang trạng thái kích hoạt (màu xanh #0F766E, cursor: pointer) và cho phép thêm dòng quy đổi mới.
-
-#### Scenario: Người dùng chưa nhập đơn vị cơ bản bấm Thêm đơn vị
-- **GIVEN** Modal Thêm hàng hóa đang mở, ô "Tên đơn vị cơ bản" để trống
-- **WHEN** Người dùng quan sát nút "+ Thêm đơn vị"
-- **THEN** Nút ở trạng thái disabled và không kích hoạt thêm đơn vị quy đổi mới.
+- Nếu chưa nhập `baseUnit`: Nút `+ Thêm đơn vị` bị vô hiệu hóa (disabled với style xám mờ `opacity: 0.5`, `cursor: not-allowed`), đồng thời hiển thị thông báo: "Vui lòng nhập tên đơn vị cơ bản trước khi thêm đơn vị quy đổi."
+- Khi `baseUnit` có giá trị hợp lệ: Nút `+ Thêm đơn vị` chuyển sang trạng thái kích hoạt (màu xanh #0F766E, cursor: pointer).
 
 ---
 
 ### Requirement: REQ-06 Hiển thị Bảng "Hàng cùng loại" trong Modal Hàng hóa (ProductFormModal)
 Khi sản phẩm có thêm đơn vị tính quy đổi (`uomConversions.length > 0`), modal MUST hiển thị bảng **"Hàng cùng loại"** bên dưới phần đơn vị tính.
-- **Tiêu đề bảng**: Bên trái là `Hàng cùng loại`, bên phải là liên kết `Thiết lập giá` kèm icon.
-- **Cấu trúc cột & Dữ liệu**:
-  1. `Đơn vị`:
-     - Hàng 1 (Đơn vị cơ bản): Text hiển thị `baseUnit` (ví dụ: `chai`).
-     - Hàng 2 trở đi (Đơn vị quy đổi): Text hiển thị `uom.unitName` (ví dụ: `thung`).
-  2. `Quy đổi`:
-     - Hàng 1: Input giá trị `1`, disabled, nền xám nhẹ.
-     - Hàng 2 trở đi: Input nhập tỷ lệ quy đổi (`conversionRate`), đồng bộ 2 chiều với danh sách `uomConversions`.
-  3. `Mã hàng`:
-     - Hàng 1: Input mã hàng (`productCode` hoặc placeholder `Tự động`).
-     - Hàng 2 trở đi: Input mã hàng riêng của đơn vị quy đổi (placeholder `Tự động`).
-  4. `Mã vạch`:
-     - Hàng 1: Input mã vạch cơ bản (đồng bộ với `barcode` chính).
-     - Hàng 2 trở đi: Input mã vạch riêng (`uom.barcode`).
-  5. `Giá vốn`:
-     - Hàng 1: Input giá vốn cơ bản (đồng bộ với `costPrice`).
-     - Hàng 2 trở đi: Input giá vốn quy đổi (nền xám/readonly, tự động tính bằng `costPrice * conversionRate`).
-  6. `Giá bán`:
-     - Hàng 1: Input giá bán cơ bản (đồng bộ với `sellingPrice` / `baseUnitPrice`).
-     - Hàng 2 trở đi: Input giá bán đơn vị quy đổi (đồng bộ với `uom.price`).
-  7. `Tồn kho`:
-     - Hàng 1: Input tồn kho cơ bản (đồng bộ với `initialStock`).
-     - Hàng 2 trở đi: Input tồn kho quy đổi (nền xám/readonly, tự động tính bằng `Math.floor(initialStock / conversionRate)`).
-  8. `Cột Action`:
-     - Hàng 1: Không cho phép xóa đơn vị cơ bản.
-     - Hàng 2 trở đi: Icon thùng rác `Trash2` màu xám cho phép xóa đơn vị quy đổi khỏi bảng và danh sách.
-
-#### Scenario: Đồng bộ dữ liệu 2 chiều giữa Bảng Hàng cùng loại và Đơn vị tính
-- **GIVEN** Người dùng đã thêm đơn vị quy đổi "thung" với tỷ lệ 24 và giá bán 450,000
-- **WHEN** Người dùng thay đổi giá bán hoặc tỷ lệ quy đổi trong Bảng hàng cùng loại
-- **THEN** Các ô tương ứng trong phần Đơn vị tính phía trên được cập nhật đồng bộ tức thời.
+- Cấu trúc bảng gồm 8 cột: Đơn vị, Quy đổi, Mã hàng, Mã vạch, Giá vốn, Giá bán, Tồn kho, Xóa.
+- Dòng đơn vị cơ bản: Quy đổi cố định 1 (disabled bg xám), Mã hàng tự động, Giá vốn/bán/tồn kho đồng bộ 2 chiều với các trường chính.
+- Dòng đơn vị quy đổi: Quy đổi nhập, Mã vạch nhập, Giá vốn & Tồn kho tự động tính hiển thị nền xám, Giá bán nhập riêng, nút Xóa hàng.
 
 ---
 
 ### Requirement: REQ-07 Lựa chọn Hiển thị Đơn vị Tính trên Danh sách Hàng hóa (ProductListPage)
 Trong bảng danh sách sản phẩm ([`ProductListPage.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/pages/ProductListPage.tsx)), tại cột **Tên hàng hóa**:
 - Nếu sản phẩm có đơn vị quy đổi (`uomConversions && uomConversions.length > 0`):
-  - Hiển thị: `[Tên sản phẩm] - [đơn vị đang chọn] ⌵` (ví dụ: `Test - chai ⌵`).
-  - Khi click vào `[đơn vị đang chọn] ⌵`: Mở popover menu hiển thị danh sách các đơn vị quy đổi và đơn vị cơ bản.
-  - Khi click chọn một đơn vị:
-    - Đơn vị đang chọn của sản phẩm đó chuyển sang đơn vị được click (ví dụ `Test - thung ⌵`).
-    - Cột **Giá bán** tự động cập nhật hiển thị giá của đơn vị tương ứng (ví dụ: `450,000 đ`).
-    - Cột **Mã hàng / Barcode** nếu đơn vị có mã riêng thì cập nhật theo đơn vị tương ứng.
-- Nếu sản phẩm không có đơn vị quy đổi:
-  - Hiển thị tên hàng hóa bình thường không có dropdown menu.
+  - Hiển thị: `[Tên sản phẩm] - [đơn vị đang chọn] ⌵` (chữ xanh).
+  - Khi click vào mở popover menu chỉ hiển thị các đơn vị khác có thể chuyển đổi.
+  - Khi chọn một đơn vị: Cập nhật tên hiển thị, mã hàng và giá bán tương ứng trên bảng.
 
-#### Scenario: Chuyển đổi đơn vị hiển thị trên bảng sản phẩm
-- **GIVEN** Sản phẩm "Nước giải khát" có đơn vị cơ bản "chai" giá 10,000 và "lốc" giá 55,000
-- **WHEN** Người dùng click menu chọn "lốc"
-- **THEN** Tên hàng hóa hiển thị `Nước giải khát - lốc ⌵`
-- **AND** Cột Giá bán hiển thị `55,000 đ`.
+---
+
+### Requirement: REQ-08 Chuyển đổi Đơn vị tính và Cập nhật Chi tiết Hàng hóa (ProductDetailModal)
+Trong modal xem chi tiết sản phẩm ([`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductDetailModal.tsx)):
+1. Hệ thống MUST cung cấp bộ chọn đơn vị tính (Segmented Pills) trên thanh Header tổng quan hoặc đầu Tab Thông tin khi sản phẩm có đơn vị quy đổi (`uomConversions && uomConversions.length > 0`).
+2. Hệ thống MUST cho phép click trực tiếp vào từng dòng trong bảng "Đơn vị tính & Quy đổi giá" để chuyển sang đơn vị đó.
+3. Khi người dùng chuyển đổi đơn vị tính:
+   - **Tên hiển thị**: Cập nhật thành `[Tên sản phẩm] - [Đơn vị]` (nếu là đơn vị cơ bản thì chỉ hiển thị `[Tên sản phẩm]`).
+   - **Mã hàng**: Hiển thị `uom.productCode` (nếu có) hoặc `product.productCode`.
+   - **Mã vạch**: Hiển thị `uom.barcode` (nếu có) hoặc `product.barcode` (nếu đơn vị cơ bản) hoặc `'—'`.
+   - **Giá bán**: Cập nhật hiển thị giá bán của đơn vị đang chọn (`uom.price` hoặc `product.sellingPrice`).
+   - **Giá vốn (BR-SEC-01)**: Nếu `userRole === 'StoreOwner'`, giá vốn tự động nhân theo tỷ lệ quy đổi: $\text{costPrice} \times \text{conversionRate}$. Nếu `Cashier` / `Staff`: ẩn hoàn toàn giá vốn.
+   - **Tồn kho hiện tại**: Hiển thị số lượng nguyên theo đơn vị đang chọn $\lfloor \text{onHand} / \text{conversionRate} \rfloor$ kèm chú thích số lượng đơn vị cơ bản còn dư (nếu có).
+   - **Highlight Bảng ĐVT**: Dòng của đơn vị đang chọn trong bảng ĐVT được highlight nền xanh nhẹ và gắn nhãn `Đang xem`.
+
+#### Scenario: Chủ cửa hàng xem chi tiết sản phẩm và chuyển sang đơn vị thùng
+- **GIVEN** Sản phẩm "Bia Tiger" có đơn vị cơ bản "chai" (Giá bán: 20,000 đ, Giá vốn: 15,000 đ, Tồn kho: 50 chai) và đơn vị quy đổi "thung" (Quy đổi: 24, Giá bán: 450,000 đ)
+- **WHEN** Người dùng có quyền `StoreOwner` mở xem chi tiết và click chọn pill "thung"
+- **THEN** Giao diện cập nhật:
+  - Giá bán hiển thị: `450,000 đ`
+  - Giá vốn hiển thị: `360,000 đ` (15,000 * 24)
+  - Tồn kho hiển thị: `2 thung` (kèm chú thích: `còn dư 2 chai`)
+  - Bảng ĐVT highlight dòng "thung" với nhãn "Đang xem".
+
+#### Scenario: Thu ngân xem chi tiết sản phẩm và chuyển đơn vị (BR-SEC-01)
+- **GIVEN** Người dùng đăng nhập có vai trò `Cashier`
+- **WHEN** Người dùng mở modal chi tiết sản phẩm và chuyển sang đơn vị "thung"
+- **THEN** Giá bán hiển thị `450,000 đ`, Giá vốn bị ẩn hoàn toàn (không xuất hiện trên Header và Tab Thông tin).
 
 ---
 
 ## 3. Acceptance Checklist
-- [ ] REQ-01: Bảng danh sách sản phẩm tải dữ liệu thật từ `GET /api/products` và phân trang server-side hoạt động trơn tru.
-- [ ] REQ-02: Ô tìm kiếm hoạt động với debounce 300ms, tự reset `pageIndex = 1`.
-- [ ] REQ-03: `CategorySidebar` tải danh mục phẳng, lọc theo `categoryId`.
-- [ ] REQ-04: Cột "Giá vốn" hiển thị cho `StoreOwner` và ẩn hoàn toàn đối với `Cashier`/`Staff` (BR-SEC-01).
-- [ ] REQ-05: Nút "+ Thêm đơn vị" bắt buộc phải nhập tên đơn vị cơ bản trước mới cho phép kích hoạt.
-- [ ] REQ-06: Bảng "Hàng cùng loại" hiển thị đầy đủ các cột và các dòng đơn vị cơ bản + quy đổi, đồng bộ 2 chiều dữ liệu.
-- [ ] REQ-07: Cột Tên hàng hóa trên `ProductListPage` có option dropdown hiển thị đơn vị tính và cập nhật giá bán theo đơn vị được chọn.
+- [ ] REQ-01: Danh sách sản phẩm phân trang Server-side chính xác.
+- [ ] REQ-02: Ô tìm kiếm Debounce 300ms và tự động reset trang 1.
+- [ ] REQ-03: Lọc danh mục phẳng chính xác từ backend.
+- [ ] REQ-04: Phân quyền giá vốn theo vai trò (BR-SEC-01).
+- [ ] REQ-05: Nút "+ Thêm đơn vị" yêu cầu nhập tên đơn vị cơ bản trước.
+- [ ] REQ-06: Bảng "Hàng cùng loại" xuất hiện và đồng bộ 2 chiều khi có đơn vị quy đổi.
+- [ ] REQ-07: Dropdown đơn vị tính trên danh sách sản phẩm cho phép đổi đơn vị hiển thị và giá.
+- [ ] REQ-08: Modal Chi tiết Sản phẩm (`ProductDetailModal`) cho phép switch đơn vị tính, cập nhật giá bán, giá vốn (StoreOwner), tồn kho, mã hàng, mã vạch tương ứng.
