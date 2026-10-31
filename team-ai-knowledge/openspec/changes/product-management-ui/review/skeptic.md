@@ -2,15 +2,15 @@
 
 | Chiều | Điểm (1–5) | Nhận xét |
 |---|---|---|
-| D1 Completeness | 4.5 | Đã bao phủ đầy đủ các kịch bản chuyển đổi đơn vị cơ bản & quy đổi, edge case không có đơn vị quy đổi, mã vạch/mã hàng null. |
-| D2 Correctness | 5.0 | Công thức tính quy đổi tồn kho nguyên, số lượng lẻ, giá vốn theo tỷ lệ quy đổi hoàn toàn chính xác. |
-| D3 Coherence | 5.0 | Thống nhất 100% giữa proposal, exploration, design-brief và specs delta (REQ-01 -> REQ-08). |
-| D4 Constraints | 5.0 | Tôn trọng nghiêm ngặt quy tắc bảo mật giá vốn BR-SEC-01 (chỉ StoreOwner mới thấy giá vốn cơ bản & giá vốn quy đổi). |
-| D5 Blast Radius | 5.0 | Thay đổi cô lập (surgical) trong `ProductDetailModal.tsx`, không gây breaking change cho các màn hình khác hoặc API backend. |
+| D1 Completeness | 5.0 | Đã bao phủ toàn diện cả 3 trường hợp của đơn vị quy đổi: thêm mới (ID tạm), sửa (GUID cũ), xóa (ghi nhận ID bị xóa), cùng việc khóa mã hàng SKU. |
+| D2 Correctness | 5.0 | Cơ chế client-side diffing phân loại chính xác các request gọi đến REST API của Backend (`PUT /products/{id}`, `DELETE /product-units/{id}`, `POST /products/{id}/units`, `PUT /product-units/{id}`). |
+| D3 Coherence | 5.0 | Thống nhất 100% giữa proposal, exploration, design-brief và specs delta (từ REQ-01 đến REQ-09). |
+| D4 Constraints | 5.0 | Tôn trọng nghiêm ngặt tính bất biến của mã hàng SKU (`disabled` ô input), tuân thủ bảo mật giá vốn BR-SEC-01 cho vai trò Thu ngân. |
+| D5 Blast Radius | 5.0 | Tận dụng hoàn hảo các REST endpoint có sẵn của Backend mà không cần sửa đổi backend API, logic gói gọn trong `productApi.ts`, `ProductFormModal.tsx` và `ProductListPage.tsx`. |
 
 ## Vấn đề đã ghi nhận & Xử lý
-- [LOW] REQ-08: Cần lưu ý khi `product.onHand` nhỏ hơn `conversionRate` (ví dụ có 10 chai mà 1 thùng = 24 chai) thì số thùng là 0 và số chai lẻ là 10. → Đề xuất: Hiển thị rõ `0 thung (còn dư 10 chai)` để tránh nhân viên hiểu nhầm là hết hàng trong kho.
-- [LOW] REQ-08: Khi `uom.productCode` bị null hoặc rỗng → Đề xuất: Fallback về `product.productCode` chính để luôn có mã hàng hiển thị.
+- [LOW] REQ-09: Cần đảm bảo nếu người dùng xóa một đơn vị mới tạo (chưa lưu vào DB, có ID dạng `uom-*`), không đưa ID này vào `deletedUnitIds` để tránh gửi request DELETE vô nghĩa lên Backend.
+- [LOW] REQ-09: Thêm hàm `updateProductUnit` vào `productApi.ts` với đầy đủ types `ProductUnitUpdatePayload` khớp với `ProductUnitUpdateRequest` ở backend.
 
 ## Kết luận: Chấp nhận
-Specs REQ-08 đã rõ ràng, chặt chẽ và sẵn sàng để lập tasks và thực thi code.
+Specs REQ-09 đã chặt chẽ, rõ ràng và sẵn sàng để lập tasks và thực thi code.
