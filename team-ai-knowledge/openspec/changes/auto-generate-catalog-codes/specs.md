@@ -1,7 +1,7 @@
 # Specification: Tự động sinh mã tuần tự cho Category và Product
 
 ## Capability Summary
-Cung cấp cơ chế tự động sinh mã tuần tự dạng `CAT000001`, `CAT000002`... cho Nhóm hàng (Category) và `SP000001`, `SP000002`... cho Sản phẩm (Product) khi người dùng để trống mã lúc tạo mới, đảm bảo tính nhất quán, phân tách đa người thuê (Multi-tenancy) và không xung đột mã.
+Cung cấp cơ chế tự động sinh mã tuần tự dạng `CAT000001`, `CAT000002`... cho Nhóm hàng (Category) và `SP000001`, `SP000002`... cho Sản phẩm (Product) khi người dùng để trống mã lúc tạo mới. Cho phép để trống `Barcode` (`null`) nếu người dùng không quét hoặc không nhập mã vạch, đảm bảo tính nhất quán, phân tách đa người thuê (Multi-tenancy) và không xung đột mã.
 
 ## Architecture Map
 - **Frontend**: Màn hình tạo Nhóm hàng (`CategoryModal`) / Màn hình tạo Sản phẩm (`ProductFormModal`) gửi payload tạo mới với trường mã để trống (`null` hoặc `""`).
@@ -38,18 +38,19 @@ Khi người dùng tạo mới một Nhóm hàng mà không cung cấp mã (`req
 
 ---
 
-### Requirement: REQ-PROD-01 Tự động sinh mã tuần tự cho Sản phẩm
-Khi người dùng tạo mới một Sản phẩm mà không cung cấp mã sản phẩm (`request.ProductCode` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** tự động sinh mã theo định dạng `SP{number:D6}` với số thứ tự tăng dần bắt đầu từ `SP000001`. Đồng thời nếu `request.Barcode` cũng bị bỏ trống, hệ thống **MUST** gán giá trị của `Barcode` bằng chính mã sản phẩm tự sinh này.
+### Requirement: REQ-PROD-01 Tự động sinh mã tuần tự cho Sản phẩm & Cho phép Barcode là null
+Khi người dùng tạo mới một Sản phẩm mà không cung cấp mã sản phẩm (`request.ProductCode` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** tự động sinh mã theo định dạng `SP{number:D6}` với số thứ tự tăng dần bắt đầu từ `SP000001`. 
+Đồng thời, nếu người dùng không nhập mã vạch (`request.Barcode` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** lưu giá trị `Barcode` là `null` (không bắt buộc và không tự gán bằng ProductCode). Nếu người dùng có nhập mã vạch, hệ thống **MUST** kiểm tra tính duy nhất của mã vạch đó.
 
-#### Scenario: Tạo sản phẩm đầu tiên khi chưa có sản phẩm nào
+#### Scenario: Tạo sản phẩm đầu tiên khi chưa có sản phẩm nào và không nhập Barcode
 **GIVEN** Trong hệ thống của Tenant hiện tại chưa có sản phẩm nào có mã dạng `SP{number}`  
-**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Sữa đặc Ông Thọ"` và `ProductCode = ""`  
-**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000001"` và `Barcode = "SP000001"`
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Sữa đặc Ông Thọ"`, `ProductCode = ""` và `Barcode = ""`  
+**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000001"` và `Barcode = null`
 
-#### Scenario: Tạo sản phẩm tiếp theo tự động tăng tuần tự
+#### Scenario: Tạo sản phẩm tiếp theo tự động tăng tuần tự và không nhập Barcode
 **GIVEN** Trong hệ thống của Tenant hiện tại đã có sản phẩm với mã `SP000001`  
-**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Bánh mì hoa cúc"` và `ProductCode = null`  
-**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000002"` và `Barcode = "SP000002"`
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Bánh mì hoa cúc"`, `ProductCode = null` và `Barcode = null`  
+**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000002"` và `Barcode = null`
 
 #### Scenario: Tạo sản phẩm bỏ trống mã nhưng có quét Barcode riêng
 **GIVEN** Người dùng quét mã vạch trên bao bì sản phẩm là `893850123456` nhưng không nhập mã quản lý nội bộ  
@@ -67,6 +68,7 @@ Khi người dùng tạo mới một Sản phẩm mà không cung cấp mã sả
 - [ ] Bổ sung `GetMaxSequentialCodeAsync` vào `ICategoryRepository` và `CategoryRepository`.
 - [ ] Bổ sung `GetMaxSequentialCodeAsync` vào `IProductRepository` và `ProductRepository`.
 - [ ] Cập nhật `CategoryService.CreateAsync` sinh mã `CAT000001`, `CAT000002`... khi bỏ trống mã.
-- [ ] Cập nhật `CatalogService.CreateProductAsync` sinh mã `SP000001`, `SP000002`... khi bỏ trống mã.
-- [ ] Viết Unit Tests bao phủ cả 2 Service cho các kịch bản mã đầu tiên, mã tuần tự và mã nhập tay.
+- [ ] Cập nhật `CatalogService.CreateProductAsync` sinh mã `SP000001`, `SP000002`... khi bỏ trống mã; và lưu `Barcode = null` nếu bỏ trống mã vạch.
+- [ ] Cấu hình EF Core `ProductConfiguration`: Cho phép `Barcode` là nullable và tạo migration `MakeProductBarcodeNullable`.
+- [ ] Viết Unit Tests bao phủ cả 2 Service cho các kịch bản mã đầu tiên, mã tuần tự, mã nhập tay, và barcode null.
 - [ ] Chạy `dotnet test` đạt 100% passed toàn bộ solution.
