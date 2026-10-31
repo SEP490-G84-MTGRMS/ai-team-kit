@@ -100,25 +100,26 @@ Khi người dùng thực hiện cập nhật thông tin hàng hóa trong [`Prod
 5. **Cập nhật lại giao diện**:
    - Đóng modal, làm mới danh sách sản phẩm và thông báo toast thành công: `Cập nhật hàng hóa "[Tên]" thành công.`
 
-#### Scenario: Cập nhật thông tin cơ bản và giá bán sản phẩm
-- **GIVEN** Sản phẩm "Bia Tiger" có giá bán 20,000 đ
-- **WHEN** Người dùng sửa giá bán thành 22,000 đ và đổi nhóm hàng sang "Bia & Rượu" rồi bấm "Lưu"
-- **THEN** Hệ thống gửi `PUT /api/v1/products/{id}`, hiển thị toast thành công và cập nhật bảng danh sách với giá 22,000 đ.
+---
 
-#### Scenario: Sửa đơn vị tính cũ, thêm đơn vị mới và xóa một đơn vị đã có
-- **GIVEN** Sản phẩm đang có đơn vị cơ bản "chai", đơn vị quy đổi "loc" (GUID-1, rate 6) và "thung" (GUID-2, rate 24)
-- **WHEN** Người dùng xóa đơn vị "loc", sửa giá của "thung" từ 450,000 đ lên 480,000 đ, và thêm đơn vị mới "ket" (rate 30, giá 600,000 đ)
-- **THEN** Hệ thống thực thi:
-  1. `PUT /api/v1/products/{id}` cập nhật sản phẩm.
-  2. `DELETE /api/v1/product-units/GUID-1` xóa đơn vị "loc".
-  3. `PUT /api/v1/product-units/GUID-2` cập nhật giá thùng lên 480,000 đ.
-  4. `POST /api/v1/products/{id}/units` tạo đơn vị "ket".
-  5. Bảng danh sách và modal chi tiết hiển thị đầy đủ các thay đổi mới.
-
-#### Scenario: Kiểm tra khóa ô Mã hàng khi Chỉnh sửa
-- **GIVEN** Người dùng mở modal chỉnh sửa sản phẩm "SP000008"
-- **WHEN** Người dùng quan sát ô "Mã hàng"
-- **THEN** Ô có giá trị "SP000008", trạng thái `disabled`, không thể nhập hay sửa text.
+### Requirement: REQ-10 Cải tiến UI/UX Form Thêm/Sửa Hàng Hóa (ProductFormModal)
+Trong modal [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx):
+1. **Độ rộng Modal (Max-width)**:
+   - Tăng độ rộng tối đa của modal lên `maxWidth: 1160px` và `width: 96vw` giúp các cột trong bảng "Hàng cùng loại" và form hiển thị thông thoáng.
+2. **Lightbox Xem Chi Tiết Ảnh Phóng To**:
+   - Khi có ảnh tải lên, bấm vào nút "Xem to" ở ảnh chính hoặc bấm vào ảnh thumbnail MUST mở modal popup phóng to (Lightbox) hiển thị ảnh kích thước đầy đủ với nút đóng tiện lợi.
+3. **Tìm kiếm Nhóm hàng Đa ngữ (Tiếng Việt có dấu & không dấu)**:
+   - Ô tìm kiếm nhóm hàng MUST hỗ trợ chuẩn hóa tiếng Việt bỏ dấu (sử dụng NFD normalization), cho phép tìm "do uong" vẫn lọc ra "Đồ uống", "banh keo" lọc ra "Bánh kẹo".
+4. **Loại bỏ Số 0 ở Đầu Input Số (Leading Zero Handling)**:
+   - Các trường số (`costPrice`, `sellingPrice`, `initialStock`, `minStock`, `maxStock`, `conversionRate`, `price`, `vatRate`) khi có giá trị 0 MUST hiển thị placeholder "0" thay vì ký tự số "0", kết hợp `onFocus={(e) => e.target.select()}` để khi gõ không bị tình trạng số 0 ở đầu (ví dụ: `010000`).
+5. **Đơn vị Tính Cơ Bản Không Mặc Định 'chai'**:
+   - Ô "Tên đơn vị cơ bản" MUST để trống mặc định (`''`) với placeholder gợi ý `"VD: Chai, Lon, Gói, Hộp..."`, không gán cứng "chai".
+6. **Tự Động Tính Tiền Đơn Vị Quy Đổi theo Đơn Vị Cơ Bản**:
+   - Khi người dùng thay đổi tỷ lệ quy đổi (`conversionRate`) của đơn vị quy đổi, hệ thống MUST tự động tính giá bán: `price = conversionRate * sellingPrice`.
+7. **Cải tiến Thuế Suất VAT (%)**:
+   - Trường Thuế suất VAT hỗ trợ cả ô nhập tỷ lệ phần trăm tùy biến và hàng nút chọn nhanh chuẩn (`0%`, `5%`, `8%`, `10%`) giúp thao tác nhanh và linh hoạt.
+8. **Popup Cảnh Báo Validation thay vì Thông Báo trên Form**:
+   - Khi người dùng gửi form thiếu thông tin bắt buộc hoặc nhập số liệu không hợp lệ, hệ thống MUST hiển thị Modal Popup cảnh báo trực quan ("Thông tin chưa hợp lệ" kèm nút "Đã hiểu") thay vì hiển thị banner thông báo màu đỏ ở đầu form bị khuất tầm nhìn.
 
 ---
 
@@ -132,3 +133,4 @@ Khi người dùng thực hiện cập nhật thông tin hàng hóa trong [`Prod
 - [ ] REQ-07: Dropdown đơn vị tính trên danh sách sản phẩm cho phép đổi đơn vị hiển thị và giá.
 - [ ] REQ-08: Modal Chi tiết Sản phẩm (`ProductDetailModal`) cho phép switch đơn vị tính, cập nhật giá bán, giá vốn (StoreOwner), tồn kho, mã hàng, mã vạch tương ứng.
 - [ ] REQ-09: Chức năng Cập nhật Hàng hóa (`ProductFormModal` & `handleSaveProduct`) khóa mã hàng, đồng bộ đầy đủ các thao tác Thêm / Sửa / Xóa đơn vị tính quy đổi lên Backend API.
+- [ ] REQ-10: Cải tiến Form Hàng hóa (`ProductFormModal`): Max-width rộng 1160px, popup phóng to ảnh (Lightbox), tìm kiếm nhóm hàng tiếng Việt không dấu, loại bỏ số 0 ở đầu input số, đơn vị cơ bản không mặc định chai, tự tính giá theo đơn vị cơ bản, chọn nhanh thuế VAT, và popup cảnh báo validation.
