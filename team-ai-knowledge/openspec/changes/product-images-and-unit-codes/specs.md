@@ -7,8 +7,8 @@
 | `POST` | `/api/v1/products` | `ProductCreateRequest` (kèm `imageUrls: List<string>?`) | `ApiResponse<ProductResponse>` | 400 Bad Request, 401 Unauthorized, 409 Conflict |
 | `PUT` | `/api/v1/products/{id}` | `ProductUpdateRequest` (kèm `imageUrls: List<string>?`) | `ApiResponse<ProductResponse>` | 400 Bad Request, 404 Not Found, 409 Conflict |
 | `GET` | `/api/v1/products/{id}` | — | `ApiResponse<ProductResponse>` (kèm `imageUrls: List<string>`, `imageUrl: string?`) | 404 Not Found |
-| `POST` | `/api/v1/products/{productId}/units` | `ProductUnitCreateRequest` (kèm `unitCode: string?`) | `ApiResponse<ProductUnitResponse>` | 400 Bad Request, 409 Conflict (trùng mã) |
-| `PUT` | `/api/v1/product-units/{id}` | `ProductUnitUpdateRequest` (kèm `unitCode: string?`) | `ApiResponse<ProductUnitResponse>` | 400 Bad Request, 404 Not Found, 409 Conflict |
+| `POST` | `/api/v1/products/{productId}/units` | `ProductUnitCreateRequest` | `ApiResponse<ProductUnitResponse>` | 400 Bad Request, 409 Conflict |
+| `PUT` | `/api/v1/product-units/{id}` | `ProductUnitUpdateRequest` | `ApiResponse<ProductUnitResponse>` | 400 Bad Request, 404 Not Found, 409 Conflict |
 
 ---
 
@@ -35,34 +35,29 @@ Hệ thống MUST tự động trích xuất ảnh đầu tiên (`ImageUrls[0]`)
 
 ---
 
-### Requirement: REQ-02 Tự Động Sinh Mã Hàng cho Đơn Vị Quy Đổi (ProductUnit Code Auto-generation)
-Entity `ProductUnit` MUST có thuộc tính `UnitCode` (mã hàng của đơn vị quy đổi).
-Khi tạo đơn vị quy đổi mới, nếu người dùng không truyền `UnitCode` (hoặc để trống), hệ thống MUST tự động sinh mã theo quy tắc: `{ProductCode}-{Tên ĐVT chuẩn hóa}`.
+### Requirement: REQ-02 Không Lưu Mã Hàng Trong ProductUnit, UI Mặc Định Lấy Theo Mã Sản Phẩm
+Entity `ProductUnit` MUST NOT lưu trường mã hàng (`UnitCode` / `ProductCode`) trong cơ sở dữ liệu.
+Trên giao diện người dùng (UI), `productCode` của `ProductUnit` MUST mặc định hiển thị giống với `productCode` của sản phẩm cha.
 
-#### Scenario: Tự động sinh mã khi để trống
-- **GIVEN** Sản phẩm có mã `SP00123`. Người dùng tạo đơn vị tính mới với `UnitName: "Thùng"` và `UnitCode: ""`.
-- **WHEN** Hệ thống gọi API tạo đơn vị tính quy đổi.
-- **THEN** Hệ thống tự động tạo mã `SP00123-THUNG` và lưu vào trường `UnitCode` của `ProductUnit`.
+#### Scenario: Thêm đơn vị quy đổi trong Form
+- **GIVEN** Người dùng tạo sản phẩm với mã `SP00123`. Người dùng thêm đơn vị quy đổi "Thùng".
+- **WHEN** Bảng "Hàng cùng loại" hiển thị dòng đơn vị mới.
+- **THEN** Cột "Mã hàng" hiển thị `SP00123` (ở trạng thái disabled). Khi lưu, backend chỉ lưu `UnitName`, `ConversionRate`, `Price`, `Barcode` mà không lưu trường mã hàng.
 
-#### Scenario: Người dùng tự nhập mã hàng tùy biến
-- **GIVEN** Sản phẩm có mã `SP00123`. Người dùng nhập `UnitCode: "THUNG-L1"`.
-- **WHEN** Hệ thống kiểm tra mã không bị trùng trong tenant.
-- **THEN** Hệ thống lưu đúng mã `THUNG-L1` cho đơn vị quy đổi.
-
-#### Scenario: Edge Case - Trùng mã tự sinh
-- **GIVEN** Đã tồn tại đơn vị quy đổi có mã `SP00123-THUNG`. Người dùng thêm một đơn vị khác cũng có tên "Thùng 24 lon" và format tự sinh bị trùng.
-- **WHEN** Hệ thống sinh mã.
-- **THEN** Hệ thống MUST tự động thêm hậu tố tăng dần `-1`, `-2` (ví dụ: `SP00123-THUNG-1`) để đảm bảo tính duy nhất.
+#### Scenario: Xem chi tiết sản phẩm theo đơn vị quy đổi
+- **GIVEN** Sản phẩm có mã `SP00123` và đơn vị quy đổi "Thùng".
+- **WHEN** Người dùng mở modal xem chi tiết và chuyển sang đơn vị "Thùng".
+- **THEN** Mã hàng trên header và trong bảng Đơn vị tính hiển thị `SP00123`.
 
 ---
 
 ### Requirement: REQ-03 Giao Diện Quản Lý Nhiều Ảnh trong ProductFormModal
-Component [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26\File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx) MUST cho phép:
+Component [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_GRMS_FRONTEND/src/features/product/components/ProductFormModal.tsx) MUST cho phép:
 1. Upload nhiều file ảnh đồng thời lên Cloudinary.
 2. Hiển thị danh sách ảnh thumbnail có đánh dấu ảnh đại diện (`Badge` "Chính", viền xanh `#0D9488`).
 3. Cho phép click nút "Đặt chính" ở bất kỳ ảnh phụ nào để đưa ảnh đó lên đầu danh sách (`index 0`).
 4. Nút xóa từng ảnh khỏi danh sách.
-5. Cột Mã hàng trong bảng "Hàng cùng loại" tự động hiển thị mã gợi ý theo đơn vị quy đổi và cho phép người dùng chỉnh sửa.
+5. Cột Mã hàng trong bảng "Hàng cùng loại" hiển thị mặc định theo mã sản phẩm cha.
 
 #### Scenario: Thêm 3 ảnh và chọn ảnh thứ hai làm đại diện
 - **GIVEN** Người dùng mở modal thêm sản phẩm và tải lên 3 file ảnh.
@@ -91,7 +86,7 @@ Trong [`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_
 1. Trường "Mô tả": MUST hiển thị dữ liệu thực tế `product.description` (nếu không có thì hiển thị `"Chưa có mô tả chi tiết cho hàng hóa này."`).
 2. Trường "Ghi chú nội bộ": MUST hiển thị dữ liệu thực tế `product.internalNote` (nếu không có thì hiển thị `"Chưa có ghi chú nội bộ."`).
 3. Khu vực hình ảnh: MUST hỗ trợ Gallery xem nhiều ảnh (khung ảnh hiển thị ảnh đang chọn + nhãn "Chính" cho ảnh 0 + dải thumbnails bên dưới để bấm chuyển đổi ảnh xem + nút mở Lightbox phóng to).
-4. Bảng Đơn vị tính: Hiển thị rõ mã hàng (`UnitCode`) của từng đơn vị quy đổi.
+4. Bảng Đơn vị tính: Hiển thị mã hàng của đơn vị tính mặc định theo mã sản phẩm cha `product.productCode`.
 
 #### Scenario: Xem sản phẩm có mô tả và nhiều ảnh
 - **GIVEN** Sản phẩm từ API có `description: "Bánh quy bơ cao cấp"`, `internalNote: "Hạn dùng 12 tháng"` và 3 ảnh trong `imageUrls`.
@@ -102,7 +97,7 @@ Trong [`ProductDetailModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File/MT_
 
 ## Acceptance Checklist
 - [ ] REQ-01: Backend hỗ trợ `List<string> ImageUrls` lưu vào PostgreSQL kiểu `text[]`, migration EF Core thành công, tự động trích xuất `Product.ImageUrl` theo ảnh đầu tiên.
-- [ ] REQ-02: Bổ sung trường `UnitCode` vào Entity `ProductUnit` và tự động sinh mã khi thêm đơn vị quy đổi nếu để trống.
-- [ ] REQ-03: `ProductFormModal` hỗ trợ upload nhiều ảnh, chọn ảnh đại diện, xóa ảnh, và đồng bộ mã hàng đơn vị trong bảng "Hàng cùng loại".
+- [ ] REQ-02: Entity `ProductUnit` không lưu mã hàng trong DB; UI hiển thị mã hàng đơn vị mặc định theo mã sản phẩm cha.
+- [ ] REQ-03: `ProductFormModal` hỗ trợ upload nhiều ảnh, chọn ảnh đại diện, xóa ảnh, bảng "Hàng cùng loại" hiển thị mã hàng theo mã sản phẩm cha.
 - [ ] REQ-04: `ProductDetailModal` cố định kích thước (`1160px` x `88vh`), Header và Footer cố định, cuộn mượt mà ở tab body và không đổi kích thước khi chuyển tab.
-- [ ] REQ-05: `ProductDetailModal` nạp dữ liệu thực tế cho Mô tả, Ghi chú nội bộ, hiển thị mã đơn vị tính và Gallery nhiều ảnh có Lightbox.
+- [ ] REQ-05: `ProductDetailModal` nạp dữ liệu thực tế cho Mô tả, Ghi chú nội bộ, hiển thị mã đơn vị tính theo mã sản phẩm cha và Gallery nhiều ảnh có Lightbox.
