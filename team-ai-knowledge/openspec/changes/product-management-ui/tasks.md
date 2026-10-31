@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Tiểu cụm đã hoàn thành (1.1, 1.2 & 1.3)
+## 1. Tiểu cụm đã hoàn thành (1.1 -> 1.6)
 - [x] T1 — Chuẩn hóa `src/features/product/types/index.ts` chỉ chứa các interface cốt lõi cho danh sách: `ProductResponse`, `PagedResult<T>`, `ProductQueryFilter` khớp 100% với DTOs C#. (REQ-01)
 - [x] T2 — Xây dựng `src/features/product/api/productApi.ts` với hàm `getProductsPaged(filter: ProductQueryFilter)` gọi `httpClient.get('/products', { params })` qua `httpClient` chuẩn của dự án, unwrap `ApiResponse<PagedResult<ProductResponse>>`. (REQ-01)
 - [x] T3 — Cập nhật `ProductListPage.tsx` bằng `useState`, `useEffect`, `useCallback` gọi trực tiếp `productApi.getProductsPaged`: hiển thị dữ liệu thật từ Backend lên bảng và tích hợp component phân trang dùng chung `TablePagination` của dự án. (REQ-01)
@@ -16,12 +16,6 @@
 - [x] T6 — Bổ sung Unit test cho BR-SEC-01 trong `ProductListPage.test.tsx`:
   - Test case: Khi vai trò là `Cashier`, xác minh chữ "Giá vốn" không xuất hiện trong bảng table header và DOM.
   - Test case: Khi vai trò là `StoreOwner`, xác minh cột "Giá vốn" hiển thị đầy đủ. (REQ-04)
-
----
-
-## 2. Các Tiểu cụm tiếp theo
-
-### Tiểu cụm 1.4: Tìm kiếm Đa tiêu chí Server-side Debounced 300ms (REQ-02)
 - [x] T7 — Tích hợp cơ chế Debounce 300ms cho ô tìm kiếm sản phẩm trong `ProductListPage.tsx` bằng `useEffect`:
   - Khi người dùng nhập từ khóa tìm kiếm (Tên, SKU, Barcode), trì hoãn 300ms trước khi kích hoạt `fetchProducts`.
   - Tự động reset `pageIndex = 1` khi từ khóa tìm kiếm thay đổi.
@@ -30,8 +24,6 @@
   - Test case: Gõ liên tục vào ô tìm kiếm thì chỉ kích hoạt gọi API 1 lần sau 300ms dừng gõ.
   - Test case: Kiểm tra reset `pageIndex = 1` khi thay đổi từ khóa.
   - Test case: Hiển thị giao diện Empty State khi không có sản phẩm nào khớp từ khóa. (REQ-02)
-
-### Tiểu cụm 1.5: Lọc Danh mục Phẳng Server-side (REQ-03)
 - [x] T9 — Kết nối bộ chọn danh mục trong `CategorySidebar` với Server-side Filter trong `ProductListPage.tsx`:
   - Khi người dùng click chọn một nhóm hàng cụ thể, tự động reset `pageIndex = 1` và gọi `productApi.getProductsPaged({ categoryId, pageIndex: 1 })`.
   - Khi người dùng click nút "Bỏ chọn" hoặc chọn "Tất cả", gọi API lấy toàn bộ hàng hóa không kèm `categoryId`.
@@ -39,8 +31,6 @@
 - [x] T10 — Bổ sung Unit test cho lọc danh mục Server-side trong `ProductListPage.test.tsx`:
   - Test case: Click chọn 1 nhóm hàng -> gọi API với đúng `categoryId` và `pageIndex = 1`.
   - Test case: Bỏ chọn nhóm hàng -> gọi API tải lại toàn bộ danh mục không truyền `categoryId`. (REQ-03)
-
-### Tiểu cụm 1.6: Đơn vị tính & Bảng Hàng cùng loại & Dropdown ĐVT (REQ-05, REQ-06, REQ-07)
 - [x] T11 — Bổ sung điều kiện cho nút `+ Thêm đơn vị` trong `ProductFormModal.tsx`:
   - Kiểm tra `baseUnit.trim() !== ''`.
   - Nếu rỗng: vô hiệu hóa nút (disabled style: opacity 0.6, cursor: not-allowed) và hiển thị tooltip/thông báo "(Cần nhập tên đơn vị cơ bản trước)". (REQ-05)
@@ -53,3 +43,16 @@
   - Nếu sản phẩm có `uomConversions`: hiển thị dropdown `[Tên SP] - [đơn vị] ⌵`.
   - Mở popover menu cho phép chọn chuyển đổi đơn vị và cập nhật hiển thị Giá bán tương ứng theo đơn vị được chọn. (REQ-07)
 - [x] T14 — Viết Unit test kiểm thử cho logic REQ-05, REQ-06 và REQ-07 trong `ProductListPage.test.tsx` và `ProductFormModal.test.tsx`.
+
+---
+
+## 2. Tiểu cụm 1.7: Switch Đơn vị tính trong ProductDetailModal (REQ-08)
+- [ ] T15 — Triển khai state `selectedUnitName` và derived selector trong `ProductDetailModal.tsx`:
+  - Tính toán tức thời `displayCode`, `displayBarcode`, `displaySellingPrice`, `displayCostPrice` (tuân thủ BR-SEC-01), `displayStock`, số lượng lẻ dư theo đơn vị cơ bản. (REQ-08)
+- [ ] T16 — Xây dựng thanh Unit Switcher (Segmented Pills) trên Header và tương tác click chọn dòng trong Bảng "Đơn vị tính & Quy đổi giá" của `ProductDetailModal.tsx`:
+  - Hiển thị dải nút chọn đơn vị `[ chai (Cơ bản) ]  [ thung ]...` trên thanh Header.
+  - Gắn nhãn `Đang xem` và highlight nền xanh `#F0FDFA` cho dòng đơn vị đang được kích hoạt. (REQ-08)
+- [ ] T17 — Bổ sung cơ chế tự động nạp đơn vị tính qua `productApi.getProductUnits(product.id)` trong `ProductDetailModal.tsx` nếu sản phẩm mở lên chưa có sẵn `uomConversions` (REQ-08).
+- [ ] T18 — Viết Unit test kiểm thử cho REQ-08 trong `ProductDetailModal.test.tsx`:
+  - Test case 1: Chuyển đổi đơn vị tính trên Pill hoặc Bảng ĐVT cập nhật đúng giá bán, mã hàng, mã vạch, tồn kho.
+  - Test case 2: Vai trò `StoreOwner` xem được giá vốn quy đổi; vai trò `Cashier` bị ẩn hoàn toàn giá vốn (BR-SEC-01).
