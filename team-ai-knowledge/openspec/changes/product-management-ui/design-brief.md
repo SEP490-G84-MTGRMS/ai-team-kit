@@ -1,68 +1,89 @@
 # Design Brief: product-management-ui
-## Giao diện Danh sách Hàng hóa, Bộ lọc & Xem Chi tiết Sản phẩm theo Đơn vị tính
+## Giao diện Danh sách Hàng hóa, Bộ lọc, Chi tiết & Cập nhật Hàng hóa (Update Product)
 
-## 1. Luồng Tương tác Người dùng
+## 1. Luồng Tương tác Cập nhật Hàng hóa (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Chủ tiệm / Thu ngân
-    participant UI as ProductListPage
-    participant Modal as ProductDetailModal
+    actor User as Chủ tiệm / Quản lý
+    participant List as ProductListPage
+    participant Modal as ProductFormModal
     participant API as productApi
+    participant BE as Backend Products & Units Controller
 
-    User->>UI: Click vào một sản phẩm trong danh sách
-    UI->>Modal: Mở ProductDetailModal (truyền product)
+    User->>List: Bấm nút "Sửa" trên dòng sản phẩm (hoặc từ ProductDetailModal)
+    List->>Modal: Mở ProductFormModal (isEditing = true, truyền productToEdit)
     
-    alt Nếu product chưa có uomConversions
+    alt Nếu productToEdit chưa có uomConversions
         Modal->>API: GET /api/v1/products/{id}/units
-        API-->>Modal: Trả về danh sách đơn vị quy đổi
+        API->>BE: Lấy danh sách đơn vị quy đổi
+        BE-->>API: Trả về danh sách ProductUnitResponse
+        API-->>Modal: Điền vào bảng Hàng cùng loại
     end
 
-    Modal->>User: Hiển thị chi tiết theo Đơn vị cơ bản (mặc định)
-    Note over Modal: Header & Tab Thông tin hiển thị: Giá bán, Giá vốn, Tồn kho theo đơn vị cơ bản
+    Note over Modal: 1. Mã hàng (productCode) bị disabled<br/>2. Các trường: Tên, Nhóm hàng, Giá bán, ĐVT cơ bản, Tồn kho được nạp sẵn
 
-    User->>Modal: Click chọn Đơn vị quy đổi "thung" (qua Pill trên Header hoặc click dòng trong Bảng ĐVT)
-    Modal->>Modal: Cập nhật selectedUnitName = "thung"
-    Modal->>User: Cập nhật tức thời toàn bộ giao diện:
-    Note over Modal: 1. Mã hàng / Mã vạch: Đổi sang mã của thùng<br/>2. Giá bán: Đổi sang giá bán của thùng (ví dụ: 450,000 đ)<br/>3. Giá vốn (StoreOwner): Tính theo tỷ lệ quy đổi (ví dụ: costPrice * 24)<br/>4. Tồn kho: Tính số thùng nguyên (onHand / 24) và số chai lẻ còn lại<br/>5. Bảng ĐVT: Highlight dòng "thung" đang chọn
+    User->>Modal: Chỉnh sửa tên hàng, giá bán, thêm đơn vị mới "hop", sửa giá đơn vị "thung", xóa đơn vị "loc"
+    Note over Modal: Ghi nhận đơn vị "loc" vào danh sách deletedUnitIds: ["uom-guid-loc"]
+    User->>Modal: Bấm "Lưu"
+    Modal->>List: onSave(payload, saveAndAddNew = false, deletedUnitIds)
+
+    List->>API: 1. PUT /api/v1/products/{id} (Cập nhật thông tin chính)
+    API->>BE: UpdateProductAsync
+    BE-->>API: 200 OK (ProductResponse)
+
+    loop Với mỗi ID trong deletedUnitIds
+        List->>API: 2. DELETE /api/v1/product-units/{id}
+        API->>BE: Delete unit
+        BE-->>API: 200 OK
+    end
+
+    loop Với mỗi uom trong uomConversions
+        alt uom.id bắt đầu bằng "uom-" (Đơn vị mới)
+            List->>API: 3a. POST /api/v1/products/{id}/units
+            API->>BE: Create unit
+            BE-->>API: 201 Created
+        else uom.id là GUID (Đơn vị cũ được sửa)
+            List->>API: 3b. PUT /api/v1/product-units/{id}
+            API->>BE: Update unit
+            BE-->>API: 200 OK
+        end
+    end
+
+    List->>List: Refresh danh mục & danh sách sản phẩm (fetchProducts, fetchCategories)
+    List->>User: Đóng modal & hiển thị Toast thông báo thành công
 ```
 
 ---
 
-## 2. Kiến trúc Giao diện & Trạng thái Component (`ProductDetailModal.tsx`)
+## 2. Kiến trúc Giao diện Cập nhật trong `ProductFormModal.tsx`
 
-### 2.1 Vị trí Bộ chọn Đơn vị tính (Unit Switcher)
-1. **Thanh Header tổng quan**:
-   - Bên cạnh tên sản phẩm, hiển thị dải nút bấm chọn đơn vị (Segmented Pills):
-     - `[ chai (Cơ bản) ]` (active: màu nền `#0F766E`, chữ trắng)
-     - `[ thung ]` (inactive: nền `#F1F5F9`, chữ `#475569`, hover nền `#E2E8F0`)
-   - Nếu sản phẩm không có đơn vị quy đổi: Chỉ hiển thị nhãn đơn vị cơ bản không có pill chuyển đổi.
-2. **Bảng "Đơn vị tính & Quy đổi giá" (Tab Thông tin)**:
-   - Các dòng trong bảng có thể click được (`cursor: pointer`).
-   - Dòng đơn vị đang được kích hoạt sẽ có:
-     - Nền xanh nhạt `#F0FDFA`.
-     - Chữ in đậm và có huy hiệu (Badge) `Đang xem` màu xanh ngọc `#0F766E`.
-
-### 2.2 Các Chỉ số Thay đổi theo Đơn vị Tính
-
-| Chỉ số | Khi chọn Đơn vị cơ bản | Khi chọn Đơn vị quy đổi ($K = \text{conversionRate}$) | Ghi chú bảo mật & Nghiệp vụ |
-|---|---|---|---|
-| **Mã hàng (Product Code)** | `product.productCode` | `uom.productCode || product.productCode` | Đơn vị quy đổi có thể có mã quản lý SKU riêng |
-| **Mã vạch (Barcode)** | `product.barcode` | `uom.barcode || '—'` | Đơn vị quy đổi có thể có mã vạch riêng (ví dụ: mã vạch thùng) |
-| **Giá bán (Selling Price)** | `product.sellingPrice` | `uom.price` | Hiển thị cả ở Header và Tab Thông tin |
-| **Giá vốn (Cost Price)** | `product.costPrice` | `product.costPrice * K` | **BR-SEC-01**: Chỉ hiển thị nếu `userRole === 'StoreOwner'` |
-| **Tồn kho hiện tại** | `{product.onHand} {product.baseUnit}` | `{Math.floor(onHand / K)} {uom.unitName}` | Kèm dòng phụ: `(Còn dư {onHand % K} {product.baseUnit})` nếu số lẻ $> 0$ |
-| **Tên hiển thị** | `{product.productName}` | `{product.productName} - {uom.unitName}` | Giúp người dùng phân biệt rõ đơn vị đang xem |
+### 2.1 Trạng thái các trường dữ liệu ở chế độ Chỉnh sửa (`isEditing = true`)
+1. **Tiêu đề Modal**:
+   - Chuyển thành `Chỉnh sửa hàng hóa: {productToEdit.productName}` kèm huy hiệu `Mã: {productToEdit.productCode}`.
+2. **Mã hàng (`productCode`)**:
+   - `disabled = true`, nền xám nhẹ `#F1F5F9`, chữ xám `#64748B`.
+   - Tooltip/Ghi chú: "Mã hàng hóa không thể thay đổi sau khi tạo."
+3. **Mã vạch (`barcode`)**:
+   - Cho phép chỉnh sửa (kiểm tra unique từ backend).
+4. **Tên hàng hóa & Nhóm hàng**:
+   - Cho phép chỉnh sửa.
+5. **Giá vốn (`costPrice`)**:
+   - Nếu `userRole === 'StoreOwner'`: Cho phép chỉnh sửa.
+   - Nếu `userRole === 'Cashier'`: Ẩn hoàn toàn (BR-SEC-01).
+6. **Giá bán & Thuế VAT**:
+   - Cho phép chỉnh sửa.
+7. **Đơn vị cơ bản & Bảng Hàng cùng loại**:
+   - Hiển thị đầy đủ đơn vị cơ bản và các đơn vị quy đổi đã lưu.
+   - Cho phép sửa tỷ lệ quy đổi, mã vạch, giá bán của từng đơn vị quy đổi.
+   - Nút Xóa `Trash2`: Khi xóa đơn vị quy đổi đã có trong DB, tự động ghi nhận ID vào `deletedUnitIds`.
 
 ---
 
 ## 3. Quy tắc Nghiệp vụ (Business Rules)
-1. **REQ-08 (Switch Đơn vị tính trong ProductDetailModal)**:
-   - Cho phép người dùng chuyển đổi đơn vị tính mượt mà.
-   - Toàn bộ thông tin hiển thị (Mã hàng, Mã vạch, Giá bán, Giá vốn, Tồn kho) phải đồng bộ tức thời với đơn vị được chọn.
-2. **BR-SEC-01 (Bảo mật Giá vốn)**:
-   - Nghiêm cấm hiển thị giá vốn quy đổi cho người dùng có vai trò `Cashier` hoặc `Staff`.
-3. **Quy đổi Tồn kho chuẩn xác**:
-   - Tồn kho theo đơn vị quy đổi làm tròn xuống số nguyên: $\lfloor \text{onHand} / K \rfloor$.
-   - Hiển thị rõ số lượng lẻ theo đơn vị cơ bản để nhân viên kho và thu ngân kiểm kê chính xác.
+1. **REQ-09 (Cập nhật Hàng hóa & Đơn vị tính)**:
+   - Hệ thống MUST hỗ trợ chỉnh sửa thông tin hàng hóa hiện có và đồng bộ toàn diện với các đơn vị tính quy đổi.
+   - Đơn vị quy đổi mới được tạo mới (`POST`), đơn vị đã có được cập nhật (`PUT`), đơn vị bị xóa được gỡ bỏ khỏi backend (`DELETE`).
+2. **Bất biến Mã hàng**: Mã hàng (`productCode`) là khóa định danh duy nhất của sản phẩm, không được phép thay đổi sau khi tạo.
+3. **BR-SEC-01 (Bảo mật Giá vốn)**: Quyền chỉnh sửa giá vốn chỉ cấp cho `StoreOwner`.
