@@ -11,3 +11,7 @@ Xây dựng delta requirements rõ ràng giúp giảm thiểu rủi ro khi tích
 ## Verify Spec · 2026-11-01 09:05
 
 Checklist tasks bám sát delta requirements giúp kiểm soát tiến độ thực thi chặt chẽ.
+
+## Apply · 2026-11-01 09:06
+
+Đồng bộ kiểm tra build liên tục giữa backend và frontend giúp hoàn thành tasks với chất lượng cao.
