@@ -2,14 +2,14 @@
 
 ## DB
 - [ ] T1 — Bổ sung các cột kiểm soát duyệt ca (`IsAudited`, `AuditedBy`, `AuditedAtUtc`, `DenominationDetailsJson`) vào entity `ShiftZReport` và tạo EF Core Migration (REQ-04)
-- [ ] T2 — Cấu hình Fluent API trong `AppDbContext` cho các thực thể HR (`Employee`, `EmployeeSchedule`, `Payslip`) với các chỉ mục Index chống trùng lặp theo Tenant (REQ-01, REQ-02, REQ-05)
+- [x] T2 — Cấu hình Fluent API trong `AppDbContext` cho các thực thể HR (`Employee`, `EmployeeSchedule`, `Payslip`) với các chỉ mục Index chống trùng lặp theo Tenant (REQ-01, REQ-02, REQ-05)
 
 ## Backend
 ### Cụm 1: Quản lý Hồ sơ Nhân viên & Cấp tài khoản
-- [ ] T3 — Xây dựng các DTOs, Request/Response và FluentValidation cho phân hệ Nhân viên trong `MT_GRMS.Application/HR/Employees/Dtos` (REQ-01)
-- [ ] T4 — Triển khai `IEmployeeService` và `EmployeeService` với logic sinh mã nhân viên tuần tự chuẩn `NVxxxx` theo Tenant và kiểm tra trùng lặp SĐT/CCCD (REQ-01)
-- [ ] T5 — Xây dựng tính năng cấp tài khoản đăng nhập Identity (`Users`) cho nhân viên với mã hóa BCrypt và phân quyền vai trò (REQ-01)
-- [ ] T6 — Xây dựng `EmployeesController` với đầy đủ các RESTful API endpoints phân trang, tìm kiếm, CRUD và cấp tài khoản (REQ-01)
+- [x] T3 — Xây dựng các DTOs, Request/Response và FluentValidation cho phân hệ Nhân viên trong `MT_GRMS.Application/HR/Employees/Dtos` (REQ-01)
+- [x] T4 — Triển khai `IEmployeeService` và `EmployeeService` với logic sinh mã nhân viên tuần tự chuẩn `NVxxxx` theo Tenant và kiểm tra trùng lặp SĐT/CCCD (REQ-01)
+- [x] T5 — Xây dựng tính năng cấp tài khoản đăng nhập Identity (`Users`) cho nhân viên với mã hóa BCrypt và phân quyền vai trò (REQ-01)
+- [x] T6 — Xây dựng `EmployeesController` với đầy đủ các RESTful API endpoints phân trang, tìm kiếm, CRUD và cấp tài khoản (REQ-01)
 
 ### Cụm 2: Lập lịch & Ban hành Ca làm việc
 - [ ] T7 — Xây dựng các DTOs và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-02)
@@ -34,7 +34,7 @@
 - [ ] T20 — Xây dựng `PayrollController` với các endpoints: khởi tạo bảng lương tháng, tra cứu danh sách phiếu lương, xem chi tiết và chi trả lương (REQ-05)
 
 ## Test
-- [ ] T21 — Viết Unit Tests cho `EmployeeService` kiểm chứng sinh mã `NVxxxx`, kiểm tra trùng CCCD/SĐT và cấp tài khoản (REQ-01)
+- [x] T21 — Viết Unit Tests cho `EmployeeService` kiểm chứng sinh mã `NVxxxx`, kiểm tra trùng CCCD/SĐT và cấp tài khoản (REQ-01)
 - [ ] T22 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, chặn xung đột thời gian và ban hành lịch (REQ-02)
 - [ ] T23 — Viết Unit Tests cho `AttendanceService` kiểm chứng tính khoảng cách GPS Geofencing, số phút trễ và giờ công thực tế (REQ-03)
 - [ ] T24 — Viết Unit Tests cho `CashierShiftService` kiểm chứng kiểm đếm 9 mệnh giá, quy tắc `GBR-POS-04` và tự động sinh Phiếu thu Sổ quỹ (REQ-04)
