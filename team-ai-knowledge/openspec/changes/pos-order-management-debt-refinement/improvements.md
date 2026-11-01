@@ -15,3 +15,7 @@ Checklist tasks bám sát delta requirements giúp kiểm soát tiến độ th�
 ## Apply · 2026-11-01 09:06
 
 Đồng bộ kiểm tra build liên tục giữa backend và frontend giúp hoàn thành tasks với chất lượng cao.
+
+## Test · 2026-11-01 09:07
+
+Kiểm thử tự động trên cả hai tầng giải phóng tối đa công sức test hồi quy.
