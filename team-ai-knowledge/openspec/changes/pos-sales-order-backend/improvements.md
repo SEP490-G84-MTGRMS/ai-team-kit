@@ -7,3 +7,7 @@
 ## Apply · 2026-11-01 07:56
 
 Tự động phân quyền RBAC đa cấp (Chủ cửa hàng được duyệt nợ, Thu ngân ẩn nút nợ), cách ly dữ liệu Multi-tenant toàn diện giữa các cửa hàng.
+
+## Test · 2026-11-01 07:59
+
+Tích hợp thiết bị phần cứng (máy in nhiệt RAW và máy quét barcode USB HID) kết hợp phân quyền RBAC và cô lập Multi-tenant an toàn.
