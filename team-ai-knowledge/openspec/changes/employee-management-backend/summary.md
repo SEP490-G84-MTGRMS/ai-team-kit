@@ -7,3 +7,7 @@ User phê duyệt proposal 5 cụm chức năng backend: 1. CRUD Employee & Cấ
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-11-01 19:34
 
 User phê duyệt kết quả brainstorm: exploration.md, design-brief.md và specs.md cho 5 cụm chức năng backend Quản lý nhân viên & Ca làm việc.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-01 19:47
+
+User duyệt verify-spec và yêu cầu thực hiện Cụm 1: Quản lý Hồ sơ Nhân viên & Cấp tài khoản trước.
