@@ -11,3 +11,7 @@ User duyệt thiết kế Brainstorm: Modal Đổi/Trả hàng 3 khối, API DTO
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-01 13:54
 
 User duyệt verify-spec: Skeptic 5/5, kế hoạch 7 tasks DB->Backend->Frontend->Test đã sẵn sàng để thực thi.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-01 14:07
+
+User duyệt Apply: Đã hoàn tất 7/7 tasks code Backend và Frontend, build frontend thành công 0 lỗi, 167/167 unit tests pass.
