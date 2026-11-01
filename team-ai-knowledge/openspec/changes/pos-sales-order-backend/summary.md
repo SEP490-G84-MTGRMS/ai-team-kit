@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-10-31 10:15
 
 Đã hoàn tất verify-spec với review skeptic, cập nhật specs và 14 tasks chi tiết bao gồm in 43mm siêu thị mini và trừ kho FEFO
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-01 07:56
+
+Hoàn thành 14/14 tasks: Hiện thực OrderService, trừ tồn kho FEFO, tích điểm, ghi nợ khách hàng, in bill POS-58 ESC/POS raw winspool, OrdersController, phân quyền ẩn nút bán nợ cho thu ngân, cô lập dữ liệu Multi-tenancy 100% giữa các cửa hàng.
