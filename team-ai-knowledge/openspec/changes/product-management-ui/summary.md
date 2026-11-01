@@ -39,3 +39,27 @@ Duyệt review đa persona và danh sách 9 tasks. Bắt đầu triển khai hi�
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-29 15:23
 
 Đã duyệt Verify Spec với 4 tasks tinh gọn cho Tiểu cụm 1.1 & 1.2 không dùng custom hook.
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 12:58
+
+Duyệt bước Brainstorm: Đã cập nhật specs.md và design-brief.md với REQ-05, REQ-06, REQ-07
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 13:01
+
+Duyệt bước Verify Spec: Đã review skeptic và cập nhật tasks.md với REQ-05, REQ-06, REQ-07
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:55
+
+Duyệt phương án thiết kế REQ-08: Cho phép chuyển đổi đơn vị tính trong ProductDetailModal, tự động cập nhật Giá bán, Giá vốn (StoreOwner BR-SEC-01), Tồn kho, Mã hàng và Mã vạch tức thời.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 14:58
+
+Duyệt kết quả verify-spec và danh sách các task T15-T18 cho chức năng Switch đơn vị tính trong ProductDetailModal (REQ-08).
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-31 15:56
+
+Duyệt phương án brainstorm REQ-09: Cập nhật Hàng hóa và Đồng bộ Đơn vị tính Quy đổi (khóa mã hàng, thêm/sửa/xóa đơn vị tính theo REST API chuẩn).
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-31 16:06
+
+Duyệt verify-spec cho REQ-09 Update Product & Units. Skeptic 5.0/5 PASS, 4 tasks T19-T22 đã sẵn sàng thực thi.

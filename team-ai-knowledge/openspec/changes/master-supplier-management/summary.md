@@ -23,3 +23,23 @@ User Approve Brainstorm: căn chỉnh FE-09 trên change cũ — 2 role Store Ow
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-27 15:15
 
 Verify-spec FE-09: 4 persona (skeptic/guardian/advocate/codebase). HIGH đã sửa: map STORE_OWNER|ADMIN vs Employee+branchId; list không cột công nợ; cutoff chỉ lưu config (không chặn PO trong change này); GET ngoài phạm vi 404; không mock list. tasks.md T20–T33.
+
+## Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:40
+
+User duyệt cập nhật spec cho tính năng tìm kiếm đa thực thể highlight (multi-select NCC, sản phẩm, liên hệ, SĐT) và xuất Excel định dạng chuẩn header/cột.
+
+## Brainstorm — ✅ Approve bởi @minhduc118a · 2026-10-30 16:42
+
+User duyệt thiết kế Brainstorm: API gợi ý tìm kiếm đa thực thể GET /suppliers/search-suggestions, lọc đa tiêu chí GET /suppliers, UI autocomplete highlight text + multi-select tags và xuất Excel chuyên nghiệp.
+
+## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-30 16:43
+
+User duyệt Verify Spec: Danh sách task T34 (Backend Search Suggestions & Multi-Entity Filter), T35 (Frontend Autocomplete Highlight & Multi-select Tags), T36 (Professional Excel Export), T26 (AP & Transactions scope), T31 (DetailPage real API), T32 & T33 (Unit test & build verification).
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-10-31 01:06
+
+Hoàn tất triển khai backend API search-suggestions + multi-entity filter (SupplierIds, ProductIds, ContactPersons, Phones); hoàn tất frontend FilterBar autocomplete highlight + multi-select tag chips; xuất Excel chuyên nghiệp với header chuẩn và auto column width; tất cả 33 tasks đã tick và 32/32 unit tests pass.
+
+## Test — ✅ Approve bởi @minhduc118a · 2026-10-31 01:07
+
+Báo cáo test-report.md đạt PASS 100%: 32/32 backend unit tests vượt qua kiểm thử; frontend typecheck và production build hoàn thành không lỗi. Tính năng gợi ý đa thực thể, highlight từ khóa, multi-select tags và xuất Excel chuyên nghiệp hoạt động chính xác.

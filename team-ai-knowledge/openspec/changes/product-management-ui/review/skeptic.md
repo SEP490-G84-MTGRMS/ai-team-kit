@@ -1,14 +1,16 @@
-# Skeptic Review: product-management-ui (Tiểu cụm 1.1 & 1.2 — Không dùng Custom Hook)
+# Skeptic Review: product-management-ui
 
 | Chiều | Điểm (1–5) | Nhận xét |
 |---|---|---|
-| **D1 Completeness** | 5/5 | Đã tinh chỉnh phạm vi: Chỉ tập trung vào T1 (Types), T2 (API Service), T3 (Component Table & Phân trang), T4 (Unit Tests). Không thêm abstraction trung gian. |
-| **D2 Correctness** | 5/5 | Khớp 100% với cách triển khai thực tế của các trang khác trong codebase (`SupplierProductManagementPage.tsx` dùng trực tiếp `useState`, `useEffect`, `useCallback` với API service). |
-| **D3 Coherence** | 5/5 | Thống nhất tuyệt đối với nguyên tắc Karpathy Coding: "Đơn giản trước — không thêm abstraction không cần thiết". |
-| **D4 Constraints** | 5/5 | Sử dụng `httpClient.ts` chuẩn của dự án, đảm bảo tự động inject Bearer token và unwrap `ApiResponse`. |
-| **D5 Blast Radius** | 5/5 | Tối thiểu: Chỉ tác động lên `src/features/product/` với đúng 3 file chính (`types/index.ts`, `api/productApi.ts`, `pages/ProductListPage.tsx`). |
+| D1 Completeness | 5.0 | Đã bao phủ toàn diện cả 3 trường hợp của đơn vị quy đổi: thêm mới (ID tạm), sửa (GUID cũ), xóa (ghi nhận ID bị xóa), cùng việc khóa mã hàng SKU. |
+| D2 Correctness | 5.0 | Cơ chế client-side diffing phân loại chính xác các request gọi đến REST API của Backend (`PUT /products/{id}`, `DELETE /product-units/{id}`, `POST /products/{id}/units`, `PUT /product-units/{id}`). |
+| D3 Coherence | 5.0 | Thống nhất 100% giữa proposal, exploration, design-brief và specs delta (từ REQ-01 đến REQ-09). |
+| D4 Constraints | 5.0 | Tôn trọng nghiêm ngặt tính bất biến của mã hàng SKU (`disabled` ô input), tuân thủ bảo mật giá vốn BR-SEC-01 cho vai trò Thu ngân. |
+| D5 Blast Radius | 5.0 | Tận dụng hoàn hảo các REST endpoint có sẵn của Backend mà không cần sửa đổi backend API, logic gói gọn trong `productApi.ts`, `ProductFormModal.tsx` và `ProductListPage.tsx`. |
 
-## Vấn đề
-- Không phát hiện vấn đề nào. Loại bỏ custom hook giúp code tinh giản, dễ debug và đồng bộ với toàn bộ codebase hiện có.
+## Vấn đề đã ghi nhận & Xử lý
+- [LOW] REQ-09: Cần đảm bảo nếu người dùng xóa một đơn vị mới tạo (chưa lưu vào DB, có ID dạng `uom-*`), không đưa ID này vào `deletedUnitIds` để tránh gửi request DELETE vô nghĩa lên Backend.
+- [LOW] REQ-09: Thêm hàm `updateProductUnit` vào `productApi.ts` với đầy đủ types `ProductUnitUpdatePayload` khớp với `ProductUnitUpdateRequest` ở backend.
 
 ## Kết luận: Chấp nhận
+Specs REQ-09 đã chặt chẽ, rõ ràng và sẵn sàng để lập tasks và thực thi code.

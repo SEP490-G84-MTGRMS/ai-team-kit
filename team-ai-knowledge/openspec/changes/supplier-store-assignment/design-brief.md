@@ -1,52 +1,53 @@
-# Design Brief: supplier-store-assignment
+# Design Brief: supplier-store-assignment (Refactor Popup Phân Bổ)
 
 ## 1. Visual Hierarchy & Design System
 Bám sát 100% phong cách thiết kế của màn hình `http://localhost:5173/store-owner/suppliers/products`:
 - **Chủ đề màu sắc**: Teal / Cyan chuẩn KiotViet Brand (`#0f766e`, `#0d9488`, background badge `#f0fdfa`, border `#ccfbf1`).
 - **Typography**: Inter / Be Vietnam Pro, font mono cho mã (`font-family: var(--font-mono)`).
-- **Control Heights**: 32px đồng bộ cho toàn bộ input, select và buttons.
-- **Borders & Shadows**: Bo góc 6px cho control, 8px cho card container; `border: 1px solid #cbd5e1`, shadow nhẹ `0 1px 2px rgba(0, 0, 0, 0.03)`.
+- **Control Heights**: 32px - 36px đồng bộ cho các input, select và buttons.
+- **Borders & Shadows**: Bo góc 8px cho card, 12px - 16px cho popup modal; shadow hiện đại `0 20px 25px -5px rgba(0, 0, 0, 0.1)`.
 
 ---
 
-## 2. Layout Chi tiết
+## 2. Thiết kế Popup Refactor: "Thêm nhà cung cấp cho cửa hàng"
 
-### 2.1. Page Header
-```
-[ Icon Store ] Gán Nhà Cung Cấp Với Cửa Hàng [Spinner nếu loading]
-(Right Actions): [ Danh sách NCC ]  [ Xuất Excel ]  [ + Gán NCC cho cửa hàng ]
-```
+### 2.1. Header Popup
+- Tiêu đề: **Thêm nhà cung cấp cho cửa hàng**
+- Icon: `<Store size={20} color="#0f766e" />`
+- Nút đóng: `✕` góc trên bên phải
 
-### 2.2. Filter Bar (2 hàng chuẩn)
-```
-Dòng 1:
-- Nhà cung cấp: [ input text 260px: "Nhập mã NCC, tên NCC..." ]
-- Cửa hàng / Chi nhánh: [ input text 260px: "Nhập mã CH, tên cửa hàng..." ]
-- Chi nhánh: [ dropdown 220px: "-- Tất cả chi nhánh --" ]
-- Trạng thái: [ dropdown 160px: "-- Tất cả trạng thái --" ]
+### 2.2. Phần 1: Chọn Cửa Hàng / Chi Nhánh (Step 1)
+- Nhãn: `1. Chọn cửa hàng / chi nhánh *`
+- Dropdown Select Chi Nhánh:
+  * Hiển thị: `{branch.code} – {branch.name}` (kèm địa chỉ rút gọn)
+  * Khi người dùng thay đổi chi nhánh:
+    - Tự động xóa danh sách NCC đã tích chọn trước đó.
+    - Kích hoạt tải lại danh sách các NCC khả dụng chưa được gán cho chi nhánh mới chọn.
 
-Dòng 2:
-- Chọn NCC nhanh: [ dropdown: "-- Tất cả nhà cung cấp --" ]
-- [ Badge: Đang áp dụng bộ lọc (nếu có) ]
-(Right Actions): [ 🔍 Tìm kiếm ]  [ ↺ Đặt lại ]
-```
+### 2.3. Phần 2: Chọn Nhà Cung Cấp Khả Dụng (Step 2)
+- Nhãn: `2. Chọn nhà cung cấp *`
+- **Ô tìm kiếm tức thời**:
+  * Placeholder: *"Tìm theo mã hoặc tên nhà cung cấp..."*
+  * Icon kính lúp `<Search size={15} />`
+  * Hỗ trợ gõ từ khóa tiếng Việt không dấu hoặc có dấu, không phân biệt hoa/thường.
+- **Danh sách Nhà Cung Cấp Khả Dụng (Scrollable Container, max-height 320px)**:
+  * Mỗi item là một thẻ có viền nhẹ, hover chuyển background `#f8fafc`:
+    - Checkbox tùy chọn `[x]` hoặc `[ ]`
+    - Mã NCC (`font-mono`, in đậm màu `#0066FF`) – Tên NCC (`font-weight: 600`)
+    - Dòng phụ: `{contactPerson || 'Chưa có đầu mối'} · {phone || 'Chưa có SĐT'}`
+  * **Quy tắc lọc dữ liệu**:
+    - Chỉ hiển thị các NCC có `Status == Active` trên toàn hệ thống.
+    - Loại bỏ hoàn toàn các NCC đã được gán `Active` cho chi nhánh đã chọn ở Bước 1.
+    - Cho phép hiển thị các NCC đã từng bị `Inactive` để kích hoạt lại quan hệ.
+- **Thanh Công Cụ Dưới Danh Sách**:
+  * Bên trái: Bộ đếm trạng thái `Đã chọn: X nhà cung cấp` (Badge xanh lá nhẹ).
+  * Bên phải: Nút hành động nhanh `Chọn tất cả` / `Bỏ chọn tất cả`.
+- **Empty States**:
+  * Khi chi nhánh đã được gán hết toàn bộ NCC: *"Tất cả nhà cung cấp đang hoạt động đã được gán cho chi nhánh này."*
+  * Khi từ khóa tìm kiếm không có kết quả: *"Không tìm thấy nhà cung cấp phù hợp."*
 
-### 2.3. Bảng Dữ Liệu (Columns)
-1. `#` (STT): 40px, căn giữa
-2. `MÃ NCC`: 110px, monospace, font weight 600
-3. `TÊN NHÀ CUNG CẤP`: 220px, font weight 600, link hoặc text rõ ràng
-4. `LOẠI NCC`: 130px, badge phân loại (Hàng hóa / Dịch vụ / Cả hai)
-5. `MÃ CỬA HÀNG`: 120px, monospace, teal badge
-6. `TÊN CỬA HÀNG / CHI NHÁNH`: 200px, font weight 600
-7. `ĐỊA CHỈ CHI NHÁNH`: 240px, text phụ màu xám
-8. `NGÀY GÁN`: 110px, ngày định dạng DD/MM/YYYY
-9. `TRẠNG THÁI`: 120px, Full pill badge (🟢 Đang liên kết / ⚪ Tạm ngưng)
-10. `THAO TÁC`: 130px, căn phải ([ ⏻ Ngưng/Bật ], [ 🗑️ Hủy gán ])
-
-### 2.4. Modal Gán Mới
-- Tiêu đề: **Gán Nhà Cung Cấp Cho Cửa Hàng**
-- Body:
-  1. Chọn Nhà cung cấp (Dropdown có tìm kiếm hoặc select danh sách).
-  2. Chọn Cửa hàng áp dụng: Danh sách checkbox các chi nhánh trong chuỗi kèm nút "Chọn tất cả cửa hàng".
-  3. Ghi chú phân bổ / thỏa thuận giao hàng riêng.
-- Footer: Nút `Hủy` và Nút `Lưu phân bổ`.
+### 2.4. Footer Modal
+- Nút `Hủy` (Ghost / Secondary): Đóng popup, không lưu bất kỳ thay đổi nào.
+- Nút `Lưu phân bổ` (Primary `#0f766e` hoặc `#0066FF`):
+  * Hiển thị spinner khi đang gửi request.
+  * Disable nút khi: chưa chọn chi nhánh, số lượng NCC chọn = 0, hoặc đang trong tiến trình submit.
