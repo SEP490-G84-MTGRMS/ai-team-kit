@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 08:08
 
 Đã duyệt Verify Spec: Chấp nhận review skeptic và 7 tasks thực thi code chi tiết
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 08:19
+
+Đã duyệt Apply: Hoàn thành nạp dữ liệu An Nhiên Mart, xóa banner thừa, thêm nút đăng xuất nhân viên và build frontend thành công
