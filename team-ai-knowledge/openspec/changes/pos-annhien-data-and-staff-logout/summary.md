@@ -15,3 +15,7 @@
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 08:19
 
 Đã duyệt Apply: Hoàn thành nạp dữ liệu An Nhiên Mart, xóa banner thừa, thêm nút đăng xuất nhân viên và build frontend thành công
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 08:57
+
+User duyệt hoàn thành kiểm thử dữ liệu An Nhiên Mart, xóa banner xanh và thêm đăng xuất nhân viên.
