@@ -11,3 +11,7 @@ Chốt thiết kế Dropdown Menu Settings trên TopNav gồm 3 nhóm: Cấu hì
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 12:39
 
 Chốt kế hoạch tasks T1-T5, Skeptic đánh giá 5/5, sẵn sàng triển khai code ở bước Apply.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 14:05
+
+Đã hoàn thành toàn bộ tasks: menu dropdown Settings trên TopBar tinh gọn chỉ có 2 mục (Cấu hình VietQR & SePay và Gói dịch vụ MT-GRMS), đã xóa nút cài đặt trong POS, đã xóa nút quay lại trong trang cấu hình, build frontend thành công 100%.
