@@ -7,3 +7,7 @@ User đã duyệt Proposal tích hợp thanh toán chuyển khoản VietQR tự 
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 09:10
 
 User đã duyệt phương án thiết kế Brainstorm: Modal cài đặt thanh toán 2 tab tại nút bánh răng, VietQR động tại POS và cơ chế bảo mật 6 lớp SePay Webhook.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 09:12
+
+User đã duyệt Verify-Spec và kế hoạch 7 tasks triển khai thanh toán VietQR SePay Webhook.
