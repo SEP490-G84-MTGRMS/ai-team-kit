@@ -7,3 +7,7 @@ Chốt phạm vi: Nâng cấp icon Bánh Răng trên TopBar thành Dropdown Menu
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 12:38
 
 Chốt thiết kế Dropdown Menu Settings trên TopNav gồm 3 nhóm: Cấu hình VietQR & SePay, Gói dịch vụ & Gia hạn nâng cấp, và Thông tin gian hàng. Debounce 220ms, click outside đóng, bảo vệ code của bạn khác.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 12:39
+
+Chốt kế hoạch tasks T1-T5, Skeptic đánh giá 5/5, sẵn sàng triển khai code ở bước Apply.
