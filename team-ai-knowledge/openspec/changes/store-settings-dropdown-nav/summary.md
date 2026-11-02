@@ -15,3 +15,7 @@ Chốt kế hoạch tasks T1-T5, Skeptic đánh giá 5/5, sẵn sàng triển kh
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 14:05
 
 Đã hoàn thành toàn bộ tasks: menu dropdown Settings trên TopBar tinh gọn chỉ có 2 mục (Cấu hình VietQR & SePay và Gói dịch vụ MT-GRMS), đã xóa nút cài đặt trong POS, đã xóa nút quay lại trong trang cấu hình, build frontend thành công 100%.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-02 14:07
+
+Kiểm thử 5/5 test cases PASS, menu tinh gọn 2 mục, POS và trang cấu hình sạch nút thừa, build thành công.

@@ -15,3 +15,7 @@ Sẵn sàng triển khai code.
 ## Apply · 2026-11-02 14:05
 
 Đã tinh gọn menu chỉ còn 2 mục đúng ý user, dọn dẹp sạch sẽ nút thừa.
+
+## Test · 2026-11-02 14:07
+
+Sẵn sàng lưu trữ và merge spec.
