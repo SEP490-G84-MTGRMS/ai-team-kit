@@ -9,4 +9,4 @@
 
 ## Test
 - [x] T6 — Chạy kiểm thử TypeScript và build kiểm chứng Frontend (`npm run build`).
-- [ ] T7 — Soạn thảo `test-report.md` và nghiệm thu hoàn tất.
+- [x] T7 — Soạn thảo `test-report.md` và nghiệm thu hoàn tất.
