@@ -13,6 +13,9 @@
  * Step order, schema artifacts + pass rules MUST match WORKFLOW_STAGES in sep490-frontend (TeamSpec compliance engine).
  */
 
+import path from 'path';
+import fs from 'fs';
+import { execSync } from 'child_process';
 import matter from 'gray-matter';
 import type { DataProvider } from '../providers/dataProvider.js';
 import { mergeDeltaSpec, SPECS_DIR } from './specMerge.js';
@@ -922,6 +925,12 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       grouped[rType].push(item);
     }
 
+    // Tự động bổ sung kịch bản Non-Unit vào Master Test Matrix nếu có
+    const nonUnitItems = testItems.filter(item => String(item.reportType || '5.1').trim() !== '5.1');
+    if (nonUnitItems.length > 0 && (!allowedTypes || allowedTypes.includes('matrix'))) {
+      grouped['matrix'] = nonUnitItems;
+    }
+
     const reportKeys = Object.keys(grouped);
     if (reportKeys.length === 0) {
       return `ℹ️ Không có kịch bản nào thuộc các loại report yêu cầu (${allowedTypes ? allowedTypes.join(', ') : 'tất cả'}).`;
@@ -989,10 +998,11 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       '5.3': 'Report-5.3 (System Test FRs)',
       '5.4': 'Report-5.4 (System Test NFRs)',
       '5.5': 'Report-5.5 (Acceptance Test)',
+      'matrix': 'Master Test Matrix & Cases (Online)',
     };
 
     const lines = [
-      `### 📊 Kết quả đồng bộ kiểm thử lên Google Sheets`,
+      `### 📊 Kết quả đồng bộ kiểm thử lên Google Sheets (100% Trực tuyến)`,
       `Feature: **${featureCode}** (${featureName}) · Tester: \`${tester}\``,
       '',
       `| Report | Tab / Sheet | Cập nhật | Thêm mới | Tổng | Trạng thái |`,

@@ -22,12 +22,13 @@ Tài liệu này hướng dẫn chi tiết cách đưa 5 file Excel mẫu lên G
    - Định dạng URL: `https://docs.google.com/spreadsheets/d/`**`<SPREADSHEET_ID>`**`/edit`
    - Ví dụ: `1A2b3C4d5E6F...` chính là Spreadsheet ID.
 
-Ghi lại 5 ID này tương ứng:
-- ID 5.1: `...`
-- ID 5.2: `...`
-- ID 5.3: `...`
-- ID 5.4: `...`
-- ID 5.5: `...`
+Ghi lại các ID này tương ứng:
+- ID 5.1 (Unit Test): `1kCtw6u2qd3T3aD3BothjoRUSyI-_LXOXRYavUjW2Rw8`
+- ID 5.2 (Integration Test): `17JxUyHcBCo7-tJxLhYPcDsa_lV1pDgL_ZuQBIyZUrSg`
+- ID 5.3 (System Test FRs): `1DWNjEtj7AoBNKgcNxDicsJIaVwH7Ghl04hn2XERFelI`
+- ID 5.4 (System Test NFRs): `1BuRdxZGJDwIrmBHbSn-oYMHqwAy52bl3VhF_64kCt84`
+- ID 5.5 (Acceptance Test): `1l8JkXPJ_d2ORWwzy_HPaKOLLz0eaE__NfTK_2tqf5D8`
+- ID Matrix (Master Test Matrix & Non-Unit Cases): `1DE1qjtnxahvG0yMl44KU1Fso6kCDsVQ_AV-Zwe15XRs`
 
 ---
 
@@ -42,12 +43,13 @@ Bạn có thể tạo Apps Script độc lập hoặc gắn vào file `Report-5.
    const CONFIG = {
      API_KEY: 'MT_GRMS_TEST_SECRET_2026', // Bạn có thể đổi mật khẩu nếu muốn
      SPREADSHEET_IDS: {
-       '5.1': 'DÁN_ID_CỦA_SHEET_5_1_VÀO_ĐÂY',
-       '5.2': 'DÁN_ID_CỦA_SHEET_5_2_VÀO_ĐÂY',
-       '5.3': 'DÁN_ID_CỦA_SHEET_5_3_VÀO_ĐÂY',
-       '5.4': 'DÁN_ID_CỦA_SHEET_5_4_VÀO_ĐÂY',
-       '5.5': 'DÁN_ID_CỦA_SHEET_5_5_VÀO_ĐÂY',
-     }
+        '5.1': '1kCtw6u2qd3T3aD3BothjoRUSyI-_LXOXRYavUjW2Rw8',
+        '5.2': '17JxUyHcBCo7-tJxLhYPcDsa_lV1pDgL_ZuQBIyZUrSg',
+        '5.3': '1DWNjEtj7AoBNKgcNxDicsJIaVwH7Ghl04hn2XERFelI',
+        '5.4': '1BuRdxZGJDwIrmBHbSn-oYMHqwAy52bl3VhF_64kCt84',
+        '5.5': '1l8JkXPJ_d2ORWwzy_HPaKOLLz0eaE__NfTK_2tqf5D8',
+        'matrix': '1DE1qjtnxahvG0yMl44KU1Fso6kCDsVQ_AV-Zwe15XRs',
+      }
    };
    ```
 5. Bấm biểu tượng **Lưu (Save / Ctrl+S)**.

@@ -19,6 +19,7 @@
     "sep:validate": "node scripts/sep.js validate",
     "sep:sync": "node scripts/sep.js sync",
     "sep:db-sync": "node scripts/sep.js db-sync",
+    "sep:matrix": "python scripts/sync_test_matrix.py",
     "test:sep": "node mcp-server/test-sep.js",
     "test:kb": "node mcp-server/test-kb.js",
     "test": "npm run test:sep && npm run test:kb"
