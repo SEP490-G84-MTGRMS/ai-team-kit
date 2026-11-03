@@ -1,109 +1,121 @@
-# Specs: grn-form
+# Specs: grn-form (Form Lập Phiếu Nhập Kho & Kiểm Đếm Hàng - GR-01 đến GR-09)
 
 ## API / Contract
 | Method | Path | Request | Response | Lỗi |
 |---|---|---|---|---|
-| GET | `/api/goods-receipts/po-lookup?status=CONFIRMED` | Query: `status`, `branchId` | `PurchaseOrderLookupDto[]` | 401, 403 |
-| GET | `/api/purchase-orders/{poId}/receipt-details` | Path: `poId` | `PoReceiptDetailsDto` | 404, 400 |
-| POST | `/api/goods-receipts` | Body: `CreateGrnCommand` | `GoodsReceiptDetailDto` | 400 (Validation), 409 |
-| PUT | `/api/goods-receipts/{id}/draft` | Body: `UpdateGrnDraftCommand` | `GoodsReceiptDetailDto` | 400, 404 |
-| POST | `/api/goods-receipts/{id}/confirm` | Body: `ConfirmGrnCommand` | `GoodsReceiptDetailDto` | 400, 409 (Locked) |
+| GET | `/api/v1/goods-receipts/po-lookup` | Query: `branchId` | `PurchaseOrderLookupDto[]` | 401, 403 |
+| GET | `/api/v1/goods-receipts/po-details/{poId}` | Path: `poId` | `PoReceiptDetailsDto` | 404, 400 (PO đã có phiếu nhập) |
+| POST | `/api/v1/goods-receipts` | Body: `CreateGoodsReceiptCommand` | `GoodsReceiptDto` | 400 (Validation: SL/Lô/Lý do), 409 |
+| POST | `/api/v1/goods-receipts/{id}/complete` | Body: `CompleteGoodsReceiptCommand` | `GoodsReceiptDto` | 400, 409 (Đã hoàn tất / Đã hủy) |
+| POST | `/api/v1/goods-receipts/{id}/cancel` | Body: `CancelGoodsReceiptCommand` | `GoodsReceiptDto` | 400 (Bắt buộc lý do), 409 (Không cho hủy COMPLETED) |
 
 ## ADDED Requirements
 
-### Requirement: REQ-01 Auto PO Data Binding & Header Configuration
-Hệ thống MUST cho phép người dùng mở form tạo phiếu nhập kho với mã PO nguồn (qua query param `?poCode=...` hoặc chọn từ dropdown danh sách đơn PO đã chốt). Khi chọn PO, hệ thống MUST tự động điền Chi nhánh nhận, Nhà cung cấp (mã + tên), và khởi tạo danh sách các mặt hàng đã đặt.
+### Requirement: REQ-01 Auto PO Data Binding & Single Receipt Rule (GR-01, Mục 4)
+Hệ thống MUST chỉ cho phép tạo phiếu nhập kho xuất phát từ một Purchase Order (PO) hợp lệ (trạng thái `SENT` hoặc `CONFIRMED`) thuộc chi nhánh đang thao tác.
+- Hệ thống MUST ràng buộc: Một PO chỉ có tối đa một Goods Receipt chưa bị hủy (`DRAFT` hoặc `COMPLETED`). Tuyệt đối không cho phép tạo trùng nhiều phiếu nhập cho cùng một PO.
+- Nếu mở form với query `?poCode=...`, hệ thống MUST tự động điền Chi nhánh, Nhà cung cấp và khởi tạo danh sách SKU đặt.
 
-#### Scenario: Mở form từ phiếu hẹn giao hàng hôm nay
-- GIVEN người dùng ở màn hình GRN List thấy phiếu `PO-20261009-001` trạng thái `TODAY`
-- WHEN người dùng bấm "Nhập kho ngay"
-- THEN hệ thống chuyển sang `/store-owner/goods-receipts/create?poCode=PO-20261009-001`
-- AND tự động điền Chi nhánh: `BR-01 (CH Nguyễn Trãi)`, Nhà cung cấp: `TươiSạch (SUP-001)`, danh sách mặt hàng đúng 5 SKU đã đặt.
+#### Scenario: Mở form với đơn PO hợp lệ
+- GIVEN đơn PO `PO-20261009-001` đang ở trạng thái `CONFIRMED` và chưa có phiếu nhập nào
+- WHEN người dùng bấm "Nhập kho ngay" hoặc chọn PO từ danh sách
+- THEN hệ thống tải toàn bộ sản phẩm và số lượng đặt từ PO vào form.
 
-#### Scenario: Chọn PO thủ công từ dropdown
-- GIVEN người dùng mở form tạo mới chưa chọn PO
-- WHEN người dùng chọn `PO-20261010-002` từ danh sách PO đã chốt
-- THEN bảng hàng hóa được nạp đúng 4 sản phẩm bánh kẹo từ đơn PO này.
-
----
-
-### Requirement: REQ-02 Quantity Discrepancy & Line Total Calculation
-Hệ thống MUST tự động tính toán chênh lệch số lượng `differenceQty = receivedQty - orderedQty` và thành tiền từng dòng `lineTotal = receivedQty * unitPrice` ngay khi người dùng thay đổi số lượng thực nhận.
-
-#### Scenario: Nhận đủ 100% số lượng
-- GIVEN dòng hàng có `orderedQty = 20`, `unitPrice = 185.000`
-- WHEN người dùng nhập `receivedQty = 20`
-- THEN `differenceQty` hiển thị `0` (không có cảnh báo lệch)
-- AND `lineTotal` hiển thị `3.700.000 VNĐ`.
-
-#### Scenario: Nhận thiếu hàng so với PO
-- GIVEN dòng hàng có `orderedQty = 20`, `unitPrice = 185.000`
-- WHEN người dùng nhập `receivedQty = 15`
-- THEN `differenceQty` hiển thị `-5` với màu đỏ cảnh báo thiếu hàng
-- AND `lineTotal` tính lại là `2.775.000 VNĐ`.
+#### Scenario: Chặn tạo trùng phiếu nhập cho PO đã có phiếu đang xử lý
+- GIVEN đơn PO `PO-20261010-002` đã có phiếu nhập kho `GRN-20261010-001` ở trạng thái `DRAFT`
+- WHEN người dùng cố gắng lập phiếu nhập kho mới cho PO này
+- THEN hệ thống chặn và hiển thị lỗi: *"Đơn hàng PO này đã có phiếu nhập kho đang xử lý hoặc đã hoàn tất."*
 
 ---
 
-### Requirement: REQ-03 FEFO Batch Code & Expiry Date Management
-Hệ thống MUST yêu cầu nhập Mã Lô hàng (Batch Code) và Hạn sử dụng (EXP Date) cho từng mặt hàng nhập kho. Hệ thống MUST tự động so sánh HSD với ngày nhập kho hiện tại; nếu khoảng cách nhỏ hơn 30 ngày, hệ thống MUST hiển thị huy hiệu cảnh báo `⚠️ Sát HSD (<30 ngày)`.
+### Requirement: REQ-02 4-Metric Quantity Verification & Excess Delivery Prevention (GR-03, GR-04, Mục 6, 7.2)
+Hệ thống MUST kiểm soát 4 chỉ số số lượng trên từng dòng sản phẩm:
+1. `OrderedQty`: Số lượng đã đặt trên PO.
+2. `ReceivedQty`: Số lượng thực tế nhà cung cấp giao.
+3. `AcceptedQty`: Số lượng chấp nhận nhập kho.
+4. `RejectedQty`: Số lượng bị từ chối (`RejectedQty = ReceivedQty - AcceptedQty`).
 
-#### Scenario: Nhập hạn sử dụng an toàn dài hạn
-- GIVEN ngày nhập là `09/10/2026`
-- WHEN người dùng chọn HSD là `2027-10-15` (còn >1 năm)
-- THEN hệ thống ghi nhận HSD hợp lệ và không hiển thị cảnh báo cận date.
+**Ràng buộc nghiêm ngặt:**
+- `0 <= AcceptedQty <= ReceivedQty <= OrderedQty`.
+- **Giao thừa (`ReceivedQty > OrderedQty`)**: Hệ thống KHÔNG cho phép nhập vượt PO vào tồn kho. `AcceptedQty` tối đa chỉ bằng `OrderedQty`. Phần vượt được ghi nhận cảnh báo ngoại lệ riêng để xử lý với NCC ngoài kho.
+- **Giao thiếu (`ReceivedQty < OrderedQty`)**: `ShortageQty = OrderedQty - ReceivedQty`. Không tạo backorder trên đơn PO cũ; PO sẽ đóng khi hoàn tất phiếu nhập, phần thiếu được tính vào chu kỳ đặt tiếp theo.
 
-#### Scenario: Nhập hạn sử dụng cận date dưới 30 ngày
-- GIVEN ngày nhập là `09/10/2026`
-- WHEN người dùng chọn HSD là `2026-10-25` (chỉ còn 16 ngày)
-- THEN hệ thống lập tức hiển thị huy hiệu màu cam viền vàng `⚠️ Sát HSD (<30 ngày)`.
+#### Scenario: Nhận hàng đủ 100%
+- GIVEN dòng hàng có `OrderedQty = 20`, đơn giá `185.000 đ`
+- WHEN người dùng nhập `ReceivedQty = 20` và `AcceptedQty = 20`
+- THEN `RejectedQty = 0`, `DifferenceQty = 0`, thành tiền dòng là `3.700.000 đ`.
+
+#### Scenario: Giao thừa hàng so với đơn PO
+- GIVEN dòng hàng có `OrderedQty = 50`
+- WHEN NCC giao thực tế `ReceivedQty = 55`
+- THEN hệ thống giới hạn `AcceptedQty` tối đa bằng `50` (chỉ cộng 50 vào tồn kho)
+- AND hiển thị cảnh báo: *"NCC giao thừa 5 ĐVT — Không cho phép nhập vượt PO vào kho"*.
 
 ---
 
-### Requirement: REQ-04 Landed Cost & Financial Summary Aggregation
+### Requirement: REQ-03 Mandatory Rejection Reason & Non-Inventory of Defects (GR-05, Mục 7.4)
+Khi phát sinh hàng bị từ chối (`RejectedQty > 0`):
+- Hệ thống MUST bắt buộc người dùng chọn Lý do từ chối từ danh mục:
+  - `DAMAGE`: Hàng hư hỏng / móp méo
+  - `EXPIRED`: Hàng hết hạn sử dụng
+  - `NEAR_EXPIRY`: Hàng cận hạn không đạt yêu cầu
+  - `WRONG_SPEC`: Sai quy cách đóng gói
+  - `WRONG_ITEM`: Giao sai sản phẩm
+  - `QUALITY_ISSUE`: Không đạt chất lượng
+  - `OTHER`: Lý do khác (Bắt buộc nhập ghi chú chi tiết).
+- Hàng bị từ chối TUYỆT ĐỐI KHÔNG được cộng vào tồn kho khả dụng của chi nhánh.
+
+#### Scenario: Từ chối hàng bị vỡ hỏng
+- GIVEN nhận 100 chai sữa, trong đó 5 chai bị vỡ hỏng nắp
+- WHEN người dùng nhập `AcceptedQty = 95`, `RejectedQty = 5` và chọn lý do `DAMAGE`
+- THEN hệ thống ghi nhận biên bản từ chối 5 chai lý do `DAMAGE` và chỉ nhập 95 chai vào tồn kho.
+
+---
+
+### Requirement: REQ-04 FEFO Batch Code & Expiry Dates with Multi-Batch Support (GR-06, Mục 5 Bước 4, Mục 7.7)
+- Đối với sản phẩm được cấu hình quản lý HSD (`HasBatches = true`), hệ thống MUST bắt buộc nhập Mã Lô (`batchCode`) và Hạn sử dụng (`expiryDate`).
+- Cho phép một sản phẩm có **nhiều lô khác nhau** trong cùng một phiếu nhập; tổng số lượng các lô phải bằng `AcceptedQty` của sản phẩm đó.
+- Hạn sử dụng không được trước ngày nhập hàng (`expiryDate >= receivedDate`).
+- Hệ thống MUST tự động hiển thị huy hiệu cảnh báo màu vàng-cam `⚠️ Cận HSD (<30 ngày)` nếu khoảng cách tới HSD nhỏ hơn hoặc bằng 30 ngày.
+
+#### Scenario: Nhập nhiều lô trên cùng 1 SKU
+- GIVEN nhà cung cấp giao 100 hộp sữa gồm 2 lô: LOT-A (HSD: 05/11/2026, 60 hộp) và LOT-B (HSD: 20/11/2026, 40 nhận, 35 chấp nhận, 5 hư hỏng)
+- WHEN người dùng khai báo thông tin 2 lô tương ứng
+- THEN hệ thống ghi nhận đúng tồn kho tăng 60 cho LOT-A và 35 cho LOT-B (tổng tăng 95 vào kho).
+
+---
+
+### Requirement: REQ-05 Landed Cost & Financial Summary Aggregation
 Hệ thống MUST tính toán tự động toàn bộ chi phí tài chính của phiếu nhập kho theo công thức:
-`Grand Total = (Tổng tiền hàng - Chiết khấu + Landed Cost) + VAT`.
-
-#### Scenario: Tính tổng tiền có chi phí vận chuyển Landed Cost
-- GIVEN tổng tiền hàng là `1.034.000 VNĐ`, chiết khấu `0 VNĐ`, thuế VAT `0%`
-- WHEN người dùng nhập chi phí vận chuyển Landed Cost là `30.000 VNĐ`
-- THEN Tổng giá trị phiếu nhập hiển thị đúng `1.064.000 VNĐ`.
-
-#### Scenario: Áp dụng thuế VAT và chiết khấu
-- GIVEN tiền hàng sau chiết khấu và vận chuyển là `1.000.000 VNĐ`
-- WHEN người dùng chọn mức thuế VAT `10%`
-- THEN tiền thuế tính được là `100.000 VNĐ` và Grand Total là `1.100.000 VNĐ`.
+`Grand Total = (Tổng tiền hàng theo AcceptedQty - Chiết khấu + Landed Cost) + VAT`.
+Landed cost và chiết khấu được phân bổ tỷ lệ theo giá trị vào từng dòng để tính ra `LandedUnitCost` (Giá vốn mới).
 
 ---
 
-### Requirement: REQ-05 Receipt Lifecycle & Confirmation Workflows
-Hệ thống MUST hỗ trợ 3 hành động chính:
-1. **Lưu nháp (Draft)**: Lưu phiếu ở trạng thái `DRAFT` không tăng tồn kho.
-2. **Hoàn tất nhập kho (Confirmed)**: Kiểm tra validation (bắt buộc nhập mã lô, HSD và số lượng > 0). Nếu có chênh lệch hàng, hiển thị modal xác nhận lập biên bản và chuyển sang trạng thái `MISMATCH`. Nếu đủ hàng, chuyển sang trạng thái `CONFIRMED`.
-3. **Nhập kho & In tem**: Sau khi hoàn tất thành công, hiển thị modal xem trước tem nhãn mã vạch để in dán lên thùng/lô hàng.
-
-#### Scenario: Bấm hoàn tất khi có chênh lệch hàng
-- GIVEN phiếu nhập có ít nhất 1 dòng bị thiếu hàng (`differenceQty < 0`)
-- WHEN người dùng bấm "Hoàn tất nhập kho"
-- THEN hệ thống hiển thị dialog cảnh báo: *"Phát hiện chênh lệch so với đơn PO. Bạn có muốn lập biên bản đối soát và lưu trạng thái Lệch hàng (Mismatch)?"*
-- AND khi xác nhận, phiếu được lưu với trạng thái `MISMATCH`.
+### Requirement: REQ-06 Barcode Scanning (GR-02)
+Khi người dùng quét barcode hoặc gõ SKU và nhấn Enter:
+- Hệ thống tự động tìm dòng sản phẩm trong PO và tăng `ReceivedQty` cùng `AcceptedQty` thêm 1 đơn vị (tối đa bằng `OrderedQty`).
+- Nếu mã vạch không thuộc PO, hiển thị cảnh báo không tìm thấy sản phẩm trong đơn.
 
 ---
 
-### Requirement: REQ-06 Barcode Scanning & Item Quick Search
-Hệ thống MUST cung cấp thanh nhập Barcode / SKU. Khi người dùng quét mã vạch hoặc nhập mã SKU và nhấn phím Enter:
-- Nếu sản phẩm đã có trong danh sách: Hệ thống tự động cuộn (scroll) tới dòng đó và tăng số lượng thực nhận lên 1.
-- Nếu sản phẩm chưa có trong đơn PO: Hệ thống hiển thị thông báo sản phẩm ngoài đơn PO và cho phép thêm dòng bổ sung nếu được phép.
-
-#### Scenario: Quét barcode tăng số lượng
-- GIVEN sản phẩm `SKU-00102` đang có `receivedQty = 10`
-- WHEN người dùng quét mã vạch `SKU-00102` vào ô tìm kiếm và ấn Enter
-- THEN số lượng thực nhận của `SKU-00102` tự động tăng lên `11`
-- AND tổng tiền được tính toán lại ngay lập tức.
+### Requirement: REQ-07 Receipt Lifecycle & Idempotent Completion (GR-07, GR-08, GR-09, Mục 8, 10, 11)
+- **Lưu nháp (`DRAFT`)**: Lưu trạng thái `DRAFT`, không tác động đến tồn kho.
+- **Hoàn tất (`COMPLETED`)**:
+  - Xác thực toàn bộ điều kiện số lượng và lô hạn.
+  - Cộng `AcceptedQty` vào tồn kho chi nhánh `BranchStocks` theo từng lô.
+  - Chuyển trạng thái đơn PO sang `COMPLETED` (không backorder).
+  - Đảm bảo tính Idempotency: Phiếu đã `COMPLETED` không được hoàn tất lặp lại hoặc cộng tồn kho 2 lần.
+- **Hủy phiếu (`CANCELLED`)**:
+  - Chỉ cho phép hủy phiếu ở trạng thái `DRAFT` (bắt buộc nhập lý do hủy).
+  - Không cho phép hủy phiếu đã `COMPLETED`.
+  - Khi hủy phiếu, giải phóng đơn PO để có thể tạo lại phiếu nhập khác.
 
 ## Acceptance Checklist
-- [ ] REQ-01: Mở form với `poCode` tải đúng thông tin chi nhánh, NCC và các mặt hàng đã đặt.
-- [ ] REQ-02: Nhập số lượng thực nhận tự động cập nhật chênh lệch `differenceQty` và thành tiền từng dòng.
-- [ ] REQ-03: Nhập HSD < 30 ngày lập tức hiện cờ cảnh báo `Sát HSD (<30 ngày)`.
-- [ ] REQ-04: Nhập Landed Cost, chiết khấu và VAT cập nhật Grand Total chính xác theo thời gian thực.
-- [ ] REQ-05: Lưu nháp (`DRAFT`), Hoàn tất (`CONFIRMED` / `MISMATCH`) hoạt động mượt mà, có modal xác nhận khi lệch hàng.
-- [ ] REQ-06: Ô quét barcode hỗ trợ Enter tăng số lượng hoặc định vị nhanh dòng sản phẩm.
+- [ ] REQ-01: Kiểm tra PO hợp lệ, chặn tạo trùng phiếu nhập đang xử lý cho cùng PO.
+- [ ] REQ-02: Kiểm đếm 4 chỉ số `OrderedQty`, `ReceivedQty`, `AcceptedQty`, `RejectedQty`; chặn nhập kho vượt PO khi giao thừa.
+- [ ] REQ-03: Bắt buộc chọn lý do từ chối khi có hàng lỗi; không cộng hàng lỗi vào tồn kho.
+- [ ] REQ-04: Bắt buộc mã lô và HSD với SP quản lý HSD; cảnh báo cận date < 30 ngày; HSD >= ngày nhập.
+- [ ] REQ-05: Tính toán chi phí Landed Cost, phân bổ giá vốn mới và Grand Total chính xác.
+- [ ] REQ-06: Quét barcode tăng số lượng và phản hồi tức thì.
+- [ ] REQ-07: Luồng trạng thái `DRAFT` -> `COMPLETED` hoặc `CANCELLED`, đảm bảo cập nhật tồn kho chính xác và giải phóng PO khi hủy.

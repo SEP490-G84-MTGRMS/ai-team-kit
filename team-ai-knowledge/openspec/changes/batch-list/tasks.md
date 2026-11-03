@@ -1,5 +1,12 @@
 # Tasks: batch-list (Quản lý Lô Sản Phẩm & Hạn Sử Dụng - FEFO Expiry Management)
 
+## Backend
+- [x] B1 — Xây dựng DTOs (`BatchDtos.cs`): `BatchFilterQuery`, `BatchKpiSummaryDto`, `BatchListItemDto`, `BatchPagedResultDto`, `ExpiryAlertDto`
+- [x] B2 — Cập nhật Repository (`IBatchRepository.cs` / `BatchRepository.cs`): Truy vấn dữ liệu lô hàng, tính toán số ngày còn lại (`DaysLeft`), phân loại rủi ro FEFO (`Expired`, `Critical`, `Warning`, `Normal`), tính tổng định giá tồn kho và lọc cận date
+- [x] B3 — Xây dựng Business Service (`BatchService.cs`): Tích hợp multi-tenant isolation, lọc theo chi nhánh/từ khóa/trạng thái và phân trang
+- [x] B4 — Mở Controller Endpoints (`BatchesController.cs`): `GET /api/v1/batches`, `GET /api/v1/batches/{id}`, `GET /api/v1/batches/alerts`, `POST /api/v1/batches`
+- [x] B5 — Viết bộ Unit Tests (`BatchExpiryTests.cs`): Kiểm thử phân trang, bộ lọc và cảnh báo cận date FEFO (100% tests passed)
+
 ## Frontend
 - [x] T1 — Khởi tạo thư mục `src/features/batch/` và định nghĩa DTO types trong `types/batch.types.ts` (`BatchItem`, `BatchMovement`, `BatchFilterState`, `BatchKpiSummary`, `BatchStatus`) (REQ-01, REQ-02, REQ-03)
 - [x] T2 — Xây dựng mock dataset 20+ lô hàng phong phú đa dạng sản phẩm, đầy đủ chi nhánh (`BR-01`, `BR-02`), nhà cung cấp và 4 trạng thái hạn sử dụng trong `lib/mockBatchData.ts` (REQ-01, REQ-03, REQ-04)
@@ -14,3 +21,5 @@
 ## Test
 - [x] T10 — Kiểm thử tương tác giao diện người dùng: Kiểm tra bộ lọc đa chiều, click lọc nhanh từ KPI cards, mở Drawer chi tiết, mở Modal giảm giá FEFO, và chế độ in báo cáo khổ A4 (REQ-01..07)
 - [x] T11 — Kiểm tra biên dịch TypeScript (`npm run build`) và lint oxlint để bảo đảm 100% 0 lỗi biên dịch hoặc xung đột thư viện.
+- [x] T12 — Chạy dotnet test MT_GRMS.UnitTests đạt 100% PASS (66/66 tests)
+

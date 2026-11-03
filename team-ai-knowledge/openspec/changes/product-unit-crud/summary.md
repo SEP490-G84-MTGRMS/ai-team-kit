@@ -1,0 +1,13 @@
+# Summary: product-unit-crud
+
+## Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-30 14:52
+
+User duyệt đề xuất proposal.md cho chức năng product-unit-crud: cung cấp 5 API RESTful CRUD cho ProductUnit, validation tỷ lệ quy đổi và giá bán.
+
+## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-10-30 14:56
+
+User duyệt bước Brainstorm cho change product-unit-crud: thống nhất API contract 5 endpoints, DTOs và 4 requirements chuẩn Gherkin.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-10-30 14:57
+
+User duyệt bước Verify Spec cho product-unit-crud: chấp nhận kết quả review của Skeptic và danh sách 6 tasks T1-T6. Tiến hành bước Apply.
