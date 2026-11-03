@@ -54,6 +54,29 @@
     "last_reviewed": {
       "type": "string",
       "format": "date"
+    },
+    "changelog": {
+      "type": "array",
+      "description": "Audit log of modifications made via sua_tai_lieu",
+      "items": {
+        "type": "object",
+        "required": ["date", "author", "reason", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

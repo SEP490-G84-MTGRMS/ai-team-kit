@@ -1,0 +1,708 @@
+@startuml MT_GRMS_Master_Database_Diagram
+!theme plain
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam class {
+    BackgroundColor white
+    ArrowColor #0066FF
+    BorderColor #1A1A1A
+}
+
+title <b>MULTI-TENANT GROCERY RETAIL MANAGEMENT SYSTEM (MT-GRMS)</b>\nMASTER CONSOLIDATED DATABASE SCHEMA (36 TABLES - 3NF OPTIMIZED)
+
+' ==============================================================================
+' 1. MULTI-TENANCY, AUTHENTICATION & AUDITING
+' ==============================================================================
+package "1. Multi-Tenancy & Platform Foundation" #F8FAFC {
+    entity Tenants {
+        * TenantID : uuid <<PK>>
+        --
+        * Name : nvarchar(150)
+        * Subdomain : varchar(100) <<UK>>
+        * Code : varchar(30) <<UK>>
+        TaxNumber : varchar(50)
+        Hotline : varchar(20)
+        Address : nvarchar(255)
+        City : nvarchar(100)
+        * Status : varchar(30)
+        CurrentPlan : varchar(50)
+        SubscriptionExpiresAt : datetime2
+        CreatedAt : datetime2
+    }
+
+    entity Users {
+        * UserID : uuid <<PK>>
+        --
+        * UserName : varchar(50) <<UK>>
+        * PasswordHash : varchar(255)
+        * FullName : nvarchar(100)
+        * Email : varchar(100) <<UK>>
+        Phone : varchar(20)
+        * IsActive : boolean
+        CreatedAt : datetime2
+    }
+
+    entity TenantUsers {
+        * TenantID : uuid <<PK, FK>>
+        * UserID : uuid <<PK, FK>>
+        --
+        * Role : varchar(50)
+        BranchID : uuid <<FK>>
+        * IsActive : boolean
+        AssignedAt : datetime2
+    }
+
+    entity SubscriptionPlans {
+        * PlanID : uuid <<PK>>
+        --
+        * PlanCode : varchar(50) <<UK>>
+        * PlanName : nvarchar(100)
+        PriceMonthly : decimal(18,2)
+        MaxBranches : int
+        MaxStaff : int
+        * IsActive : boolean
+    }
+
+    entity AuditLogs {
+        * LogID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * ActorID : uuid <<FK>>
+        ActionType : varchar(50)
+        TargetEntity : varchar(100)
+        TargetID : varchar(100)
+        OldValuesJson : nvarchar(max)
+        NewValuesJson : nvarchar(max)
+        CreatedAt : datetime2
+    }
+}
+
+' ==============================================================================
+' 2. CATALOG & COMBO BOM
+' ==============================================================================
+package "2. Catalog & Packaging" #F0FDF4 {
+    entity Categories {
+        * CategoryID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        ParentCategoryID : uuid <<FK>>
+        * CategoryCode : varchar(50) <<UK>>
+        * Name : nvarchar(150)
+    }
+
+    entity Products {
+        * ProductID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        CategoryID : uuid <<FK>>
+        * ProductCode : varchar(50) <<UK>>
+        * Barcode : varchar(50) <<UK>>
+        * Name : nvarchar(250)
+        * BaseUnit : nvarchar(50)
+        CostPrice : decimal(18,2)
+        SellingPrice : decimal(18,2)
+        * HasBatches : boolean
+        * Status : varchar(30)
+    }
+
+    entity ProductUnits {
+        * UnitID : uuid <<PK>>
+        --
+        * ProductID : uuid <<FK>>
+        * UnitName : nvarchar(50)
+        * ConversionRate : decimal(18,3)
+        * Price : decimal(18,2)
+        Barcode : varchar(50)
+    }
+
+    entity ProductCombos {
+        * ComboID : uuid <<PK>>
+        --
+        * ComboProductID : uuid <<FK>>
+        * ComponentProductID : uuid <<FK>>
+        * Quantity : decimal(18,3)
+        Note : nvarchar(255)
+    }
+}
+
+' ==============================================================================
+' 3. INVENTORY, BATCHES & TRANSFERS
+' ==============================================================================
+package "3. Warehousing, Batches FEFO & Wastage" #FEFCE8 {
+    entity Branches {
+        * BranchID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * BranchCode : varchar(50) <<UK>>
+        * BranchName : nvarchar(200)
+        Address : nvarchar(300)
+        Latitude : decimal(9,6)
+        Longitude : decimal(9,6)
+        * IsActive : boolean
+    }
+
+    entity BranchStocks {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        SupplierId : uuid <<FK>>
+        * BatchCode : varchar(100)
+        ManufactureDate : date
+        * ExpiryDate : date
+        * QuantityOnHand : decimal(18,3)
+        * QuantityReserved : decimal(18,3)
+        * LandedCostPerUnit : decimal(18,2)
+        ShelfLocation : varchar(50)
+        ZoneArea : varchar(50)
+    }
+
+    entity Transfers {
+        * TransferID : uuid <<PK>>
+        --
+        * TransferCode : varchar(50) <<UK>>
+        * FromBranchID : uuid <<FK>>
+        * ToBranchID : uuid <<FK>>
+        * Status : varchar(30)
+        DispatchedAt : datetime2
+        ReceivedAt : datetime2
+    }
+
+    entity TransferDetails {
+        * TransferDetailID : uuid <<PK>>
+        --
+        * TransferID : uuid <<FK>>
+        * ProductID : uuid <<FK>>
+        * SentQuantity : decimal(18,3)
+        ReceivedQuantity : decimal(18,3)
+        DamagedQuantity : decimal(18,3)
+        BatchNumber : varchar(100)
+        ExpiryDate : date
+    }
+
+    entity GoodsDisposals {
+        * Id : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * DisposalCode : varchar(50) <<UK>>
+        * Status : varchar(30)
+        * TotalLossValue : decimal(18,2)
+        * DisposedAt : datetime2
+    }
+
+    entity GoodsDisposalItems {
+        * Id : uuid <<PK>>
+        --
+        * DisposalId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        BranchStockId : uuid <<FK>>
+        * Quantity : decimal(18,3)
+        * CostPrice : decimal(18,2)
+        * LineTotal : decimal(18,2)
+        Reason : varchar(100)
+    }
+}
+
+' ==============================================================================
+' 4. SUPPLIERS, PROCUREMENT & AP LEDGER
+' ==============================================================================
+package "4. Supplier Network & Procurement PO/GRN" #FDF2F8 {
+    entity SupplierCategories {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * Code : varchar(50) <<UK>>
+        * Name : nvarchar(150)
+    }
+
+    entity Suppliers {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        CategoryId : uuid <<FK>>
+        * Code : varchar(50) <<UK>>
+        * Name : nvarchar(200)
+        TaxCode : varchar(50)
+        Phone : varchar(20)
+        * CurrentDebtAP : decimal(18,2)
+        CreditLimit : decimal(18,2)
+    }
+
+    entity SupplierDeliveryConfigs {
+        * Id : uuid <<PK>>
+        --
+        * SupplierId : uuid <<FK, UK>>
+        LeadTimeHours : int
+        CutoffTime : time
+        MinOrderValue : decimal(18,2)
+    }
+
+    entity SupplierBlackoutDates {
+        * Id : uuid <<PK>>
+        --
+        * SupplierId : uuid <<FK>>
+        * StartDate : date
+        * EndDate : date
+        Reason : nvarchar(200)
+    }
+
+    entity SupplierProducts {
+        * Id : uuid <<PK>>
+        --
+        * SupplierId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        * AgreedWholesalePrice : decimal(18,2)
+        MinimumOrderQuantity : decimal(18,3)
+        DeliveryUomId : uuid <<FK>>
+    }
+
+    entity PurchaseOrders {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * Code : varchar(50) <<UK>>
+        * SupplierId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * Status : varchar(30)
+        DeliveryDate : date
+        TotalAmount : decimal(18,2)
+    }
+
+    entity PurchaseOrderDetails {
+        * Id : uuid <<PK>>
+        --
+        * PurchaseOrderId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        * FinalQty : decimal(18,3)
+        * UnitPrice : decimal(18,2)
+        * LineAmount : decimal(18,2)
+    }
+
+    entity GoodsReceipts {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * Code : varchar(50) <<UK>>
+        PurchaseOrderId : uuid <<FK>>
+        * SupplierId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * Status : varchar(30)
+        FreightFee : decimal(18,2)
+        * TotalAmount : decimal(18,2)
+        ReceivedAtUtc : datetime2
+    }
+
+    entity GoodsReceiptLines {
+        * Id : uuid <<PK>>
+        --
+        * GoodsReceiptId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        * AcceptedQty : decimal(18,3)
+        * UnitPrice : decimal(18,2)
+        * LandedUnitCost : decimal(18,2)
+        * BatchCode : varchar(100)
+        ExpiryDate : date
+        BranchStockId : uuid <<FK>>
+    }
+
+    entity SupplierAPLedgers {
+        * Id : uuid <<PK>>
+        --
+        * SupplierId : uuid <<FK>>
+        * DocNo : varchar(50)
+        * Amount : decimal(18,2)
+        * BalanceAfter : decimal(18,2)
+        SourceType : varchar(50)
+        SourceId : uuid
+        PostingDateUtc : datetime2
+    }
+}
+
+' ==============================================================================
+' 5. POS CHECKOUT, CRM & PROMOTIONS
+' ==============================================================================
+package "5. POS Sales, CRM Debt & Promotions" #F3E8FF {
+    entity Customers {
+        * CustomerID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * Phone : varchar(20) <<UK>>
+        * FullName : nvarchar(150)
+        * CurrentDebtAR : decimal(18,2)
+        * DebtLimit : decimal(18,2)
+        LoyaltyPoints : int
+        MembershipTier : varchar(50)
+    }
+
+    entity CustomerDebtLedgers {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * CustomerId : uuid <<FK>>
+        * TransactionType : varchar(30)
+        * Amount : decimal(18,2)
+        * BalanceAfter : decimal(18,2)
+        ReferenceDocId : varchar(50)
+        CashTransactionId : uuid <<FK>>
+        TargetAccountId : uuid <<FK>>
+        PaymentMethod : varchar(20)
+        RecordedBy : uuid <<FK>>
+        CreatedAt : datetime2
+    }
+
+    entity Promotions {
+        * PromotionID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * PromotionCode : varchar(50) <<UK>>
+        * PromotionName : nvarchar(200)
+        DiscountValue : decimal(18,2)
+        StartDate : datetime2
+        EndDate : datetime2
+        * IsActive : boolean
+    }
+
+    entity PromotionConditions {
+        * PromotionID : uuid <<PK, FK>>
+        * ProductID : uuid <<PK, FK>>
+        --
+        MinQty : decimal(18,3)
+    }
+
+    entity PriceChangeHistory {
+        * HistoryID : uuid <<PK>>
+        --
+        * ProductID : uuid <<FK>>
+        OldPrice : decimal(18,2)
+        NewPrice : decimal(18,2)
+        ChangedBy : uuid <<FK>>
+        ChangedAt : datetime2
+    }
+
+    entity Orders {
+        * OrderID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * BranchID : uuid <<FK>>
+        ShiftId : uuid <<FK>>
+        CustomerID : uuid <<FK>>
+        * OrderCode : varchar(50) <<UK>>
+        * TotalAmount : decimal(18,2)
+        DiscountAmount : decimal(18,2)
+        * FinalAmount : decimal(18,2)
+        * PaidAmount : decimal(18,2)
+        * DebtAmount : decimal(18,2)
+        CashAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * PaymentMethod : varchar(50)
+        * PaymentStatus : varchar(50)
+        OrderDate : datetime2
+    }
+
+    entity OrderItems {
+        * OrderDetailID : uuid <<PK>>
+        --
+        * OrderID : uuid <<FK>>
+        * ProductID : uuid <<FK>>
+        BatchId : uuid <<FK>>
+        * BaseQuantity : decimal(18,3)
+        * UnitPrice : decimal(18,2)
+        * CostPrice : decimal(18,2)
+        * LineTotal : decimal(18,2)
+    }
+
+    entity PaymentTransactions {
+        * Id : uuid <<PK>>
+        --
+        * OrderId : uuid <<FK>>
+        * TransactionReference : varchar(100) <<UK>>
+        * Amount : decimal(18,2)
+        BankAccountNumber : varchar(50)
+        ConfirmedAt : datetime2
+    }
+
+    entity ReturnOrders {
+        * Id : uuid <<PK>>
+        --
+        OriginalOrderId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * ReturnCode : varchar(50) <<UK>>
+        * TotalRefundAmount : decimal(18,2)
+        RefundMethod : varchar(50)
+        ReturnDate : datetime2
+    }
+
+    entity ReturnOrderItems {
+        * Id : uuid <<PK>>
+        --
+        * ReturnOrderId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        BatchId : uuid <<FK>>
+        * Quantity : decimal(18,3)
+        * RefundLineTotal : decimal(18,2)
+        RestockedCostPrice : decimal(18,2)
+    }
+}
+
+' ==============================================================================
+' 6. FINANCE, CASHBOOK LEDGER & OPERATIONS
+' ==============================================================================
+package "6. Finance, Cash Accounts & Double-Entry Ledger" #ECFEFF {
+    entity CashAccounts {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * Name : nvarchar(150)
+        * AccountType : varchar(20)
+        AccountNumber : varchar(50)
+        * CurrentBalance : decimal(18,2)
+        * Status : varchar(20)
+    }
+
+    entity LedgerTransactions {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * AccountId : uuid <<FK>>
+        * Date : datetime2
+        * TransactionType : varchar(20)
+        * Amount : decimal(18,2)
+        * BalanceAfter : decimal(18,2)
+        ReferenceDocId : varchar(100)
+        ReferenceDocType : varchar(50)
+        SourceModuleName : varchar(30)
+        LinkedTransactionId : uuid <<FK>>
+        * IsAutomated : boolean
+        * Status : varchar(20)
+    }
+
+    entity ServiceExpenses {
+        * ExpenseID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * BranchID : uuid <<FK>>
+        * Category : nvarchar(100)
+        * Amount : decimal(18,2)
+        * Status : varchar(50)
+        ExpenseDate : date
+        DueDate : date
+        PaidFromAccountId : uuid <<FK>>
+        CashBookEntryId : uuid <<FK>>
+        * IsRecurring : boolean
+        RecurringDayOfMonth : int
+    }
+
+    entity CashierShifts {
+        * ShiftId : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * CashierId : uuid <<FK>>
+        * OpenedAt : datetime2
+        * StartingCash : decimal(18,2)
+        ClosedAt : datetime2
+        ExpectedCash : decimal(18,2)
+        ActualCash : decimal(18,2)
+        CashDifference : decimal(18,2)
+    }
+}
+
+' ==============================================================================
+' 7. HR, SCHEDULES & PAYROLL
+' ==============================================================================
+package "7. Human Resources, Attendance & Payroll" #FFF7ED {
+    entity Employees {
+        * EmployeeID : uuid <<PK>>
+        --
+        * TenantID : uuid <<FK>>
+        * BranchID : uuid <<FK>>
+        UserID : uuid <<FK>>
+        * EmployeeCode : varchar(50) <<UK>>
+        * FullName : nvarchar(150)
+        Phone : varchar(20)
+        JobTitle : varchar(50)
+        HourlyRate : decimal(18,2)
+        BaseSalary : decimal(18,2)
+        * IsActive : boolean
+    }
+
+    entity EmployeeSchedules {
+        * ScheduleID : uuid <<PK>>
+        --
+        * EmployeeID : uuid <<FK>>
+        * WorkDate : date
+        PlannedStartTime : time
+        PlannedEndTime : time
+        CheckInTime : datetime2
+        CheckOutTime : datetime2
+        LateMinutes : int
+        ActualWorkHours : decimal(8,2)
+        ApprovalStatus : varchar(50)
+    }
+
+    entity PayrollPeriods {
+        * Id : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * PeriodCode : varchar(50) <<UK>>
+        * StartDate : date
+        * EndDate : date
+        * TotalNetSalary : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * Status : varchar(30)
+    }
+
+    entity Payslips {
+        * PayslipID : uuid <<PK>>
+        --
+        * PayrollPeriodId : uuid <<FK>>
+        * EmployeeID : uuid <<FK>>
+        * NetSalary : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        PaidAt : datetime2
+        * Status : varchar(30)
+    }
+
+    entity EmployeeBonusViolations {
+        * BonusViolationID : uuid <<PK>>
+        --
+        * EmployeeID : uuid <<FK>>
+        PayslipID : uuid <<FK>>
+        * Type : varchar(50)
+        * Amount : decimal(18,2)
+        IncidentDate : date
+        Reason : nvarchar(255)
+    }
+}
+
+' ==============================================================================
+' 8. TAXATION & DAILY P&L SUMMARY CACHE
+' ==============================================================================
+package "8. Taxation & High-Performance P&L Cache" #EFF6FF {
+    entity TaxSnapshots {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * TaxYear : int
+        * TaxQuarter : int
+        * TotalRevenue : decimal(18,2)
+        * VatAmount : decimal(18,2)
+        * PitPayable : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * Status : varchar(50)
+        * IsLocked : boolean
+    }
+
+    entity DailySalesSummaries {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * ReportDate : date
+        * TotalOrders : int
+        * GrossRevenue : decimal(18,2)
+        * NetRevenue : decimal(18,2)
+        * TotalCOGS : decimal(18,2)
+        * GrossProfit : decimal(18,2)
+        * OperatingExpenses : decimal(18,2)
+        * PayrollExpenses : decimal(18,2)
+        * WastageLoss : decimal(18,2)
+        * OperatingProfitEbt : decimal(18,2)
+        * TaxEstimatedAmount : decimal(18,2)
+        * NetProfitAfterTax : decimal(18,2)
+    }
+}
+
+' ==============================================================================
+' RELATIONSHIPS & CARDINALITIES
+' ==============================================================================
+Tenants ||--o{ Branches
+Tenants ||--o{ TenantUsers
+Users ||--o{ TenantUsers
+Users ||--o| Employees
+Tenants ||--o{ TaxSnapshots
+SubscriptionPlans ||--o{ Tenants
+
+Categories ||--o{ Categories : "ParentCategoryID"
+Categories ||--o{ Products
+Products ||--o{ ProductUnits
+Products ||--o{ ProductCombos : "ComboProductID"
+Products ||--o{ ProductCombos : "ComponentProductID"
+
+Branches ||--o{ BranchStocks
+Products ||--o{ BranchStocks
+Suppliers ||--o{ BranchStocks
+
+Branches ||--o{ Transfers : "FromBranchID"
+Branches ||--o{ Transfers : "ToBranchID"
+Transfers ||--|{ TransferDetails
+Products ||--o{ TransferDetails
+
+Branches ||--o{ GoodsDisposals
+GoodsDisposals ||--|{ GoodsDisposalItems
+Products ||--o{ GoodsDisposalItems
+BranchStocks ||--o{ GoodsDisposalItems
+
+SupplierCategories ||--o{ Suppliers
+Suppliers ||--o| SupplierDeliveryConfigs
+Suppliers ||--o{ SupplierBlackoutDates
+Suppliers ||--o{ SupplierProducts
+Suppliers ||--o{ SupplierAPLedgers
+Products ||--o{ SupplierProducts
+
+Suppliers ||--o{ PurchaseOrders
+Branches ||--o{ PurchaseOrders
+PurchaseOrders ||--|{ PurchaseOrderDetails
+Products ||--o{ PurchaseOrderDetails
+
+PurchaseOrders ||--o{ GoodsReceipts
+GoodsReceipts ||--|{ GoodsReceiptLines
+BranchStocks ||--o{ GoodsReceiptLines
+
+Customers ||--o{ Orders
+Branches ||--o{ Orders
+CashierShifts ||--o{ Orders
+Orders ||--|{ OrderItems
+Products ||--o{ OrderItems
+Orders ||--o{ PaymentTransactions
+
+Customers ||--o{ CustomerDebtLedgers
+Orders ||--o{ ReturnOrders
+ReturnOrders ||--|{ ReturnOrderItems
+
+Branches ||--o{ CashAccounts
+CashAccounts ||--o{ LedgerTransactions
+LedgerTransactions ||--o| LedgerTransactions : "LinkedTransactionId"
+
+Orders ||..o| LedgerTransactions : "CashTransactionId"
+Orders }o..|| CashAccounts : "CashAccountId"
+CustomerDebtLedgers ||..o| LedgerTransactions : "CashTransactionId"
+CustomerDebtLedgers }o..|| CashAccounts : "TargetAccountId"
+
+Branches ||--o{ ServiceExpenses
+ServiceExpenses ||..o| LedgerTransactions : "CashBookEntryId"
+ServiceExpenses }o..|| CashAccounts : "PaidFromAccountId"
+
+TaxSnapshots ||..o| LedgerTransactions : "CashTransactionId"
+TaxSnapshots }o..|| CashAccounts : "PaidFromAccountId"
+
+Branches ||--o{ CashierShifts
+Employees ||--o{ CashierShifts
+
+Branches ||--o{ Employees
+Employees ||--o{ EmployeeSchedules
+Branches ||--o{ PayrollPeriods
+PayrollPeriods ||--|{ Payslips
+Employees ||--o{ Payslips
+Employees ||--o{ EmployeeBonusViolations
+PayrollPeriods ||..o| LedgerTransactions : "CashTransactionId"
+PayrollPeriods }o..|| CashAccounts : "PaidFromAccountId"
+
+Branches ||--o{ DailySalesSummaries
+
+@enduml

@@ -1,33 +1,37 @@
 ---
 verdict: PASS
-date: '2026-10-14'
+date: '2026-11-01'
 tester: '@Des7240'
-feature: 'FE-19: Household Business Tax Snapshot Frontend'
+feature: 'FE-19: Household Business Tax Management (TT 152/2025 & ND 141/2026)'
 ---
 
 # Test Report: fe19-tax-snapshot-frontend
 
 ## Kết quả tổng quan
-- **Verdict**: PASS (10/10 test scenarios đạt yêu cầu)
-- **Frontend TypeScript Build**: 0 errors (`built in 818ms`).
-- **Linter (oxlint)**: 0 errors trên 169 files.
-- **Tự động đồng bộ**: Hỗ trợ đồng bộ tự động lên Google Sheets kiểm thử (Report 5.1 -> 5.5).
+- **Verdict**: PASS (12/12 test scenarios đạt yêu cầu)
+- **Frontend TypeScript Build**: 0 errors (`npm run build` thành công trong 1.15s).
+- **Vitest Unit Tests**: **87 / 87 tests PASSED (100%)**.
+- **Backend Unit & Integration Tests**: **74 / 74 tests PASSED (100%)**.
+- **Tự động đồng bộ**: Hỗ trợ đồng bộ tự động lên 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5).
 
 ## 1. Bảng Kịch Bản Kiểm Thử (Unified Test Table - BDD)
 | Test Case ID | Tên kịch bản | Pre-conditions (GIVEN) | Procedure / Steps (WHEN) | Expected Results (THEN) | Role | Priority | Report Type | Kết quả | Ghi chú |
 |---|---|---|---|---|:---:|:---:|:---:|:---:|---|
-| TC-FE19-01 | REQ-FE19-01: Khởi động & Render màn hình Kê khai thuế FE-19 | Đăng nhập tài khoản StoreOwner vào hệ thống MT-GRMS | Điều hướng tới đường dẫn `/store-owner/tax-snapshots` | Giao diện load < 1s, hiển thị tiêu đề FE-19, thẻ KPI và bảng kỳ thuế | StoreOwner | Critical | 5.1 | PASS | Load tức thì, render chuẩn Design System |
-| TC-FE19-02 | REQ-FE19-01: Hiển thị 4 thẻ KPI thuế lũy kế năm | Đang ở màn hình danh sách kỳ tính thuế | Xem 4 thẻ KPI đầu trang | Hiển thị chính xác Doanh thu chịu thuế, Thuế GTGT 1%, Thuế TNCN 0.5%, Tổng thuế đã nộp / còn nợ | StoreOwner | High | 5.2 | PASS | Định dạng tiền VND chuẩn, màu sắc trực quan |
-| TC-FE19-03 | REQ-FE19-01: Lọc danh sách kỳ tính thuế theo Năm, Quý và Trạng thái | Danh sách có các kỳ thuế từ Quý 1 đến Quý 3/2026 | Chọn Năm = 2026, Quý = Q2, Trạng thái = "Submitted" | Bảng chỉ hiển thị đúng bản ghi Quý 2/2026 trạng thái Đã nộp tờ khai | StoreOwner | Medium | 5.3 | PASS | Bộ lọc phản hồi tức thì < 50ms |
-| TC-FE19-04 | REQ-FE19-02: Xem trước số liệu (Preview) khi chọn Quý và Năm | Mở modal "+ Tạo kỳ tính thuế" | Chọn Năm 2026 và Quý 4 | Hệ thống gọi preview tính tổng doanh thu từ hóa đơn Paid và hiển thị số thuế dự tính | StoreOwner | High | 5.3 | PASS | Hiển thị khớp doanh thu và số lượng đơn hàng |
-| TC-FE19-05 | REQ-FE19-02: Tính toán thuế chính xác theo TT 40 (VAT 1%, PIT 0.5%) | Doanh thu chịu thuế xem trước là 550.000.000đ | Kiểm tra các chỉ số thuế hiển thị | Thuế GTGT = 5.500.000đ (1%), Thuế TNCN = 2.750.000đ (0.5%), Tổng = 8.250.000đ (1.5%) | Accountant | Critical | 5.3 | PASS | Khớp 100% công thức toán học và pháp lý |
-| TC-FE19-06 | REQ-FE19-02: Ngăn chặn tạo trùng kỳ thuế đã Finalized | Kỳ Quý 3/2026 đã tồn tại ở trạng thái Finalized | Trong modal tạo mới, chọn lại Quý 3/2026 | Hệ thống hiển thị cảnh báo kỳ thuế đã tồn tại và vô hiệu hóa nút Lưu | StoreOwner | High | 5.4 | PASS | Disable nút chốt, hiển thị Alert vàng rõ ràng |
-| TC-FE19-07 | REQ-FE19-03: Chuyển trạng thái tờ khai từ Draft sang Finalized | Có kỳ thuế Quý 4/2026 đang ở trạng thái Draft | Bấm nút "Chốt số liệu" từ bảng hoặc Drawer chi tiết | Trạng thái chuyển sang Finalized, khóa các thao tác chỉnh sửa | StoreOwner | High | 5.3 | PASS | Toast thông báo thành công, badge đổi màu xanh dương |
-| TC-FE19-08 | REQ-FE19-03: Kiểm tra tính bất biến (Immutable) của kỳ thuế đã chốt | Kỳ thuế ở trạng thái Finalized hoặc Submitted | Kiểm tra các nút hành động trong bảng và Drawer | Không còn nút Xóa nháp hay Sửa doanh thu, đảm bảo tính bất biến kế toán | StoreOwner | Critical | 5.4 | PASS | Ẩn hoàn toàn nút xóa/sửa khi đã chốt số liệu |
-| TC-FE19-09 | REQ-FE19-04: Xem bảng kê chi tiết các hóa đơn POS cấu thành | Mở Drawer chi tiết của một kỳ thuế | Chuyển sang tab "Bảng kê hóa đơn" | Hiển thị danh sách hóa đơn chi tiết với Mã HĐ, Thời gian, Khách hàng, PTTT, Số tiền | Accountant | Medium | 5.3 | PASS | Phân trang bảng kê rõ ràng, minh bạch số liệu |
-| TC-FE19-10 | REQ-FE19-04: Xuất mẫu tờ khai Form 01/CNKD ra file Excel/XML | Đang xem chi tiết kỳ thuế đã chốt | Bấm nút "Xuất tờ khai Form 01", chọn Excel/XML | Trình duyệt tải về tệp tin tương ứng kèm thông báo thành công | StoreOwner | High | 5.5 | PASS | Tải file mượt mà, định dạng đúng tên tệp quy chuẩn |
+| TC-FE19-01 | REQ-FE19-01: Khởi động & Render màn hình Thuế FE-19 kèm Thước đo 1 Tỷ | Đăng nhập tài khoản StoreOwner vào hệ thống MT-GRMS | Điều hướng tới đường dẫn `/store-owner/tax-snapshots` | Giao diện load < 1s, hiển thị Thước đo ngưỡng 1 Tỷ, 5 thẻ KPI và thanh điều hướng 4 tab | StoreOwner | Critical | 5.1 | PASS | Render chuẩn Design System, Thước đo 3 vùng màu trực quan |
+| TC-FE19-02 | REQ-FE19-01: Phân nhóm HKD tự động & Thẻ KPI lũy kế YTD theo NĐ 141/2026 | Dữ liệu doanh thu lũy kế cả năm đạt 1.150.000.000đ | Truy cập trang tổng quan thuế Quý 4/2026 | Hệ thống tự động phân loại Nhóm 2 (1-3 Tỷ, Sổ S2a), cờ vượt ngưỡng giữa năm = true | StoreOwner | High | 5.1 | PASS | Định dạng tiền VNĐ chuẩn, hiển thị badge Nhóm 2 |
+| TC-FE19-03 | REQ-FE19-02: Tính thuế TNCN phần vượt trần & Thuế GTGT giảm 0.8% FMCG theo NQ 204 | Doanh thu thuần Q4 là 763.970.000đ, YTD vượt 1 Tỷ đúng 150.000.000đ | Kiểm tra các chỉ số thuế hiển thị trên tờ khai Quý 4 | Thuế TNCN = 150M × 0.5% = 750.000đ; Thuế GTGT tính theo phương án thận trọng 11.5M (FMCG 0.8%, hàng khác 1.0%) | Accountant | Critical | 5.1 | PASS | Khớp 100% công thức toán học và quy định Điều 10 NĐ 68/2026 |
+| TC-FE19-04 | REQ-FE19-02: So sánh trực tiếp Phương pháp Tỷ lệ % vs Kê khai Lợi nhuận 15% | Doanh thu thuần 763.97M, COGS 646.87M, OPEX 54.5M | Chuyển đổi giữa 2 tab Tỷ lệ % và Kê khai trong Tờ khai | Phương pháp % ra thuế 12.25M; Phương pháp Kê khai tính thuế TNCN 15% trên lợi nhuận 56.68M = 8.5M | StoreOwner | High | 5.1 | PASS | Giúp chủ hộ chọn phương án tiết kiệm tối ưu chi phí thuế |
+| TC-FE19-05 | REQ-FE19-03: Hiển thị hệ thống 7 Sổ kế toán điện tử Thông tư 152/2025/TT-BTC | Chuyển sang Tab "Sổ kế toán HKD" | Lần lượt chọn các mẫu sổ S1a, S2a, S2c, S2d, S2e, S3a Thuế Khác | Dữ liệu đổ tự động theo thời gian thực từ POS và Phiếu chi; tab S3a theo dõi riêng thuế TTĐB bia rượu, thuốc lá | Accountant | High | 5.2 | PASS | Chuẩn hóa 100% theo TT 152/2025/TT-BTC, gỡ bỏ TT 88 cũ |
+| TC-FE19-06 | REQ-FE19-03: Khấu trừ doanh thu thuần từ Chiết khấu & Hàng bán bị trả lại | Đơn hàng 800M có 10M chiết khấu POS và phiếu hàng trả lại 26.03M | Hệ thống tính toán doanh thu thuần chịu thuế | Doanh thu thuần = 800M - 10M - 26.03M = 763.970.000đ | Accountant | High | 5.2 | PASS | Liên kết chính xác với bảng CustomerDebtEntries EntryType=3 |
+| TC-FE19-07 | REQ-FE19-03: Loại trừ chi phí ảo & Rút vốn chủ sở hữu trong Phiếu chi OPEX | Danh sách phiếu chi có khoản chi tiền thuê nhà, điện nước và chi rút vốn | Hệ thống tổng hợp sổ chi phí S2c-HKD | Chỉ nhận phiếu chi Approved có hóa đơn, tự động loại trừ 100% từ khóa Vốn, Rút vốn, Equity, Capital | Accountant | High | 5.2 | PASS | Đảm bảo chi phí hợp lý được trừ hợp lệ theo quy định thuế |
+| TC-FE19-08 | REQ-FE19-04: Lọc danh sách kỳ thuế & Biểu đồ tiến độ phân tích 4 Quý / 12 Tháng | Chọn bộ lọc Năm 2026, xem Tab Phân tích | Chuyển đổi giữa chế độ xem 4 Quý và 12 Tháng | Biểu đồ trực quan hiển thị doanh thu, thuế nộp từng kỳ, tiến độ 4 kỳ hoàn tất | StoreOwner | Medium | 5.3 | PASS | Co giãn mượt mà, hỗ trợ quản trị tài chính cả năm |
+| TC-FE19-09 | REQ-FE19-04: Xuất file bảng tính Excel 4 sheet phẳng phục vụ thanh tra thuế | Nhấp nút "Xuất Excel" trên thanh công cụ | Tải về file tính thuế định dạng .xlsx | File gồm 4 sheet phẳng: Tổng hợp thuế, Sổ S2a, Sổ S2c, Lịch sử snapshot với đầy đủ cột dữ liệu | StoreOwner | High | 5.3 | PASS | Định dạng chuẩn đối chiếu của cơ quan thuế |
+| TC-FE19-10 | REQ-FE19-05: Bảo mật phân quyền RBAC chặn nhân viên thu ngân truy cập | Đăng nhập tài khoản Cashier | Cố tình truy cập route `/store-owner/tax-snapshots` | Hệ thống chặn quyền và điều hướng an toàn về trang POS bán hàng | Cashier | Critical | 5.4 | PASS | Bảo vệ dữ liệu bí mật kinh doanh của chủ hộ |
+| TC-FE19-11 | REQ-FE19-05: Xác thực mã PIN chủ hộ & Niêm phong mật mã HMAC-SHA256 Audit Seal | Mở modal chốt kỳ tính thuế Quý 4/2026 | Nhập mã PIN 6 chữ số và nhấn Chốt kỳ | Mã PIN xác thực SHA-256; sinh con dấu HMAC-SHA256 niêm phong dữ liệu bất biến chống sửa đổi | StoreOwner | Critical | 5.4 | PASS | Con dấu k-2026-v1:a4828... khóa cứng kỳ thuế thành công |
+| TC-FE19-12 | REQ-FE19-06: Nghiệm thu kịch bản thực tế Tiệm Tạp Hóa Cô Ba chốt sổ 4/4 Quý | Hoàn thành chốt số liệu cả 4 Quý năm 2026 | Kiểm tra Tab Lịch sử và đối chiếu tổng thuế năm | Đủ 4 Quý ở trạng thái Đã chốt, tổng doanh thu 1.150M, tổng thuế năm 12.250.000đ | StoreOwner | High | 5.5 | PASS | Hoàn tất nghiệm thu nghiệp vụ thực tế trên CSDL Neon PostgreSQL |
 
 ## 2. Nhật Ký Thực Thi Kiểm Thử (Execution Logs)
-- `npm run build`: `built in 818ms` (2242 modules transformed, 0 lỗi biên dịch).
-- `npm run lint`: `Finished on 169 files with 0 errors`.
-- Kiểm thử luồng nghiệp vụ trên trình duyệt: Khởi tạo, xem trước, chốt số liệu, xuất tờ khai chạy mượt mà.
+- `npm run build`: `built in 1.15s` (0 lỗi biên dịch TypeScript).
+- `vitest run`: **87 / 87 tests passed (100%)**.
+- `dotnet test`: **74 / 74 tests passed (100%)**.
+- Kiểm thử luồng nghiệp vụ trên trình duyệt bằng Chrome DevTools MCP: Vượt ngưỡng 1 tỷ, chốt kỳ Quý 4, kiểm tra Audit Seal và đối chiếu 4 Quý đạt chuẩn tuyệt đối.

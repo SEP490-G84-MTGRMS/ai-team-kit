@@ -330,6 +330,92 @@ Hệ thống **MUST** lưu trữ duy nhất mã giao dịch ngân hàng (`bank_t
 
 ---
 
+### Requirement: REQ-NAV-SETTINGS-01 Dropdown Tùy Chọn Nút Bánh Răng TopBar
+Hệ thống **MUST** hiển thị Dropdown Menu khi người dùng bấm vào nút Bánh Răng trên thanh TopBar (`AppTopNav.tsx`). Menu này **MUST** cung cấp 2 tùy chọn phân định rõ ràng:
+1. "Cấu hình Thanh toán VietQR & SePay" (mở `PaymentConfigModal`).
+2. "Gói dịch vụ MT-GRMS & Gia hạn" (điều hướng sang `/store-owner/subscriptions`).
+
+#### Scenario: Chủ cửa hàng bấm nút Bánh Răng để chọn chức năng
+- **GIVEN** Người dùng đang ở bất kỳ trang quản trị nào có thanh `AppTopNav`
+- **WHEN** Người dùng click vào icon Bánh Răng cài đặt
+- **THEN** Dropdown menu hiển thị ngay dưới nút với 2 mục: Cấu hình thanh toán và Gói dịch vụ. Bấm vào Gói dịch vụ thì chuyển đến trang `/store-owner/subscriptions`; bấm vào Cấu hình thanh toán thì mở modal `PaymentConfigModal`.
+
+---
+
+### Requirement: REQ-STORE-HUB-PAYMENT-01 Tab Cấu Hình Thanh Toán Trong StoreSettingsHubPage
+Hệ thống **MUST** bổ sung thêm Tab "Tài khoản thanh toán VietQR" (`payment-config`) vào thanh menu bên trái của trang `StoreSettingsHubPage.tsx`. Tab này **SHALL** cho phép Chủ cửa hàng xem và chỉnh sửa thông tin tài khoản ngân hàng, SePay API Key, và xem hướng dẫn kết nối trực tiếp trên trang quản trị gian hàng.
+
+#### Scenario: Chủ cửa hàng truy cập Tab Cấu hình thanh toán trong Store Hub
+- **GIVEN** Chủ cửa hàng đang ở trang `StoreSettingsHubPage.tsx`
+- **WHEN** Người dùng bấm vào mục "Tài khoản thanh toán VietQR" trên thanh sidebar bên trái
+- **THEN** Giao diện hiển thị form cấu hình ngân hàng thụ hưởng, số tài khoản, tên chủ tài khoản, API Key SePay và nút xem hướng dẫn đăng ký SePay trực quan.
+
+---
+
+### Requirement: REQ-SEPAY-VISUAL-MOCKUP-01 Mockup Giao Diện SePay Trực Quan Chân Thực
+Tab Hướng Dẫn Đăng Ký SePay trong `PaymentConfigModal` **MUST** tích hợp các khối mockup mô phỏng chân thực giao diện bảng điều khiển SePay (`my.sepay.vn`):
+1. Mockup màn hình **Tích hợp Web → API Key**: Thể hiện rõ thanh menu bên trái của SePay, nút `+ Tạo API Key`, ô hiển thị key và nút `Sao chép` kèm callout chỉ dẫn nổi bật.
+2. Mockup màn hình **Tích hợp Web → Webhooks**: Thể hiện form tạo webhook với ô nhập URL, chọn tài khoản nhận tiền và sự kiện nhận tiền.
+
+#### Scenario: Chủ cửa hàng xem hướng dẫn đăng ký SePay có mockup giao diện
+- **GIVEN** Modal `PaymentConfigModal` đang mở ở Tab "Hướng Dẫn Đăng Ký SePay"
+- **WHEN** Người dùng cuộn xuống xem các bước 3 và 4
+- **THEN** Người dùng nhìn thấy khung mô phỏng trực quan chuẩn màu sắc và layout của SePay, có mũi tên chỉ dẫn nổi bật: "👉 BƯỚC 3: Bấm Copy mã này dán sang MT-Mart" và "👉 BƯỚC 4: Dán link Webhook vào đây", giúp người dùng thao tác chính xác 100% khi sang trang SePay thật.
+
+---
+
+### Requirement: REQ-TOPNAV-01 Dropdown Menu Cài Đặt Tương Tác
+Hệ thống **MUST** thay thế thẻ `<Link>` tĩnh của icon Bánh Răng trên thanh TopBar (`AppTopNav.tsx`) bằng một Dropdown Menu tương tác.
+Khi người dùng rê chuột (hover) hoặc click vào icon Bánh Răng, menu cài đặt **SHALL** mở ra ngay phía dưới với độ trễ đóng (debounce) 220ms để chống giật chuột.
+
+#### Scenario: Chủ cửa hàng rê chuột vào icon bánh răng trên TopBar
+- **GIVEN** Người dùng đăng nhập với vai trò `STORE_OWNER` và đang ở trang quản trị bất kỳ.
+- **WHEN** Người dùng di chuột (hover) vào icon Bánh Răng ở góc phải TopBar.
+- **THEN** Menu Dropdown Cài đặt mở ra mượt mà, icon bánh răng sáng nhẹ.
+- **AND** Khi rê chuột ra ngoài khu vực menu, menu đóng lại sau 220ms.
+
+#### Scenario: Đóng menu bằng phím Escape hoặc click ngoài
+- **GIVEN** Dropdown Menu Cài đặt đang mở.
+- **WHEN** Người dùng bấm phím `Escape` hoặc click chuột ra ngoài vùng menu.
+- **THEN** Dropdown Menu Cài đặt lập tức đóng lại mà không gây ảnh hưởng đến trang hiện tại.
+
+---
+
+### Requirement: REQ-TOPNAV-02 Phân Nhóm và Điều Hướng Chuẩn Xác
+Dropdown Menu Cài Đặt **MUST** hiển thị đầy đủ 2 nhóm tính năng chính:
+1. **Thanh toán & Thu ngân**:
+   - Mục `Cấu hình VietQR & SePay` **SHALL** trỏ tới `/store-owner/payment-config`.
+2. **Gói dịch vụ MT-GRMS (Gia hạn gói)**:
+   - Mục `Gói dịch vụ & Nâng cấp` **SHALL** trỏ tới `/store-owner/subscriptions?tab=subscriptions`.
+   - Mục `Lịch sử mua hàng` **SHALL** trỏ tới `/store-owner/subscriptions?tab=order-history`.
+   - Mục `Bản xác nhận dịch vụ` **SHALL** trỏ tới `/store-owner/subscriptions?tab=service-confirm`.
+3. **Gian hàng**:
+   - Mục `Thông tin gian hàng & Chi nhánh` **SHALL** trỏ tới `/store-owner/subscriptions?tab=store-info`.
+
+#### Scenario: Bấm chọn Cấu hình VietQR & SePay
+- **GIVEN** Dropdown Menu Cài đặt đang mở.
+- **WHEN** Người dùng click vào mục "Cấu hình VietQR & SePay".
+- **THEN** Hệ thống điều hướng sang trang `/store-owner/payment-config`.
+- **AND** Dropdown Menu tự động đóng lại.
+
+#### Scenario: Bấm chọn Gói dịch vụ & Nâng cấp
+- **GIVEN** Dropdown Menu Cài đặt đang mở.
+- **WHEN** Người dùng click vào mục "Gói dịch vụ & Nâng cấp".
+- **THEN** Hệ thống điều hướng sang trang `/store-owner/subscriptions?tab=subscriptions`.
+- **AND** Không gây ảnh hưởng hay lỗi logic ở trang quản lý gói của thành viên khác.
+
+---
+
+### Requirement: REQ-TOPNAV-03 Bảo Toàn Mã Nguồn và Không Xung Đột
+Hệ thống **MUST NOT** sửa đổi hay can thiệp vào các component `StoreSettingsHubPage.tsx` và `StoreSidebarNav.tsx`.
+
+#### Scenario: Kiểm tra trang Quản lý Gói dịch vụ
+- **GIVEN** Người dùng mở URL `/store-owner/subscriptions`.
+- **WHEN** Kiểm tra cấu trúc các tab và giao diện của trang.
+- **THEN** Trang hiển thị 100% nguyên bản của module Subscription, không bị xáo trộn hay chứa tab dư thừa.
+
+---
+
 ## Lịch sử
 - 2026-11-01 · `pos-sales-order-backend` · +4 ~0 -0
 - 2026-11-01 · `pos-order-management-debt-refinement` · +1 ~2 -0
@@ -337,3 +423,5 @@ Hệ thống **MUST** lưu trữ duy nhất mã giao dịch ngân hàng (`bank_t
 - 2026-11-01 · `preorder-fefo-tests-and-ux` · +2 ~0 -0
 - 2026-11-02 · `pos-annhien-data-and-staff-logout` · +2 ~0 -1
 - 2026-11-02 · `pos-vietqr-sepay-payment-and-settings` · +5 ~0 -0
+- 2026-11-02 · `pos-sepay-ui-and-nav-refinement` · +3 ~0 -0
+- 2026-11-02 · `store-settings-dropdown-nav` · +3 ~0 -0

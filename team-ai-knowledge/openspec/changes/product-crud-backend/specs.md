@@ -119,3 +119,18 @@ Hệ thống **MUST** kiểm tra vai trò của người dùng hiện tại thô
 - [ ] REQ-PROD-04: API `PUT /api/products/{id}` cập nhật thông tin sản phẩm chính xác.
 - [ ] REQ-PROD-05: API `DELETE /api/products/{id}` thực hiện xóa mềm `IsDeleted = true`.
 - [ ] REQ-PROD-06: Ẩn giá vốn `CostPrice = null` cho vai trò Cashier/Staff (tuân thủ BR-SEC-01).
+
+---
+
+## MODIFIED Requirements (Refactoring theo Mô hình Phân lớp Giá - Master Product Layer 1)
+
+### Cập nhật cấu trúc thực thể và DTOs:
+1. **Loại bỏ các trường mức tồn & quản lý theo lô khỏi Master Product**:
+   - `MinStock` (decimal): Loại bỏ khỏi `Product`, `ProductResponse`, `ProductCreateRequest`, `ProductUpdateRequest`.
+   - `MaxStock` (decimal): Loại bỏ khỏi `Product`, `ProductResponse`, `ProductCreateRequest`, `ProductUpdateRequest`.
+   - `HasBatches` (bool): Loại bỏ khỏi `Product`, `ProductResponse`, `ProductCreateRequest`, `ProductUpdateRequest`.
+   - **Lý do nghiệp vụ**: Theo kiến trúc phân lớp giá (`pricing-layers-business-model.md`), Master Product chỉ quản lý danh mục dùng chung toàn chuỗi (mã hàng, tên, ĐVT, giá mua tham khảo fallback, giá bán cơ bản niêm yết). Định mức tồn kho an toàn (Min/Max Stock) và theo dõi tồn kho theo lô là thuộc tính cấp chi nhánh (`BranchProduct` / `BranchStock` / `InventoryLots`), không gán cứng trên Master Product toàn chuỗi.
+2. **Bổ sung Ubiquitous Language Aliases**:
+   - `Product.DefaultPurchasePrice`: Alias `[NotMapped]` trỏ về `CostPrice` (giá mua tham khảo mặc định khi lập PO).
+   - `ProductUnit.SellingPrice`: Alias `[NotMapped]` trỏ về `Price` (giá bán cơ bản theo đơn vị quy đổi).
+

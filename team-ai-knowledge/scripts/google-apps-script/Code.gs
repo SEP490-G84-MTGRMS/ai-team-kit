@@ -4,7 +4,7 @@
  * =========================================================================================
  * Mục đích:
  * - Nhận HTTP POST từ AI-team-kit (MCP tool: sep_dong_bo_test_sheet) hoặc test runner.
- * - Điều phối mở 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5).
+ * - Điều phối mở 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5) + Master Test Matrix.
  * - Tự động clone tab mẫu (Template Tab) nếu gặp Feature mới.
  * - Tự động đăng ký vào tab 'Test Cases' (Mục lục) và 'Test Statistics' (Thống kê).
  * - Cơ chế Upsert theo Test Case ID: Nếu đã có thì cập nhật trạng thái/kết quả thực tế;
@@ -17,14 +17,15 @@ const CONFIG = {
   // Đặt API Key bí mật để bảo vệ Webhook (khớp với biến GOOGLE_SHEET_API_KEY trong .env)
   API_KEY: 'MT_GRMS_TEST_SECRET_2026',
 
-  // ID của 5 file Google Sheets trên Google Drive (Lấy từ URL của từng file sheet)
+  // ID của 5 file Google Sheets kiểm thử + Master Test Matrix trên Google Drive
   // URL: https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit
   SPREADSHEET_IDS: {
-    '5.1': 'YOUR_REPORT_5_1_SPREADSHEET_ID', // Report-5.1_Unit Test
-    '5.2': 'YOUR_REPORT_5_2_SPREADSHEET_ID', // Report-5.2_Integration Test
-    '5.3': 'YOUR_REPORT_5_3_SPREADSHEET_ID', // Report-5.3_System Test_FRs
-    '5.4': 'YOUR_REPORT_5_4_SPREADSHEET_ID', // Report-5.4_System Test_NFRs
-    '5.5': 'YOUR_REPORT_5_5_SPREADSHEET_ID', // Report-5.5_Acceptance Test Scripts
+    '5.1': '1kCtw6u2qd3T3aD3BothjoRUSyI-_LXOXRYavUjW2Rw8', // Report-5.1_Unit Test
+    '5.2': '17JxUyHcBCo7-tJxLhYPcDsa_lV1pDgL_ZuQBIyZUrSg', // Report-5.2_Integration Test
+    '5.3': '1DWNjEtj7AoBNKgcNxDicsJIaVwH7Ghl04hn2XERFelI', // Report-5.3_System Test_FRs
+    '5.4': '1BuRdxZGJDwIrmBHbSn-oYMHqwAy52bl3VhF_64kCt84', // Report-5.4_System Test_NFRs
+    '5.5': '1l8JkXPJ_d2ORWwzy_HPaKOLLz0eaE__NfTK_2tqf5D8', // Report-5.5_Acceptance Test Scripts
+    'matrix': '1DE1qjtnxahvG0yMl44KU1Fso6kCDsVQ_AV-Zwe15XRs', // Master Test Matrix & Non-Unit Cases
   }
 };
 
@@ -88,7 +89,7 @@ function doPost(e) {
     // 3. Thực thi sync theo reportType
     const reportType = String(payload.reportType || '').trim();
     if (!CONFIG.SPREADSHEET_IDS[reportType]) {
-      return jsonResponse(false, `Invalid reportType: '${reportType}'. Must be one of: 5.1, 5.2, 5.3, 5.4, 5.5`);
+      return jsonResponse(false, `Invalid reportType: '${reportType}'. Must be one of: 5.1, 5.2, 5.3, 5.4, 5.5, matrix`);
     }
 
     const spreadsheetId = CONFIG.SPREADSHEET_IDS[reportType];
@@ -114,6 +115,9 @@ function doPost(e) {
         break;
       case '5.5':
         result = syncReport55(ss, payload);
+        break;
+      case 'matrix':
+        result = syncTestMatrix(ss, payload);
         break;
       default:
         return jsonResponse(false, `Unsupported reportType: ${reportType}`);
@@ -504,9 +508,205 @@ function syncReport55(ss, payload) {
 
 /**
  * =========================================================================
+ * XỬ LÝ MASTER TEST MATRIX & NON-UNIT CASES
+ * =========================================================================
+ */
+function syncTestMatrix(ss, payload) {
+  const items = payload.items || [];
+  const tester = payload.tester || 'AI-Agent';
+  const testDate = payload.testDate || getTodayFormatted();
+
+  let sheet = ss.getSheetByName('Test Cases (Non-Unit)') || ss.getSheetByName('Test Cases') || ss.getSheets()[1] || ss.getSheets()[0];
+  if (!sheet) throw new Error('Cannot find Test Cases tab in Test Matrix sheet!');
+
+  const lastRow = Math.max(sheet.getLastRow(), 4);
+  const existingMap = new Map();
+
+  if (lastRow > 4) {
+    const ids = sheet.getRange(5, 1, lastRow - 4, 1).getValues();
+    ids.forEach((r, idx) => {
+      const tcId = String(r[0] || '').trim();
+      if (tcId) {
+        existingMap.set(tcId, 5 + idx);
+      }
+    });
+  }
+
+  let updated = 0;
+  let inserted = 0;
+  const toAppend = [];
+
+  items.forEach(item => {
+    const rawReportType = String(item.reportType || item.report_type || '').trim();
+    // Quy tắc: KHÔNG đồng bộ Unit Test 5.1 vào bảng Test Matrix
+    if (rawReportType === '5.1' || String(item.id || '').startsWith('TC-UT')) {
+      return;
+    }
+
+    const tcId = String(item.id || item.testCaseId || '').trim();
+    if (!tcId) return;
+
+    const moduleName = String(item.module || item.moduleName || payload.featureCode || 'BÁN HÀNG & POS');
+    const scenario = String(item.scenario || item.description || item.title || '');
+    const testType = String(item.type || 'Luồng nghiệp vụ');
+    const reportType = rawReportType || '5.3';
+    const given = String(item.given || item.preConditions || '');
+    const when = String(item.when || item.steps || item.procedure || '');
+    const then = String(item.then || item.expected || item.expectedResults || '');
+    const actual = String(item.actual || item.actualResults || 'Xác nhận thành công');
+    const itemTester = String(item.tester || tester);
+    const status = formatStatus(item.status || item.actualStatus || 'PASS');
+    const date = String(item.date || testDate);
+
+    if (existingMap.has(tcId)) {
+      const rowIdx = existingMap.get(tcId);
+      sheet.getRange(rowIdx, 9).setValue(actual);
+      sheet.getRange(rowIdx, 10).setValue(itemTester);
+      sheet.getRange(rowIdx, 11).setValue(status);
+      sheet.getRange(rowIdx, 12).setValue(date);
+
+      const stCell = sheet.getRange(rowIdx, 11);
+      if (status === 'Passed' || status === 'PASS') {
+        stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+      } else if (status === 'Failed' || status === 'FAIL') {
+        stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+      }
+      updated++;
+    } else {
+      toAppend.push([
+        tcId, moduleName, scenario, testType, reportType,
+        given, when, then, actual, itemTester, status, date
+      ]);
+      inserted++;
+    }
+  });
+
+  if (toAppend.length > 0) {
+    const startRow = sheet.getLastRow() + 1;
+    const numRows = toAppend.length;
+    const numCols = 12;
+    const range = sheet.getRange(startRow, 1, numRows, numCols);
+    range.setValues(toAppend);
+
+    for (let r = 0; r < numRows; r++) {
+      const targetRow = startRow + r;
+      const rowRange = sheet.getRange(targetRow, 1, 1, numCols);
+      rowRange.setBorder(true, true, true, true, true, true, '#D0D7DE', SpreadsheetApp.BorderStyle.SOLID);
+      if (targetRow % 2 === 0) {
+        rowRange.setBackground('#F7F9FC');
+      }
+      const stCell = sheet.getRange(targetRow, 11);
+      const stVal = toAppend[r][10];
+      if (stVal === 'Passed' || stVal === 'PASS') {
+        stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+      } else if (stVal === 'Failed' || stVal === 'FAIL') {
+        stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+      }
+    }
+  }
+
+  updateMatrixTabStats(ss);
+
+  return { tab: sheet.getName(), updated, inserted, total: existingMap.size + inserted };
+}
+
+/**
+ * Cập nhật số lượng test case thực tế và trạng thái trên tab 'Test Matrix'
+ */
+function updateMatrixTabStats(ss) {
+  try {
+    const matrixSheet = ss.getSheetByName('Test Matrix') || ss.getSheets()[0];
+    const casesSheet = ss.getSheetByName('Test Cases (Non-Unit)') || ss.getSheetByName('Test Cases');
+    if (!matrixSheet || !casesSheet) return;
+
+    const casesLastRow = casesSheet.getLastRow();
+    if (casesLastRow < 5) return;
+
+    const casesData = casesSheet.getRange(5, 1, casesLastRow - 4, 11).getValues();
+    const countByModule = {};
+    let totalCases = 0;
+    casesData.forEach(r => {
+      const mod = String(r[1] || '').trim();
+      const status = String(r[10] || '').trim().toUpperCase();
+      if (mod) {
+        if (!countByModule[mod]) countByModule[mod] = { total: 0, passed: 0 };
+        countByModule[mod].total++;
+        if (status.includes('PASS')) countByModule[mod].passed++;
+        totalCases++;
+      }
+    });
+
+    const matrixLastRow = matrixSheet.getLastRow();
+    if (matrixLastRow >= 6) {
+      const matrixData = matrixSheet.getRange(6, 2, matrixLastRow - 5, 8).getValues();
+      matrixData.forEach((r, idx) => {
+        const mod = String(r[0] || '').trim();
+        const rowIdx = 6 + idx;
+        if (countByModule[mod]) {
+          const stCell = matrixSheet.getRange(rowIdx, 9);
+          if (countByModule[mod].passed === countByModule[mod].total) {
+            stCell.setValue('Đã chạy (PASS)').setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+          }
+        }
+      });
+    }
+  } catch (err) {
+    Logger.log('Warning in updateMatrixTabStats: ' + err.message);
+  }
+}
+
+/**
+ * =========================================================================
  * HELPER UTILITIES
  * =========================================================================
  */
+
+/**
+ * Xử lý riêng cho tab Security trong Report-5.2
+ */
+function syncSecurityTab(sheet, items, startRow) {
+  let updatedCount = 0;
+  let insertedCount = 0;
+
+  items.forEach(item => {
+    const testId = String(item.testId || item.id || '').trim();
+    if (!testId) return;
+
+    const existingRow = findTestRow(sheet, testId, startRow);
+    const statusVal = formatStatus(item.status);
+
+    if (existingRow !== -1) {
+      ensureRowExists(sheet, existingRow);
+      sheet.getRange(existingRow, 2).setValue(item.scenario || item.name || item.description || 'Kiểm tra bảo mật và quyền truy cập');
+      sheet.getRange(existingRow, 3).setValue(item.role || 'Cashier');
+      sheet.getRange(existingRow, 4).setValue(item.given || item.preConditions || 'Người dùng đã xác thực với vai trò tương ứng');
+      sheet.getRange(existingRow, 5).setValue(item.when || item.procedure || item.steps || 'Cố tình thực hiện hành động trái quyền');
+      sheet.getRange(existingRow, 6).setValue(item.then || item.expected || item.expectedResults || 'Hệ thống chặn truy cập HTTP 403 Forbidden');
+      sheet.getRange(existingRow, 7).setValue(item.priority || 'Critical');
+      sheet.getRange(existingRow, 8).setValue(statusVal);
+      if (item.defectId) sheet.getRange(existingRow, 9).setValue(item.defectId);
+      sheet.getRange(existingRow, 10).setValue(item.notes || 'Bảo mật đạt chuẩn RBAC');
+      updatedCount++;
+    } else {
+      const nextRow = getNextAvailableRow(sheet, startRow);
+      ensureRowExists(sheet, nextRow);
+      sheet.getRange(nextRow, 1).setValue(testId);
+      sheet.getRange(nextRow, 2).setValue(item.scenario || item.name || item.description || 'Kiểm tra bảo mật và quyền truy cập');
+      sheet.getRange(nextRow, 3).setValue(item.role || 'Cashier');
+      sheet.getRange(nextRow, 4).setValue(item.given || item.preConditions || 'Người dùng đã xác thực với vai trò tương ứng');
+      sheet.getRange(nextRow, 5).setValue(item.when || item.procedure || item.steps || 'Cố tình thực hiện hành động trái quyền');
+      sheet.getRange(nextRow, 6).setValue(item.then || item.expected || item.expectedResults || 'Hệ thống chặn truy cập HTTP 403 Forbidden');
+      sheet.getRange(nextRow, 7).setValue(item.priority || 'Critical');
+      sheet.getRange(nextRow, 8).setValue(statusVal);
+      sheet.getRange(nextRow, 9).setValue(item.defectId || '');
+      sheet.getRange(nextRow, 10).setValue(item.notes || 'Bảo mật đạt chuẩn RBAC');
+      insertedCount++;
+    }
+  });
+
+  const totalCount = countFilledRows(sheet, startRow);
+  return { tab: sheet.getName(), updated: updatedCount, inserted: insertedCount, total: totalCount };
+}
 
 /**
  * Tìm dòng có testId, trả về row number (1-based), hoặc -1 nếu chưa có
@@ -587,7 +787,7 @@ function findSafeTemplateSheet(ss, preferredNames) {
   }
 
   // 3. Nếu không thấy, tìm tab đầu tiên KHÔNG PHẢI là các tab hệ thống và KHÔNG PHẢI là tab của Feature khác
-  const systemNames = ['overview', 'test plan', 'test cases', 'test statistics', 'performance', 'security', 'uat'];
+  const systemNames = ['overview', 'test plan', 'test cases', 'test statistics', 'performance', 'security', 'uat', 'test matrix', 'traceability matrix'];
   for (let i = 0; i < allSheets.length; i++) {
     const s = allSheets[i];
     const sName = s.getName().trim().toLowerCase();

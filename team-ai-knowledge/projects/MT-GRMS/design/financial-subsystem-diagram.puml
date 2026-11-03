@@ -1,0 +1,426 @@
+@startuml MT_GRMS_Financial_Subsystem_Diagram
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam dpi 150
+scale max 1350 width
+
+skinparam nodesep 25
+skinparam ranksep 35
+
+skinparam class {
+    BackgroundColor white
+    ArrowColor #0284C7
+    BorderColor #334155
+    HeaderBackgroundColor #F8FAFC
+}
+
+title <b>HỆ THỐNG QUẢN LÝ BÁN LẺ TẠP HÓA ĐA NGƯỜI THUÊ (MT-GRMS)</b>\nSƠ ĐỒ CƠ SỞ DỮ LIỆU PHÂN HỆ TÀI CHÍNH & NGOẠI VI (BỐ CỤC DỌC - PORTRAIT GRID)\n<i>(Financial Subsystem: FE-07, FE-08, FE-10, FE-17, FE-19 & Integration Boundaries)</i>
+
+' ==============================================================================
+' CỘT 1 (BÊN TRÁI): CỤM 5 PHÂN HỆ TÀI CHÍNH TRỌNG TÂM (CORE FINANCE)
+' ==============================================================================
+
+package "1. FE-17: Sổ Quỹ & Dòng Tiền (Cashbook)" as PKG_FE17 #E0F2FE {
+    entity CashAccounts {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * BranchId : uuid <<FK>>
+        * Name : nvarchar(150)
+        * AccountType : varchar(20)
+        AccountNumber : varchar(50)
+        * CurrentBalance : decimal(18,2)
+        * Status : varchar(20)
+    }
+
+    entity LedgerTransactions {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * AccountId : uuid <<FK>>
+        * Date : datetime2
+        * TransactionType : varchar(20)
+        * Amount : decimal(18,2)
+        * BalanceAfter : decimal(18,2)
+        ReferenceDocId : varchar(100)
+        ReferenceDocType : varchar(50)
+        * SourceModuleName : varchar(30)
+        LinkedTransactionId : uuid <<FK>>
+        * IsAutomated : boolean
+        * Status : varchar(20)
+    }
+}
+
+package "2. FE-07: Chi Phí Vận Hành (OpEx)" as PKG_FE07 #FEF3C7 {
+    entity ServiceExpenses {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * BranchId : uuid <<FK>>
+        * Category : nvarchar(100)
+        * Amount : decimal(18,2)
+        * Status : varchar(50)
+        * ExpenseDate : date
+        DueDate : date
+        PaidFromAccountId : uuid <<FK>>
+        CashBookEntryId : uuid <<FK>>
+        * IsRecurring : boolean
+        RecurringDayOfMonth : int
+    }
+}
+
+package "3. FE-08: Khách Hàng & Công Nợ AR (CRM)" as PKG_FE08 #DCFCE7 {
+    entity Customers {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * PhoneNumber : varchar(20) <<UK>>
+        * FullName : nvarchar(150)
+        * CurrentDebtAR : decimal(18,2)
+        * DebtLimit : decimal(18,2)
+        LoyaltyPoints : int
+        MembershipTier : varchar(50)
+    }
+
+    entity CustomerDebtLedgers {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * CustomerId : uuid <<FK>>
+        * TransactionType : varchar(30)
+        * Amount : decimal(18,2)
+        * BalanceAfter : decimal(18,2)
+        ReferenceDocId : varchar(50)
+        CashTransactionId : uuid <<FK>>
+        TargetAccountId : uuid <<FK>>
+        PaymentMethod : varchar(20)
+    }
+}
+
+package "4. FE-19: Kê Khai Thuế HKD TT40" as PKG_FE19 #F3E8FF {
+    entity TaxSnapshots {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * TaxYear : int
+        * TaxQuarter : int
+        * TotalRevenue : decimal(18,2)
+        * VatAmount : decimal(18,2)
+        * PitPayable : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * Status : varchar(50)
+        * IsLocked : boolean
+    }
+}
+
+package "5. FE-10: Dashboard KPIs & P&L Cache" as PKG_FE10 #FEE2E2 {
+    entity DailySalesSummaries {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * BranchId : uuid <<FK>>
+        * ReportDate : date
+        * TotalOrders : int
+        * GrossRevenue : decimal(18,2)
+        * NetRevenue : decimal(18,2)
+        * TotalCOGS : decimal(18,2)
+        * GrossProfit : decimal(18,2)
+        OperatingExpenses : decimal(18,2)
+        PayrollExpenses : decimal(18,2)
+        WastageLoss : decimal(18,2)
+        * OperatingProfitEbt : decimal(18,2)
+        * TaxEstimatedAmount : decimal(18,2)
+        * NetProfitAfterTax : decimal(18,2)
+    }
+}
+
+' ==============================================================================
+' CỘT 2 (BÊN PHẢI): CỤM CÁC PHÂN HỆ NGOẠI VI MÓC NỐI (INTEGRATION BOUNDARIES)
+' ==============================================================================
+
+package "6. Nền Tảng & Tổ Chức Multi-Tenant" as PKG_PLATFORM #F8FAFC {
+    entity Tenants {
+        * Id : varchar(50) <<PK>>
+        --
+        * StoreName : nvarchar(200)
+        TaxNumber : varchar(50)
+    }
+
+    entity Branches {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * BranchCode : varchar(50) <<UK>>
+        * BranchName : nvarchar(200)
+    }
+}
+
+package "7. Bán Hàng POS & Thanh Toán" as PKG_POS #F1F5F9 {
+    entity Orders {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * BranchId : uuid <<FK>>
+        CustomerId : uuid <<FK>>
+        ShiftId : uuid <<FK>>
+        * OrderCode : varchar(50) <<UK>>
+        * TotalAmount : decimal(18,2)
+        DiscountAmount : decimal(18,2)
+        * FinalAmount : decimal(18,2)
+        * PaidAmount : decimal(18,2)
+        * DebtAmount : decimal(18,2)
+        CashAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * PaymentStatus : varchar(50)
+    }
+
+    entity OrderItems {
+        * Id : uuid <<PK>>
+        --
+        * OrderId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        BatchId : uuid <<FK>>
+        * BaseQuantity : decimal(18,3)
+        * UnitPrice : decimal(18,2)
+        * CostPrice : decimal(18,2)
+        * LineTotal : decimal(18,2)
+    }
+
+    entity PaymentTransactions {
+        * Id : uuid <<PK>>
+        --
+        * OrderId : uuid <<FK>>
+        * TransactionReference : varchar(100) <<UK>>
+        * Amount : decimal(18,2)
+    }
+
+    entity ReturnOrders {
+        * Id : uuid <<PK>>
+        --
+        OriginalOrderId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * TotalRefundAmount : decimal(18,2)
+    }
+
+    entity ReturnOrderItems {
+        * Id : uuid <<PK>>
+        --
+        * ReturnOrderId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        BatchId : uuid <<FK>>
+        * Quantity : decimal(18,3)
+        RestockedCostPrice : decimal(18,2)
+    }
+}
+
+package "8. Danh Mục & Lô Hạn FEFO (COGS)" as PKG_CATALOG #F0FDF4 {
+    entity Categories {
+        * CategoryID : uuid <<PK>>
+        --
+        ParentCategoryID : uuid <<FK>>
+        * CategoryCode : varchar(50) <<UK>>
+        * Name : nvarchar(150)
+    }
+
+    entity Products {
+        * ProductID : uuid <<PK>>
+        --
+        CategoryID : uuid <<FK>>
+        * ProductCode : varchar(50) <<UK>>
+        * Name : nvarchar(250)
+        * BaseUnit : nvarchar(50)
+        CostPrice : decimal(18,2)
+        SellingPrice : decimal(18,2)
+        VatRate : decimal(5,2)
+    }
+
+    entity ProductUnits {
+        * UnitID : uuid <<PK>>
+        --
+        * ProductID : uuid <<FK>>
+        * UnitName : nvarchar(50)
+        * ConversionRate : decimal(18,3)
+        * Price : decimal(18,2)
+    }
+
+    entity BranchStocks {
+        * Id : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        * BatchCode : varchar(100)
+        * ExpiryDate : date
+        * LandedCostPerUnit : decimal(18,2)
+    }
+}
+
+package "9. Xuất Hủy Hao Hụt (Wastage)" as PKG_WASTAGE #FEFCE8 {
+    entity GoodsDisposals {
+        * Id : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * DisposalCode : varchar(50) <<UK>>
+        * TotalLossValue : decimal(18,2)
+        * Status : varchar(50)
+    }
+
+    entity GoodsDisposalItems {
+        * Id : uuid <<PK>>
+        --
+        * DisposalId : uuid <<FK>>
+        * ProductId : uuid <<FK>>
+        BranchStockId : uuid <<FK>>
+        * Quantity : decimal(18,3)
+        * CostPrice : decimal(18,2)
+        * LineTotal : decimal(18,2)
+    }
+}
+
+package "10. Ca Kíp & Quỹ Lương (HR)" as PKG_HR #FFF7ED {
+    entity CashierShifts {
+        * ShiftId : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * CashierId : uuid <<FK>>
+        * StartingCash : decimal(18,2)
+        ExpectedCash : decimal(18,2)
+        ActualCash : decimal(18,2)
+        CashDifference : decimal(18,2)
+    }
+
+    entity Employees {
+        * Id : uuid <<PK>>
+        --
+        * TenantId : varchar(50) <<FK>>
+        * FullName : nvarchar(150)
+        * Role : varchar(50)
+    }
+
+    entity PayrollPeriods {
+        * Id : uuid <<PK>>
+        --
+        * BranchId : uuid <<FK>>
+        * TotalNetSalary : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        * Status : varchar(30)
+    }
+
+    entity Payslips {
+        * Id : uuid <<PK>>
+        --
+        * PayrollPeriodId : uuid <<FK>>
+        * EmployeeId : uuid <<FK>>
+        * NetSalary : decimal(18,2)
+        PaidFromAccountId : uuid <<FK>>
+        CashTransactionId : uuid <<FK>>
+        PaidAt : datetime2
+    }
+}
+
+package "11. Nhà Cung Cấp & Mua Hàng" as PKG_SUPPLIERS #FDF2F8 {
+    entity Suppliers {
+        * Id : uuid <<PK>>
+        --
+        * SupplierName : nvarchar(200)
+        * CurrentDebtAP : decimal(18,2)
+    }
+
+    entity GoodsReceipts {
+        * Id : uuid <<PK>>
+        --
+        * SupplierId : uuid <<FK>>
+        * BranchId : uuid <<FK>>
+        * TotalAmount : decimal(18,2)
+    }
+}
+
+' ==============================================================================
+' RÀNG BUỘC BỐ CỤC DỌC (VERTICAL GRID CONSTRAINTS - CHỐNG TRÀN NGANG)
+' ==============================================================================
+' Cố định Cột 1 (Core Finance) sang Cột 2 (Operations)
+PKG_FE17 -[hidden]right-> PKG_PLATFORM
+
+' Ép Cột 1 trải thẳng từ trên xuống dưới
+PKG_FE17 -[hidden]down-> PKG_FE07
+PKG_FE07 -[hidden]down-> PKG_FE08
+PKG_FE08 -[hidden]down-> PKG_FE19
+PKG_FE19 -[hidden]down-> PKG_FE10
+
+' Ép Cột 2 trải thẳng từ trên xuống dưới
+PKG_PLATFORM -[hidden]down-> PKG_POS
+PKG_POS -[hidden]down-> PKG_CATALOG
+PKG_CATALOG -[hidden]down-> PKG_WASTAGE
+PKG_WASTAGE -[hidden]down-> PKG_HR
+PKG_HR -[hidden]down-> PKG_SUPPLIERS
+
+' ==============================================================================
+' QUAN HỆ KHÓA NGOẠI (FOREIGN KEY RELATIONSHIPS)
+' ==============================================================================
+Tenants ||--o{ Branches : "TenantId"
+Branches ||--o{ CashAccounts : "BranchId"
+CashAccounts ||--o{ LedgerTransactions : "AccountId"
+LedgerTransactions ||--o| LedgerTransactions : "LinkedTransactionId"
+
+Branches ||--o{ ServiceExpenses : "BranchId"
+ServiceExpenses }o..|| CashAccounts : "PaidFromAccountId"
+ServiceExpenses ||..o| LedgerTransactions : "CashBookEntryId"
+
+Customers ||--o{ CustomerDebtLedgers : "CustomerId"
+CustomerDebtLedgers }o..|| CashAccounts : "TargetAccountId"
+CustomerDebtLedgers ||..o| LedgerTransactions : "CashTransactionId"
+
+Tenants ||--o{ TaxSnapshots : "TenantId"
+TaxSnapshots }o..|| CashAccounts : "PaidFromAccountId"
+TaxSnapshots ||..o| LedgerTransactions : "CashTransactionId"
+
+Branches ||--o{ DailySalesSummaries : "BranchId"
+
+Categories ||--o{ Categories : "ParentCategoryID"
+Categories ||--o{ Products : "CategoryID"
+Products ||--o{ ProductUnits : "ProductID"
+Products ||--o{ BranchStocks : "ProductId"
+Branches ||--o{ BranchStocks : "BranchId"
+
+Customers ||--o{ Orders : "CustomerId"
+Branches ||--o{ Orders : "BranchId"
+CashierShifts ||--o{ Orders : "ShiftId"
+Orders ||--|{ OrderItems : "OrderId"
+Products ||--o{ OrderItems : "ProductId"
+BranchStocks ||..o{ OrderItems : "LandedCostPerUnit (COGS)"
+Orders ||--o{ PaymentTransactions : "OrderId"
+Orders }o..|| CashAccounts : "CashAccountId"
+Orders ||..o| LedgerTransactions : "CashTransactionId"
+Orders ||..o{ CustomerDebtLedgers : "DebtAmount"
+
+Branches ||--o{ CashierShifts : "BranchId"
+Employees ||--o{ CashierShifts : "CashierId"
+Branches ||--o{ PayrollPeriods : "BranchId"
+PayrollPeriods ||--|{ Payslips : "PayrollPeriodId"
+Employees ||--o{ Payslips : "EmployeeId"
+Payslips }o..|| CashAccounts : "PaidFromAccountId"
+Payslips ||..o| LedgerTransactions : "CashTransactionId"
+PayrollPeriods }o..|| CashAccounts : "PaidFromAccountId"
+PayrollPeriods ||..o| LedgerTransactions : "CashTransactionId"
+
+Orders ||--o{ ReturnOrders : "OriginalOrderId"
+ReturnOrders ||--|{ ReturnOrderItems : "ReturnOrderId"
+Products ||--o{ ReturnOrderItems : "ProductId"
+
+Branches ||--o{ GoodsDisposals : "BranchId"
+GoodsDisposals ||--|{ GoodsDisposalItems : "DisposalId"
+Products ||--o{ GoodsDisposalItems : "ProductId"
+BranchStocks ||--o{ GoodsDisposalItems : "BranchStockId"
+
+Suppliers ||--o{ GoodsReceipts : "SupplierId"
+Branches ||--o{ GoodsReceipts : "BranchId"
+GoodsReceipts ||..o{ LedgerTransactions : "Chi tiền hàng NCC"
+
+@enduml

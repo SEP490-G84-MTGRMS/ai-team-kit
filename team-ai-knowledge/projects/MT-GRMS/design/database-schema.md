@@ -203,6 +203,10 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `TotalAmount` | `decimal(18,2)` | ❌ | | Tổng tiền hàng trước chiết khấu. |
 | `DiscountAmount` | `decimal(18,2)` | ❌ | Def: 0 | Tổng số tiền giảm giá/khuyến mãi/voucher. |
 | `FinalAmount` | `decimal(18,2)` | ❌ | | Số tiền thực thu sau chiết khấu. |
+| `PaidAmount` | `decimal(18,2)` | ❌ | Def: 0 | **Số tiền khách thực thanh toán ngay tại POS** (Tiền mặt hoặc Chuyển khoản). |
+| `DebtAmount` | `decimal(18,2)` | ❌ | Def: 0 | **Số tiền khách ghi nợ** (`FinalAmount - PaidAmount`). Nếu > 0 sẽ sinh `CustomerDebtLedgers`. |
+| `CashAccountId` | `Guid` | ✔️ | FK -> CashAccounts | **Tài khoản quỹ thụ hưởng tiền thanh toán POS** (Két tiền mặt chi nhánh hoặc TK Ngân hàng VietQR). |
+| `CashTransactionId`| `Guid` | ✔️ | FK -> LedgerTransactions | **Mã Phiếu Thu tự động sinh trong Sổ quỹ** khi `PaidAmount > 0` (`IsAutomated = 1`). |
 | `PaymentMethod` | `varchar(50)` | ❌ | | Hình thức: `Cash`, `VietQR`, `Split`, `Debt`. |
 | `PaymentStatus` | `varchar(50)` | ❌ | | Trạng thái: `Pending`, `Paid`, `Cancelled`, `Refunded`. |
 
@@ -259,6 +263,21 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `RestockedCostPrice`| `decimal(18,2)` | ✔️ | | Giá vốn nhập lại kho để trừ ngược lại COGS. |
 
 ---
+
+
+#### Bảng Mới: `CustomerDebtLedgers` (Sổ nhật ký biến động công nợ khách hàng - FE-08)
+*Kế thừa `BaseTenantEntity`. Phục vụ Drawer Lịch sử biến động công nợ (`CustomerDebtLedgerDrawer`), theo dõi chi tiết 2 chiều phát sinh tăng nợ (từ đơn bán lẻ POS) và giảm nợ (thu nợ qua VietQR / Tiền mặt), liên thông trực tiếp với Sổ quỹ FE-17.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `CustomerId` | `Guid` | ❌ | FK -> Customers | Khách hàng phát sinh biến động nợ. |
+| `TransactionType` | `varchar(30)` | ❌ | Check | Loại biến động: `'DEBT_INCREASE'` (Mua nợ POS / +), `'DEBT_DECREASE'` (Trả nợ / -), `'DEBT_BAD_WRITEOFF'` (Xóa nợ xấu). |
+| `Amount` | `decimal(18,2)` | ❌ | `Amount > 0` | Số tiền biến động. |
+| `BalanceAfter` | `decimal(18,2)` | ❌ | | Dư nợ lũy kế của khách ngay sau giao dịch. |
+| `ReferenceDocId` | `varchar(50)` | ✔️ | | Mã đơn hàng POS (`HD-...`) hoặc mã phiếu thu nợ (`PAY-...`). |
+| `CashTransactionCode` | `varchar(50)` | ✔️ | | **Mã Phiếu Thu Sổ quỹ liên kết** (`PT-20261014-841` - FE-17). |
+| `TargetAccountId` | `Guid` | ✔️ | FK -> CashAccounts | Tài khoản quỹ thụ hưởng tiền thu nợ. |
+| `PaymentMethod` | `varchar(20)` | ✔️ | | Phương thức thanh toán: `'Cash'` (Tiền mặt), `'VietQR'` (Chuyển khoản). |
+| `Note` | `nvarchar(500)` | ✔️ | | Diễn giải nội dung biến động nợ. |
 
 ### 3.4 Phân Hệ Mua Hàng & Nhà Cung Cấp (Purchasing & Supply Chain)
 
@@ -333,7 +352,9 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `Amount` | `decimal(18,2)` | ❌ | `Amount > 0` | Số tiền giao dịch. |
 | `BalanceAfter` | `decimal(18,2)` | ❌ | | **Số dư tài khoản lũy kế ngay sau giao dịch (Running Balance)**. |
 | `ReferenceDocId` | `varchar(100)` | ✔️ | | Mã chứng từ hiển thị (Mã hóa đơn POS, Hóa đơn dịch vụ FE-07, Phiếu lương FE-18...). |
-| `ReferenceDocType` | `varchar(50)` | ✔️ | | Loại chứng từ nguồn: `POS_ORDER`, `EXPENSE_BILL`, `DEBT_PAYMENT`, `PAYSLIP`, `PURCHASE_ORDER`, `MANUAL`. |
+| `ReferenceDocType` | `varchar(50)` | ✔️ | | Loại chứng từ nguồn: `POS_ORDER`, `SERVICE_EXPENSE`, `DEBT_PAYMENT`, `TAX_PAYMENT`, `INTERNAL_TRANSFER`, `PURCHASE_ORDER`, `MANUAL`. |
+| `SourceModuleName` | `varchar(30)` | ❌ | Def: 'CASHBOOK_MANUAL' | **Phân hệ nguồn**: `'POS'`, `'CRM_DEBT'`, `'SERVICE_OPEX'`, `'TAX_SNAPSHOT'`, `'INTERNAL_TRANSFER'`, `'SUPPLIER_PO'`, `'CASHBOOK_MANUAL'`. |
+| `LinkedTransactionId` | `Guid` | ✔️ | FK -> LedgerTransactions | **Mã đối ứng kép**: Liên kết giữa Phiếu Chi và Phiếu Thu khi chuyển tiền nội bộ. |
 | `IsAutomated` | `bit` | ❌ | Def: 0 | **`1`: Hệ thống sinh tự động (chặn sửa/xóa theo `GBR-CSH-01`), `0`: Tạo thủ công**. |
 | `CounterpartyType`| `varchar(20)` | ✔️ | | Loại đối tượng: `Customer`, `Supplier`, `Employee`, `Other`. |
 | `CounterpartyName`| `nvarchar(150)` | ✔️ | | Tên người nộp hoặc người nhận tiền. |
@@ -353,7 +374,11 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `ExpenseDate` | `date` | ❌ | | Ngày phát sinh hóa đơn chi phí. |
 | `DueDate` | `date` | ✔️ | | Hạn chót thanh toán để cảnh báo quá hạn. |
 | `VendorName` | `nvarchar(200)` | ✔️ | | Đơn vị cung cấp dịch vụ / Người thụ hưởng. |
-| `CashBookEntryId` | `Guid` | ✔️ | FK -> Cashbook | Bút toán phiếu chi tương ứng khi thanh toán xong. |
+| `PaidFromAccountId` | `Guid` | ✔️ | FK -> CashAccounts | **Tài khoản nguồn chi tiền**: Két Q1, Két Q7, TK Ngân hàng (FE-17). |
+| `CashBookEntryId` | `Guid` | ✔️ | FK -> LedgerTransactions | Bút toán phiếu chi tương ứng khi thanh toán xong (`PC-...`). |
+| `IsRecurring` | `bit` | ❌ | Def: 0 | **Chi phí lặp lại định kỳ hàng tháng** (Mặt bằng, Internet, Vệ sinh). |
+| `RecurringCycle` | `varchar(20)` | ✔️ | Def: 'Monthly' | Chu kỳ lặp lại: `'Monthly'`, `'Quarterly'`, `'Yearly'`. |
+| `RecurringDayOfMonth` | `int` | ✔️ | 1 - 28 | Ngày trong tháng hệ thống tự động nhắc/sinh chi phí chờ duyệt. |
 | `AttachedBillUrl` | `nvarchar(500)` | ✔️ | | Link ảnh chụp hóa đơn / biên lai đỏ đính kèm. |
 | `Note` | `nvarchar(500)` | ✔️ | | Ghi chú chi tiết khoản chi. |
 
@@ -369,10 +394,56 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `TaxRatePit` | `decimal(5,2)` | ❌ | Def: 0.50 | Tỷ lệ thuế TNCN ngành phân phối bán lẻ (0.5%). |
 | `PitPayable` | `decimal(18,2)` | ❌ | | Số thuế TNCN phải nộp (`TotalRevenue * 0.5%`). |
 | `TaxMethod` | `varchar(50)` | ❌ | Def: 'RevenueRate' | Phương pháp tính thuế: Tỷ lệ trên doanh thu. |
-| `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái tờ khai: `Draft`, `Finalized`, `Submitted`, `Paid`. |
+| `PaidFromAccountId` | `Guid` | ✔️ | FK -> CashAccounts | Tài khoản nguồn trích tiền nộp thuế vào NSNN (FE-17). |
+| `CashTransactionId` | `Guid` | ✔️ | FK -> LedgerTransactions | **Mã Phiếu Chi tự động sinh ra trong Sổ quỹ** (`PC-...`). |
+| `Status` | `varchar(50)` | ❌ | Def: 'Draft' | Trạng thái tờ khai: `Draft`, `Locked`, `Submitted`, `Paid`. |
+| `SubmittedAt` | `datetime2` | ✔️ | | Thời điểm nộp tờ khai lên Cổng thuế điện tử. |
+| `PaidAt` | `datetime2` | ✔️ | | Thời điểm hoàn tất nộp tiền thuế vào Kho bạc Nhà nước. |
 | `GeneratedAt` | `datetime2` | ❌ | | Thời điểm chốt số liệu tờ khai thuế. |
 
 ---
+
+
+#### Bảng Mới: `PayrollPeriods` (Kỳ tính lương & Bảng lương chi nhánh - FE-18)
+*Kế thừa `BaseTenantEntity`. Quản lý chu kỳ tính lương theo tháng/tuần, tổng hợp giờ làm từ ca kíp, chốt bảng lương và trích quỹ chi trả.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh chốt bảng lương. |
+| `PeriodCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã kỳ lương (VD: `PR-202610-Q1`). |
+| `PeriodName` | `nvarchar(100)` | ❌ | | Tên kỳ lương (VD: Bảng lương Tháng 10/2026). |
+| `StartDate` | `date` | ❌ | | Ngày bắt đầu chu kỳ tính lương. |
+| `EndDate` | `date` | ❌ | | Ngày kết thúc chu kỳ tính lương. |
+| `TotalGrossSalary` | `decimal(18,2)` | ❌ | Def: 0 | Tổng quỹ lương gộp của toàn bộ nhân viên trong kỳ. |
+| `TotalAllowances` | `decimal(18,2)` | ❌ | Def: 0 | Tổng phụ cấp (trách nhiệm, chuyên cần, ăn trưa). |
+| `TotalBonus` | `decimal(18,2)` | ❌ | Def: 0 | Tổng tiền thưởng doanh số / thành tích. |
+| `TotalDeductions`| `decimal(18,2)` | ❌ | Def: 0 | Tổng giảm trừ (đi trễ, nghỉ không phép, tạm ứng). |
+| `TotalNetSalary` | `decimal(18,2)` | ❌ | Def: 0 | **Tổng chi phí lương thực tế phải chi trả** (`TotalGrossSalary + TotalAllowances + TotalBonus - TotalDeductions`). |
+| `Status` | `varchar(30)` | ❌ | Def: 'Draft' | Trạng thái: `'Draft'` (Bản thảo), `'Approved'` (Đã duyệt), `'Paid'` (Đã chi trả toàn bộ), `'Cancelled'`. |
+| `ApprovedBy` | `Guid` | ✔️ | FK -> Employees | Chủ tiệm / Quản lý duyệt bảng lương. |
+| `ApprovedAt` | `datetime2` | ✔️ | | Thời điểm phê duyệt bảng lương. |
+| `PaidFromAccountId`| `Guid` | ✔️ | FK -> CashAccounts | **Tài khoản quỹ trích tiền chi trả lương** (Két tiền mặt hoặc TK Ngân hàng FE-17). |
+| `CashTransactionId`| `Guid` | ✔️ | FK -> LedgerTransactions | Mã Phiếu Chi tổng trong Sổ quỹ nếu chi gộp cả kỳ. |
+
+#### Bảng Mới: `Payslips` (Phiếu lương chi tiết từng nhân viên - FE-18)
+*Kế thừa `BaseTenantEntity`. Chi tiết cấu phần thu nhập của từng nhân viên, liên thông trực tiếp với Sổ quỹ khi chuyển khoản hoặc chi trả tiền mặt.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `PayrollPeriodId` | `Guid` | ❌ | FK -> PayrollPeriods | Kỳ tính lương cha. |
+| `EmployeeId` | `Guid` | ❌ | FK -> Employees | Nhân viên thụ hưởng lương. |
+| `PayslipCode` | `varchar(50)` | ❌ | Unique/Tenant | Mã phiếu lương (VD: `PS-202610-NV01`). |
+| `TotalWorkHours` | `decimal(8,2)` | ❌ | Def: 0 | Tổng số giờ làm việc thực tế tổng hợp từ ca kíp (`Shifts`). |
+| `HourlyRate` | `decimal(18,2)` | ✔️ | | Đơn giá lương theo giờ (đối với nhân viên Part-time). |
+| `BaseSalary` | `decimal(18,2)` | ✔️ | | Lương cứng theo tháng (đối với nhân viên Full-time). |
+| `OvertimePay` | `decimal(18,2)` | ❌ | Def: 0 | Tiền làm thêm giờ (OT). |
+| `Allowances` | `decimal(18,2)` | ❌ | Def: 0 | Phụ cấp cá nhân. |
+| `BonusAmount` | `decimal(18,2)` | ❌ | Def: 0 | Thưởng nóng / Thưởng doanh số. |
+| `DeductionAmount` | `decimal(18,2)`| ❌ | Def: 0 | Khấu trừ vi phạm / Ứng lương trước. |
+| `NetSalary` | `decimal(18,2)` | ❌ | | **Lương thực lĩnh thực tế của nhân viên**. |
+| `PaymentMethod` | `varchar(20)` | ❌ | Def: 'BankTransfer'| Phương thức trả lương: `'Cash'` (Tiền mặt), `'BankTransfer'` (Chuyển khoản). |
+| `PaidFromAccountId`| `Guid` | ✔️ | FK -> CashAccounts | **Tài khoản quỹ trích tiền trả phiếu lương này** (FE-17). |
+| `CashTransactionId`| `Guid` | ✔️ | FK -> LedgerTransactions | **Mã Phiếu Chi tự động sinh ra trong Sổ quỹ** khi chi trả cá nhân. |
+| `Status` | `varchar(20)` | ❌ | Def: 'Pending' | Trạng thái: `'Pending'` (Chờ chi), `'Paid'` (Đã thanh toán), `'Cancelled'`. |
+| `PaidAt` | `datetime2` | ✔️ | | Thời điểm nhân viên nhận được tiền lương. |
 
 ### 3.6 Phân Hệ Báo Cáo Tài Chính & Dashboard KPIs (FE-10 Analytics & P&L Reporting)
 
@@ -389,9 +460,15 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `NetRevenue` | `decimal(18,2)` | ❌ | Def: 0 | Doanh thu thuần thực tế (`GrossRevenue - TotalDiscount - TotalRefund`). |
 | `TotalCOGS` | `decimal(18,2)` | ❌ | Def: 0 | Tổng giá vốn hàng bán (`SUM(OrderItems.BaseQuantity * CostPrice) - ReturnCOGS`). |
 | `GrossProfit` | `decimal(18,2)` | ❌ | Def: 0 | Lợi nhuận gộp trong ngày (`NetRevenue - TotalCOGS`). |
-| `OperatingExpenses`| `decimal(18,2)`| ❌ | Def: 0 | Tổng chi phí vận hành dịch vụ trong ngày (`SUM(ServiceExpenses)`). |
+| `OperatingExpenses`| `decimal(18,2)`| ❌ | Def: 0 | Tổng chi phí vận hành dịch vụ trong ngày (`SUM(ServiceExpenses)` FE-07). |
+| `PayrollExpenses`  | `decimal(18,2)`| ❌ | Def: 0 | **Tổng chi phí tiền lương nhân viên phân bổ trong ngày** (`SUM(Payslips.NetSalary)` FE-18). |
 | `WastageLoss` | `decimal(18,2)` | ❌ | Def: 0 | Tổn thất hao hụt hàng hóa xuất hủy trong ngày (`SUM(GoodsDisposals)`). |
-| `NetProfit` | `decimal(18,2)` | ❌ | Def: 0 | Lợi nhuận ròng trong ngày (`GrossProfit - OperatingExpenses - WastageLoss`). |
+| `OperatingProfitEbt`| `decimal(18,2)`| ❌ | | **Lợi nhuận vận hành trước thuế (EBT)** (`GrossProfit - OperatingExpenses - PayrollExpenses - WastageLoss`). |
+| `TaxEstimatedAmount`| `decimal(18,2)`| ❌ | Def: 0 | **Nghĩa vụ Thuế Hộ kinh doanh 1.5% Thông tư 40** (`NetRevenue * 1.5%`). |
+| `VatEstimatedAmount`| `decimal(18,2)`| ❌ | Def: 0 | Thuế GTGT 1.0% phân phối lẻ (`NetRevenue * 1.0%`). |
+| `PitEstimatedAmount`| `decimal(18,2)`| ❌ | Def: 0 | Thuế TNCN 0.5% hộ kinh doanh (`NetRevenue * 0.5%`). |
+| `NetProfitAfterTax` | `decimal(18,2)`| ❌ | Def: 0 | **LỢI NHUẬN RÒNG SAU THUẾ THỰC NHẬN CỦA CHỦ TIỆM** (`OperatingProfitEbt - TaxEstimatedAmount`). |
+| `NetProfitAfterTaxMarginPct`| `decimal(5,2)`| ❌ | | Tỷ suất lợi nhuận ròng sau thuế thực nhận (%). |
 | `AverageOrderValue`| `decimal(18,2)`| ❌ | Def: 0 | Giá trị trung bình mỗi đơn hàng (AOV). |
 | `LastAggregatedAt`| `datetime2` | ❌ | | Thời điểm cập nhật số liệu snapshot cuối cùng (UTC). |
 
@@ -437,9 +514,12 @@ Báo cáo Lãi/Lỗ (P&L Statement) trong FE-10 được tính toán trực ti�
 - **2026-10-12**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-13**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-13 (FE-10 Prep)**: Bổ sung Bảng `GoodsDisposals` (FE-06), `ReturnOrders` (FE-13), `DailySalesSummaries` (FE-10) và bảng công thức ánh xạ P&L.
+- **2026-10-15**: Chuẩn hóa toàn diện chu trình tài chính khép kín liên thông FE-07 (Chi phí), FE-08 (Thu nợ CRM), FE-10 (Báo cáo P&L có Thuế HKD 1.5%), FE-17 (Sổ quỹ bút toán đối ứng kép), FE-19 (Nộp thuế NSNN). Thêm bảng `CustomerDebtLedgers`, bổ sung các trường `PaidFromAccountId`, `SourceModuleName`, `LinkedTransactionId`, `IsRecurring`, `OperatingProfitEbt`, `TaxEstimatedAmount`, `NetProfitAfterTax`.
 - **2026-10-14**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-18**: Đồng bộ tự động qua `sep db-sync`. Quét 14 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig).
 - **2026-10-19**: Đồng bộ tự động qua `sep db-sync`. Quét 15 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct).
+- **2026-10-20**: Đồng bộ tự động qua `sep db-sync`. Quét 9 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem).
 - **2026-10-21**: Đồng bộ tự động qua `sep db-sync`. Quét 16 entities (Product, Category, CashbookTransaction, User, Role, Batch, StockOnHand, Order, OrderItem, Branch, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct).
+- **2026-10-26**: Đồng bộ tự động qua `sep db-sync`. Quét 28 entities (Product, Category, BranchCashTill, BranchSafe, CashbookEntry, CashbookTransaction, CashInTransit, CustomerDebtAllocation, CustomerDebtEntry, CustomerDebtInvoice, CustomerDebtProfile, ExpenseVoucher, HouseholdTaxSnapshot, IdempotencyRecord, ShiftZReport, TenantBankAccount, User, Role, Batch, StockOnHand, Order, OrderItem, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct).
 - **2026-10-27**: Đồng bộ tự động qua `sep db-sync`. Quét 39 entities (Category, Product, ProductCombo, ProductUnit, CashBook, CashbookTransaction, Employee, EmployeeBonusViolation, EmployeeSchedule, Payslip, TenantUser, User, Role, BranchStock, Batch, StockOnHand, Transfer, TransferDetail, Order, OrderItem, Branch, SubscriptionPlan, Tenant, Customer, Order, OrderDetail, Promotion, GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderDetail, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct, AuditLog, TaxSnapshot).
 - **2026-10-29**: Đồng bộ tự động qua `sep db-sync`. Quét 40 entities (Category, Product, ProductCombo, ProductUnit, CashBook, CashbookTransaction, Employee, EmployeeBonusViolation, EmployeeSchedule, Payslip, TenantUser, User, Role, BranchStock, Batch, StockOnHand, Transfer, TransferDetail, Order, OrderItem, Branch, SubscriptionPlan, Tenant, Customer, Order, OrderDetail, Promotion, GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderDetail, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierBranchAssignment, SupplierCategory, SupplierDeliveryConfig, SupplierProduct, AuditLog, TaxSnapshot).
