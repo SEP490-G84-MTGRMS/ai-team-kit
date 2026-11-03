@@ -1,65 +1,39 @@
-# Design Brief: store-product-management
+# Design Brief: store-product-management (Phase 2 hoàn thiện)
 
-## 1. Kiến trúc Thành phần Giao diện (Frontend Architecture)
+## 1. UI
 
-### 1.1. Component Hierarchy
-- **StoreProductManagementPage** (`src/features/product/pages/StoreProductManagementPage.tsx`): Container chính quản lý State lọc, phân trang, và nạp dữ liệu.
-  - **Header Section**:
-    - Tiêu đề: "Sản Phẩm Theo Cửa Hàng / Chi Nhánh" (kèm icon Store & Loader khi fetching).
-    - Cụm nút thao tác (không icon trong text theo chuẩn):
-      - `Danh sách Cửa hàng` (link tới danh sách cửa hàng).
-      - `Sản phẩm theo NCC` (link tới `/store-owner/suppliers/products`).
-      - `Xuất Excel` (xuất file `.xlsx` danh mục mặt hàng cửa hàng).
-      - `Gán sản phẩm mới` (mở Modal gán mặt hàng vào cửa hàng).
-  - **StoreContextCard** (`src/features/product/components/StoreProductContextCard.tsx`):
-    - Hiển thị khi người dùng chọn lọc theo 1 Cửa hàng cụ thể.
-    - Chứa: Tên cửa hàng, Mã cửa hàng, Địa chỉ, Quản lý cửa hàng, Dropdown chuyển nhanh chi nhánh khác.
-    - 3 Thẻ thống kê nhanh:
-      1. Tổng số mặt hàng đang kinh doanh (SKU).
-      2. Tổng tồn kho thực tế (SOH).
-      3. Mặt hàng cần nhập thêm (SOH < Min Stock).
-  - **StoreProductFilterBar** (`src/features/product/components/StoreProductFilterBar.tsx`):
-    - Bố cục 2 dòng rộng rãi chuẩn:
-      - **Dòng 1**: Ô tìm kiếm Tên / SKU / Barcode (260px) · Dropdown Cửa hàng (200px) · Dropdown Ngành hàng (180px) · Nút Tìm kiếm & Đặt lại.
-      - **Dòng 2**: Dropdown Trạng thái kinh doanh (Đang bán / Tạm ngừng) · Dropdown Cảnh báo tồn kho (Tất cả, Cần bổ sung, Tồn an toàn, Hết hàng) · Bộ đếm kết quả ("Hiển thị X / Y sản phẩm").
-  - **StoreProductTable** (`src/features/product/components/StoreProductTable.tsx`):
-    - Bảng dữ liệu chuẩn có thanh cuộn riêng, cố định header:
-      - Cột 1: STT
-      - Cột 2: Mã SKU & Barcode
-      - Cột 3: Tên sản phẩm & ĐVT
-      - Cột 4: Ngành hàng (Category Tag)
-      - Cột 5: Giá bán lẻ tại CH (VNĐ)
-      - Cột 6: Tồn kho thực tế (SOH) kèm chỉ báo cảnh báo đỏ nếu `SOH <= MinStock`
-      - Cột 7: Mức tồn tối thiểu (Min Stock)
-      - Cột 8: Nhà cung cấp chính
-      - Cột 9: Trạng thái (Badge "Đang bán" xanh lá / "Tạm ngừng" xám)
-      - Cột 10: Thao tác (Nút `Sửa`, Nút `Đổi trạng thái`, Nút `Gỡ khỏi CH`)
-    - Chân bảng tích hợp phân trang chuẩn: Chọn số dòng/trang (10, 20, 50), Số trang, Nút Trang trước / Trang sau.
-  - **AssignStoreProductModal** (`src/features/product/components/AssignStoreProductModal.tsx`):
-    - Modal gán sản phẩm mới:
-      - Chọn Cửa hàng nhận gán.
-      - Bộ lọc tìm kiếm sản phẩm theo từ khóa và ngành hàng.
-      - Danh sách sản phẩm từ Master Products (chưa gán vào cửa hàng) kèm checkbox chọn nhiều.
-      - Nhập giá bán lẻ ban đầu và mức tồn an toàn cho các mặt hàng được chọn.
-  - **EditStoreProductModal** (`src/features/product/components/EditStoreProductModal.tsx`):
-    - Modal sửa giá bán lẻ và định mức tồn kho tối thiểu của sản phẩm tại cửa hàng đang chọn.
+### StoreProductTable
+- Thêm cột **Ảnh** (thumbnail `imageUrl`, fallback icon Package).
+- Thêm cột **Giá bán theo ĐVT**: text tổng hợp từ `unitPrices` (vd. `chai 10.000 · lốc 60.000 · thùng 180.000`); tooltip full list nếu dài.
+- Giữ cột Giá vốn (SupplierProduct), Giá bán lẻ base, MOQ (chỉ xem).
 
----
+### AssignStoreProductModal
+- **Chi nhánh**: ô input + suggestion/filter theo mã/tên (không chỉ `<select>`).
+- **Địa chỉ**: label text + input read-only lấy từ `StoreSummary.address` khi đã chọn CN.
+- Không cho nhập giá vốn / MOQ khi gán; giá bán mặc định Master (ẩn hoặc chỉ preview).
 
-## 2. API Contract & Data Model
+### EditStoreProductModal
+- Khối chi nhánh/địa chỉ: input text (CN có thể search nếu cho đổi CN — mặc định read-only CN hiện tại + địa chỉ text).
+- Khối **Giá bán theo ĐVT**: bảng/list `unitName | conversion | price (editable)`.
+- Giá vốn + MOQ: read-only + chú thích nguồn NCC.
+- Lưu: gửi danh sách override giá ĐVT / retail base tương ứng.
 
-### Endpoints
-- `GET /api/v1/stores/{storeId}/products`:
-  - Query: `searchTerm`, `category`, `status`, `stockAlert`, `pageIndex`, `pageSize`
-  - Response: `{ items: StoreProductItem[], total: number, pageIndex: number, pageSize: number }`
-- `POST /api/v1/stores/{storeId}/products`:
-  - Body: `{ storeId: string, productIds: string[], defaultRetailPrice?: number, defaultMinStock?: number }`
-  - Response: `200 OK`
-- `PUT /api/v1/stores/{storeId}/products/{productId}`:
-  - Body: `{ retailPrice: number, minStockLevel: number, shelfLocation?: string }`
-  - Response: `200 OK`
-- `PATCH /api/v1/stores/{storeId}/products/{productId}/status`:
-  - Body: `{ status: 'Active' | 'Inactive' }`
-  - Response: `200 OK`
-- `DELETE /api/v1/stores/{storeId}/products/{productId}`:
-  - Response: `200 OK`
+## 2. API / Data
+
+### BranchProduct list DTO bổ sung
+- `imageUrl?: string`
+- `unitPrices: { unitName, conversionRate, price, isBaseUnit }[]`
+- `costPrice`: effective từ SupplierProduct
+- `retailPrice`: override ?? master selling
+- `minOrderQuantity`: từ SupplierProduct (read)
+
+### Update command
+- Nhận `retailPrice` và/hoặc `unitPriceOverrides[]`.
+- **Không** nhận `costPrice`, `moq`, `agreedPrice`.
+
+### Assign
+- `RetailPrice` khởi tạo null hoặc = Master SellingPrice theo exploration (hiển thị effective = master); không copy giá vốn.
+
+## 3. Ràng buộc
+- Chỉ Store Owner ghi (nếu AuthZ đã có sẵn thì tái sử dụng).
+- Không sửa ProductUnit master từ màn CN (Phase 2).
