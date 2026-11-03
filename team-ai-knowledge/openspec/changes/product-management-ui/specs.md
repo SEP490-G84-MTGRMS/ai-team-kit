@@ -134,3 +134,24 @@ Trong modal [`ProductFormModal.tsx`](file:///d:/FPT_uni/Sesmester_9_Fall_26/File
 - [ ] REQ-08: Modal Chi tiết Sản phẩm (`ProductDetailModal`) cho phép switch đơn vị tính, cập nhật giá bán, giá vốn (StoreOwner), tồn kho, mã hàng, mã vạch tương ứng.
 - [ ] REQ-09: Chức năng Cập nhật Hàng hóa (`ProductFormModal` & `handleSaveProduct`) khóa mã hàng, đồng bộ đầy đủ các thao tác Thêm / Sửa / Xóa đơn vị tính quy đổi lên Backend API.
 - [ ] REQ-10: Cải tiến Form Hàng hóa (`ProductFormModal`): Max-width rộng 1160px, popup phóng to ảnh (Lightbox), tìm kiếm nhóm hàng tiếng Việt không dấu, loại bỏ số 0 ở đầu input số, đơn vị cơ bản không mặc định chai, tự tính giá theo đơn vị cơ bản, chọn nhanh thuế VAT, và popup cảnh báo validation.
+- [ ] REQ-11: Tinh gọn Form Master Product (`ProductFormModal`): Loại bỏ hoàn toàn Section 3 "Tồn kho & Định mức cảnh báo" (tồn kho ban đầu, minStock, maxStock), loại bỏ checkbox "Quản lý theo lô (FEFO)" và cột Tồn kho trong bảng đơn vị tính theo chuẩn Mô hình Phân lớp giá (Layer 1).
+
+---
+
+## 4. MODIFIED Requirements (Mô hình Phân lớp Giá - Master Product Form)
+
+### Requirement: REQ-11 Loại bỏ Trường Tồn kho & Quản lý Lô khỏi Form Master Product (`ProductFormModal`)
+Theo đặc tả phân lớp giá (`pricing-layers-business-model.md`), Master Product toàn chuỗi không quản lý số lượng tồn kho hay định mức tồn kho chi nhánh:
+1. **Loại bỏ Section 3**: Xóa bỏ hoàn toàn cụm "Tồn kho & Định mức cảnh báo" gồm:
+   - Ô nhập "Tồn kho ban đầu" (`initialStock`)
+   - Ô nhập "Định mức tồn thấp nhất" (`minStock`)
+   - Ô nhập "Định mức tồn cao nhất" (`maxStock`)
+2. **Loại bỏ Thuộc tính Quản lý theo lô**:
+   - Xóa bỏ checkbox "Quản lý theo lô & hạn sử dụng (FEFO)" (`hasBatches`).
+   - Giữ lại checkbox "Đánh dấu hàng bán chạy / yêu thích (Ưu tiên POS)" (`isFavorite`).
+3. **Loại bỏ Cột Tồn kho trong Bảng Đơn vị tính**:
+   - Xóa bỏ cột "Tồn kho" khỏi bảng "Hàng cùng loại" (bảng UOM conversion) của modal tạo/sửa Master Product.
+4. **Validation & Payload**:
+   - Bỏ các rule validation kiểm tra `minStock < 0` và `maxStock < minStock`.
+   - Payload gửi lên API `POST /api/products` và `PUT /api/products/{id}` không còn truyền các trường `minStock`, `maxStock`, `hasBatches`, `onHand`.
+
