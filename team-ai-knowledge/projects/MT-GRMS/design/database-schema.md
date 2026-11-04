@@ -125,6 +125,27 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `SellingPrice` | `decimal(18,2)` | ❌ | | Giá bán lẻ áp dụng cho đơn vị này. |
 | `Barcode` | `varchar(50)` | ✔️ | | Mã vạch riêng của đơn vị quy đổi (Mã thùng). |
 
+#### Bảng `BranchProducts` (Danh mục sản phẩm kinh doanh tại Chi nhánh & Giá override)
+*Kế thừa `BaseTenantEntity`. Thiết kế cốt lõi từ PR #19 của minhduc118 nhằm tách biệt Master Catalog và Branch Catalog.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh được phân bổ kinh doanh sản phẩm. |
+| `ProductId` | `Guid` | ❌ | FK -> Products | Sản phẩm Master gán vào chi nhánh. |
+| `SellingPriceOverride` | `decimal(18,2)` | ✔️ | | Giá bán lẻ override riêng tại cửa hàng. Nếu `null`, hệ thống kế thừa `Products.SellingPrice`. |
+| `MinStockLevel` | `decimal(18,3)` | ✔️ | | Định mức tồn kho an toàn tối thiểu tại chi nhánh. |
+| `ShelfLocation` | `nvarchar(100)` | ✔️ | | Vị trí quầy kệ trưng bày hàng hóa tại cửa hàng. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Active' | Trạng thái kinh doanh tại chi nhánh (`Active`, `Inactive`). |
+*Ràng buộc đặc biệt*: Unique Index `("TenantId", "BranchId", "ProductId")`.
+
+#### Bảng `BranchProductUnitPrices` (Bảng giá quy đổi đơn vị tính theo Chi nhánh)
+*Kế thừa `BaseEntity` (có Id, CreatedAt, UpdatedAt). Hỗ trợ thiết lập giá bán riêng theo Thùng, Lốc tại từng cửa hàng.*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `BranchProductId` | `Guid` | ❌ | FK -> BranchProducts (Cascade) | Bản ghi sản phẩm chi nhánh liên kết. |
+| `ProductUnitId` | `Guid` | ❌ | FK -> ProductUnits | Đơn vị tính quy đổi (Thùng, Lốc, Hộp). |
+| `Price` | `decimal(18,2)` | ❌ | | Giá bán lẻ riêng tại cửa hàng cho đơn vị quy đổi này. |
+*Ràng buộc đặc biệt*: Unique Index `("BranchProductId", "ProductUnitId")`.
+
 #### Bảng `Batches` (Lô hàng & Hạn sử dụng - Trái tim FEFO)
 *Kế thừa `BaseTenantEntity`.*
 | Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
@@ -290,6 +311,16 @@ tags: [design, database, schema, entities, erd, multi-tenancy]
 | `TaxNumber` | `varchar(50)` | ✔️ | | Mã số thuế NCC. |
 | `PhoneNumber` | `varchar(20)` | ✔️ | | Điện thoại liên hệ đặt hàng. |
 | `CurrentDebtAP` | `decimal(18,2)` | ❌ | Def: 0 | Công nợ hiện tại cửa hàng đang nợ NCC (Phải trả AP). |
+
+#### Bảng `SupplierBranchAssignments` (Liên kết Nhà cung cấp - Chi nhánh)
+*Kế thừa `BaseTenantEntity`. Ràng buộc phân bổ nhà cung cấp chỉ được giao hàng tại các chi nhánh được cấp phép (PR #12 của minhduc118).*
+| Cột | Kiểu | Null | Ràng Buộc | Ý Nghĩa |
+|---|---|:---:|:---:|---|
+| `SupplierId` | `Guid` | ❌ | FK -> Suppliers | Nhà cung cấp được phân bổ. |
+| `BranchId` | `Guid` | ❌ | FK -> Branches | Chi nhánh được nhà cung cấp phục vụ. |
+| `Status` | `varchar(50)` | ❌ | Def: 'Active' | Trạng thái liên kết (`Active`, `Inactive`). |
+| `InactiveReason` | `nvarchar(255)` | ✔️ | | Lý do tạm ngừng cung cấp hàng cho chi nhánh. |
+*Ràng buộc đặc biệt*: Khóa duy nhất liên kết `("TenantId", "SupplierId", "BranchId")`.
 
 #### Bảng `PurchaseOrders` (Đơn đặt mua hàng NCC)
 *Kế thừa `BaseTenantEntity`.*
@@ -523,3 +554,4 @@ Báo cáo Lãi/Lỗ (P&L Statement) trong FE-10 được tính toán trực ti�
 - **2026-10-26**: Đồng bộ tự động qua `sep db-sync`. Quét 28 entities (Product, Category, BranchCashTill, BranchSafe, CashbookEntry, CashbookTransaction, CashInTransit, CustomerDebtAllocation, CustomerDebtEntry, CustomerDebtInvoice, CustomerDebtProfile, ExpenseVoucher, HouseholdTaxSnapshot, IdempotencyRecord, ShiftZReport, TenantBankAccount, User, Role, Batch, StockOnHand, Order, OrderItem, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct).
 - **2026-10-27**: Đồng bộ tự động qua `sep db-sync`. Quét 39 entities (Category, Product, ProductCombo, ProductUnit, CashBook, CashbookTransaction, Employee, EmployeeBonusViolation, EmployeeSchedule, Payslip, TenantUser, User, Role, BranchStock, Batch, StockOnHand, Transfer, TransferDetail, Order, OrderItem, Branch, SubscriptionPlan, Tenant, Customer, Order, OrderDetail, Promotion, GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderDetail, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierCategory, SupplierDeliveryConfig, SupplierProduct, AuditLog, TaxSnapshot).
 - **2026-10-29**: Đồng bộ tự động qua `sep db-sync`. Quét 40 entities (Category, Product, ProductCombo, ProductUnit, CashBook, CashbookTransaction, Employee, EmployeeBonusViolation, EmployeeSchedule, Payslip, TenantUser, User, Role, BranchStock, Batch, StockOnHand, Transfer, TransferDetail, Order, OrderItem, Branch, SubscriptionPlan, Tenant, Customer, Order, OrderDetail, Promotion, GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderDetail, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierBranchAssignment, SupplierCategory, SupplierDeliveryConfig, SupplierProduct, AuditLog, TaxSnapshot).
+- **2026-11-04**: Đồng bộ tự động qua `sep db-sync`. Quét 56 entities (BranchProduct, BranchProductUnitPrice, Category, Product, ProductUnit, CashbookEntry, CashbookTransaction, CashInTransit, CustomerDebtAllocation, CustomerDebtEntry, CustomerDebtInvoice, ExpenseVoucher, FinanceAccount, HouseholdTaxSnapshot, HouseholdTaxYearSetting, IdempotencyRecord, PaymentTransaction, ShiftZReport, StorePaymentConfig, Employee, EmployeeBonusViolation, EmployeeSchedule, Payslip, TenantUser, User, Role, BranchStock, Batch, StockOnHand, Transfer, TransferDetail, Order, OrderItem, Branch, SubscriptionPlan, Tenant, Customer, Order, OrderDetail, Promotion, PromotionCondition, VoucherCode, GoodsReceipt, GoodsReceiptLine, PurchaseOrder, PurchaseOrderDetail, Supplier, SupplierAPLedger, SupplierBlackoutDate, SupplierBranchAssignment, SupplierCategory, SupplierDeliveryConfig, SupplierProduct, SupplierReturn, SupplierReturnLine, AuditLog).

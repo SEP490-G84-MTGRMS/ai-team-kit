@@ -416,6 +416,21 @@ Hệ thống **MUST NOT** sửa đổi hay can thiệp vào các component `Stor
 
 ---
 
+### Requirement: REQ-POS-08 Nạp Danh Mục Sản Phẩm Kinh Doanh Chi Nhánh (BranchProducts) Với Giá Bán Lẻ Override Và Tồn Kho Thực Tế
+Hệ thống **MUST** cho phép màn hình POS tải danh mục sản phẩm kinh doanh thuộc chi nhánh chỉ định thông qua endpoint `GET /api/branches/{branchId}/products`. Hệ thống **SHALL** ưu tiên áp dụng đơn giá bán lẻ đã cấu hình riêng tại chi nhánh (`retailPrice = SellingPriceOverride ?? Product.SellingPrice`), tồn kho thực tế (`currentStock` từ các lô FEFO), vị trí quầy kệ (`shelfLocation`), và các đơn vị tính quy đổi (`unitPrices`). Nếu chi nhánh chưa có danh mục riêng, hệ thống **SHALL** tự động fallback về danh mục chung `GET /api/products`.
+
+#### Scenario: Thu ngân nạp sản phẩm với giá bán lẻ override riêng tại chi nhánh
+- **GIVEN** Sản phẩm "Gạo ST25 5kg" có giá gốc Master là `190.000 đ`, nhưng tại Chi nhánh Quận 1 được override bán `185.000 đ`.
+- **WHEN** Thu ngân mở màn hình POS tại Chi nhánh Quận 1.
+- **THEN** Sản phẩm hiển thị với đơn giá `185.000 đ` và tồn kho thực tế của Chi nhánh Quận 1.
+
+#### Scenario: Tự động fallback về danh mục chung khi chi nhánh chưa thiết lập
+- **GIVEN** Chi nhánh mới chưa được gán danh mục riêng trong `BranchProducts`.
+- **WHEN** Màn hình POS tải dữ liệu.
+- **THEN** Hệ thống tự động fallback nạp danh mục chung từ `/api/products` để thu ngân không bị gián đoạn bán hàng.
+
+---
+
 ## Lịch sử
 - 2026-11-01 · `pos-sales-order-backend` · +4 ~0 -0
 - 2026-11-01 · `pos-order-management-debt-refinement` · +1 ~2 -0
@@ -425,3 +440,4 @@ Hệ thống **MUST NOT** sửa đổi hay can thiệp vào các component `Stor
 - 2026-11-02 · `pos-vietqr-sepay-payment-and-settings` · +5 ~0 -0
 - 2026-11-02 · `pos-sepay-ui-and-nav-refinement` · +3 ~0 -0
 - 2026-11-02 · `store-settings-dropdown-nav` · +3 ~0 -0
+- 2026-11-04 · `branch-products-pos-integration` · +1 ~0 -0

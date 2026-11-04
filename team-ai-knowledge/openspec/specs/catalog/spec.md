@@ -196,6 +196,23 @@ Hệ thống **MUST** kiểm tra vai trò của người dùng hiện tại thô
 
 ---
 
+### Requirement: REQ-CAT-08 Quản Lý Danh Mục Kinh Doanh Chi Nhánh (BranchProducts & BranchProductUnitPrices)
+Hệ thống **MUST** cho phép gán sản phẩm từ Master Catalog vào danh mục kinh doanh riêng của từng Chi nhánh thông qua `POST /api/branches/{id}/products`. Hệ thống **SHALL** hỗ trợ thiết lập giá bán lẻ riêng (`SellingPriceOverride`), định mức tồn kho tối thiểu (`MinStockLevel`), vị trí quầy kệ (`ShelfLocation`), và bảng giá quy đổi đơn vị tính theo chi nhánh (`BranchProductUnitPrices`). Sản phẩm chỉ được phép gán nếu Nhà cung cấp chính của sản phẩm đó đang được phân bổ cho chi nhánh (`SupplierBranchAssignments`).
+
+#### Scenario: Gán sản phẩm thành công vào chi nhánh khi nhà cung cấp hợp lệ
+- **GIVEN** Chi nhánh `CN01` đã liên kết nhà cung cấp Unilever.
+- **AND** Sản phẩm "Nước xả vải Comfort" thuộc nhà cung cấp Unilever chưa có trong danh mục của `CN01`.
+- **WHEN** Quản lý chi nhánh gửi yêu cầu gán sản phẩm vào `CN01`.
+- **THEN** Hệ thống lưu bản ghi `BranchProduct`, trả về `200 OK` kèm thông báo thành công.
+
+#### Scenario: Báo lỗi khi nhà cung cấp của sản phẩm chưa liên kết với chi nhánh
+- **GIVEN** Sản phẩm "Bánh Nabati" thuộc nhà cung cấp Richy chưa được liên kết với `CN01`.
+- **WHEN** Quản lý chi nhánh cố gắng gán "Bánh Nabati" vào `CN01`.
+- **THEN** Hệ thống từ chối với mã lỗi `400 Bad Request` và thông báo nhà cung cấp chưa được cấp quyền tại chi nhánh này.
+
+---
+
 ## Lịch sử
 - 2026-10-29 · `category-crud-backend` · +6 ~0 -0
 - 2026-10-29 · `product-crud-backend` · +6 ~0 -0
+- 2026-11-04 · `branch-products-catalog` · +1 ~0 -0
