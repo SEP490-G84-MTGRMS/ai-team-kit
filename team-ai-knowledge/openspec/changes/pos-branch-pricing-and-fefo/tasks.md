@@ -1,7 +1,7 @@
 # Tasks: pos-branch-pricing-and-fefo
 
 ## Phase 1: Database Seeding (Cửa hàng An Nhiên)
-- [ ] T1 — Viết script SQL chèn dữ liệu 4 sản phẩm mẫu thực tế (G7 3in1, Choco-Pie, Muối Hảo Hảo, Bia Hà Nội Sleek) kèm `ProductUnits`, `BranchProducts`, `BranchProductUnitPrices` và các lô `BranchStocks` FEFO cho `tenant_an_nhien_02` (REQ-POS-13).
+- [x] T1 — Viết script SQL chèn dữ liệu 4 sản phẩm mẫu thực tế (G7 3in1, Choco-Pie, Muối Hảo Hảo, Bia Hà Nội Sleek) kèm `ProductUnits`, `BranchProducts`, `BranchProductUnitPrices` và các lô `BranchStocks` FEFO cho `tenant_an_nhien_02` (REQ-POS-13).
 
 ## Phase 2: Backend Order Service & DTO
 - [ ] T2 — Bổ sung `UnitId` và `UnitName` vào `OrderItemCreateDto` trong `OrderDtos.cs` (REQ-POS-10).
