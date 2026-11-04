@@ -9,7 +9,7 @@
 - [x] T4 — Nâng cấp `OrderService.CreateOrderAsync`: Tra cứu giá bán chi nhánh, quy đổi số lượng cơ sở `BaseQty = Quantity * ConversionRate`, trừ tồn kho `BranchStocks` theo FEFO, và lưu `Order`, `OrderDetail` (REQ-POS-09, REQ-POS-10, REQ-POS-11).
 
 ## Phase 3: Backend Unit Tests
-- [ ] T5 — Viết 6 Unit Tests bao phủ toàn bộ các kịch bản trong `PosOrderServiceTests.cs`: Giá override chi nhánh, giá override ĐVT, trừ kho FEFO 1 lô, trừ kho FEFO nhiều lô, từ chối khi không đủ tồn, hoàn trả kho khi hủy đơn (REQ-POS-09, REQ-POS-10, REQ-POS-11).
+- [x] T5 — Viết 6 Unit Tests bao phủ toàn bộ các kịch bản trong `PosOrderServiceTests.cs`: Giá override chi nhánh, giá override ĐVT, trừ kho FEFO 1 lô, trừ kho FEFO nhiều lô, từ chối khi không đủ tồn, hoàn trả kho khi hủy đơn (REQ-POS-09, REQ-POS-10, REQ-POS-11).
 
 ## Phase 4: Frontend POS Cart & Multi-Unit Dropdown
 - [ ] T6 — Cập nhật `PosCartTable.tsx`: Thay thế cột ĐVT tĩnh bằng dropdown `<select className="pos-unit-select">` khi sản phẩm có nhiều đơn vị tính, tự động cập nhật đơn giá hiển thị (REQ-POS-12).
