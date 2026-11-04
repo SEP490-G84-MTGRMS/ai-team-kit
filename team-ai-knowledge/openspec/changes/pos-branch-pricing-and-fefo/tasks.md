@@ -4,9 +4,9 @@
 - [x] T1 — Viết script SQL chèn dữ liệu 4 sản phẩm mẫu thực tế (G7 3in1, Choco-Pie, Muối Hảo Hảo, Bia Hà Nội Sleek) kèm `ProductUnits`, `BranchProducts`, `BranchProductUnitPrices` và các lô `BranchStocks` FEFO cho `tenant_an_nhien_02` (REQ-POS-13).
 
 ## Phase 2: Backend Order Service & DTO
-- [ ] T2 — Bổ sung `UnitId` và `UnitName` vào `OrderItemCreateDto` trong `OrderDtos.cs` (REQ-POS-10).
-- [ ] T3 — Cập nhật `IOrderRepository` và `OrderRepository.cs`: Thêm hàm lấy thông tin `BranchProduct`, `BranchProductUnitPrice` và `ProductUnit` theo `BranchId` và `ProductId` (REQ-POS-09, REQ-POS-10).
-- [ ] T4 — Nâng cấp `OrderService.CreateOrderAsync`: Tra cứu giá bán chi nhánh, quy đổi số lượng cơ sở `BaseQty = Quantity * ConversionRate`, trừ tồn kho `BranchStocks` theo FEFO, và lưu `Order`, `OrderDetail` (REQ-POS-09, REQ-POS-10, REQ-POS-11).
+- [x] T2 — Bổ sung `UnitId` và `UnitName` vào `OrderItemCreateDto` trong `OrderDtos.cs` (REQ-POS-10).
+- [x] T3 — Cập nhật `IOrderRepository` và `OrderRepository.cs`: Thêm hàm lấy thông tin `BranchProduct`, `BranchProductUnitPrice` và `ProductUnit` theo `BranchId` và `ProductId` (REQ-POS-09, REQ-POS-10).
+- [x] T4 — Nâng cấp `OrderService.CreateOrderAsync`: Tra cứu giá bán chi nhánh, quy đổi số lượng cơ sở `BaseQty = Quantity * ConversionRate`, trừ tồn kho `BranchStocks` theo FEFO, và lưu `Order`, `OrderDetail` (REQ-POS-09, REQ-POS-10, REQ-POS-11).
 
 ## Phase 3: Backend Unit Tests
 - [ ] T5 — Viết 6 Unit Tests bao phủ toàn bộ các kịch bản trong `PosOrderServiceTests.cs`: Giá override chi nhánh, giá override ĐVT, trừ kho FEFO 1 lô, trừ kho FEFO nhiều lô, từ chối khi không đủ tồn, hoàn trả kho khi hủy đơn (REQ-POS-09, REQ-POS-10, REQ-POS-11).
