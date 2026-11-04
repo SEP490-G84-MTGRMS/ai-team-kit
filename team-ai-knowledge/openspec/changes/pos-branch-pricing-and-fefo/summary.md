@@ -11,3 +11,7 @@ Phê duyệt Brainstorm: Thống nhất luồng phân giải giá BranchProduct 
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-04 16:07
 
 Phê duyệt Verify Spec: Chốt bảng phản biện Skeptic 5/5 và checklist 8 tasks theo thứ tự Seeding -> Backend -> Unit Tests -> Frontend -> Verification. Chuyển sang bước Apply để code.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-04 16:34
+
+Hoàn thành toàn bộ 8/8 tasks trong tasks.md: Seed 4 sản phẩm thực tế kèm đa đơn vị tính và tồn kho FEFO cho cửa hàng An Nhiên, phân giải giá chi nhánh và ĐVT trong OrderService, trừ kho BranchStocks theo FEFO khi bán hàng, thêm 6 unit tests mới (347/347 PASS), bổ sung dropdown chọn ĐVT trên giỏ hàng POS cập nhật giá tức thì (build frontend PASS).
