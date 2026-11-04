@@ -7,3 +7,7 @@ Phê duyệt Proposal: Chốt mục tiêu lấy giá bán chi nhánh từ Branch
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-04 16:06
 
 Phê duyệt Brainstorm: Thống nhất luồng phân giải giá BranchProduct / BranchProductUnitPrice, nhân hệ số ConversionRate để trừ kho BranchStocks FEFO, dropdown chọn ĐVT trên giỏ hàng POS, và bộ 4 sản phẩm mẫu seed vào CSDL An Nhiên.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-04 16:07
+
+Phê duyệt Verify Spec: Chốt bảng phản biện Skeptic 5/5 và checklist 8 tasks theo thứ tự Seeding -> Backend -> Unit Tests -> Frontend -> Verification. Chuyển sang bước Apply để code.
