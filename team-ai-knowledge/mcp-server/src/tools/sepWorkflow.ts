@@ -861,6 +861,12 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
 
       return {
         ...item,
+        tcId: item.tcId || item.testId || item.id || '',
+        testData: item.testData || item.data || item.input || item.test_data || '',
+        author: item.author || item.nguoiViet || item.creator || 'Nguyễn Trường An',
+        runner: item.runner || item.tester || item.nguoiChay || tester,
+        criteria: item.criteria || item.tieuChi || item.category || 'Luồng nghiệp vụ',
+        techType: item.techType || item.loai || fallbackType,
         preConditions: item.preConditions || item.given || fallbackGiven,
         given: item.given || item.preConditions || fallbackGiven,
         inputParams: item.inputParams || item.steps || item.procedure || fallbackWhen,
@@ -876,6 +882,7 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
         priority: item.priority || fallbackPriority,
         scenario: item.scenario || match?.title || item.description || 'Kịch bản kiểm thử tính năng',
         description: item.description || match?.title || item.scenario || 'Kịch bản kiểm thử tính năng',
+        defectId: item.defectId || item.bugId || item.defect_id || '',
         notes: item.notes || item.feedback || '',
         feedback: item.feedback || item.notes || '',
       };

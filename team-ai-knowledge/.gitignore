@@ -34,3 +34,5 @@ npm-debug.log*
 # Temporary files
 *.tmp
 *.bak
+__pycache__/
+*.pyc

@@ -86,6 +86,51 @@ function doPost(e) {
       return jsonResponse(true, 'Pong! Connection successful.', { serverTime: new Date().toISOString() });
     }
 
+    // 2.1 Action đồng bộ Tab nguyên bản (Upload Raw Tab) theo format chuẩn file Excel
+    if (payload.action === 'upload_raw_tab') {
+      const targetType = String(payload.reportType || 'matrix').trim();
+      const spreadsheetId = CONFIG.SPREADSHEET_IDS[targetType] || CONFIG.SPREADSHEET_IDS['matrix'];
+      if (!spreadsheetId || spreadsheetId.startsWith('YOUR_')) {
+        return jsonResponse(false, `Spreadsheet ID for reportType '${targetType}' not configured!`);
+      }
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const res = handleUploadRawTab(ss, payload);
+      return jsonResponse(true, `Uploaded tab '${payload.tabName}' successfully`, res);
+    }
+
+    // 2.2 Action xóa tab lỗi thời / tab mẫu rác
+    if (payload.action === 'delete_tab') {
+      const targetType = String(payload.reportType || 'matrix').trim();
+      const spreadsheetId = CONFIG.SPREADSHEET_IDS[targetType];
+      if (!spreadsheetId || spreadsheetId.startsWith('YOUR_')) {
+        return jsonResponse(false, `Spreadsheet ID for reportType '${targetType}' not configured!`);
+      }
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const tabName = String(payload.tabName || '').trim();
+      const sheet = ss.getSheetByName(tabName);
+      if (sheet) {
+        if (ss.getSheets().length > 1) {
+          ss.deleteSheet(sheet);
+          return jsonResponse(true, `Deleted tab '${tabName}' in Report-${targetType}`);
+        } else {
+          return jsonResponse(false, `Cannot delete the only sheet in spreadsheet`);
+        }
+      }
+      return jsonResponse(true, `Tab '${tabName}' did not exist in Report-${targetType}`);
+    }
+
+    // 2.3 Action làm mới và tính lại toàn bộ mục lục và bảng thống kê cho Report
+    if (payload.action === 'rebuild_index_and_stats') {
+      const targetType = String(payload.reportType || '').trim();
+      const spreadsheetId = CONFIG.SPREADSHEET_IDS[targetType];
+      if (!spreadsheetId || spreadsheetId.startsWith('YOUR_')) {
+        return jsonResponse(false, `Spreadsheet ID for reportType '${targetType}' not configured!`);
+      }
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const res = rebuildReportIndexAndStats(ss, targetType);
+      return jsonResponse(true, `Rebuilt index and stats for Report-${targetType} successfully`, res);
+    }
+
     // 3. Thực thi sync theo reportType
     const reportType = String(payload.reportType || '').trim();
     if (!CONFIG.SPREADSHEET_IDS[reportType]) {
@@ -168,6 +213,7 @@ function syncReport51(ss, payload) {
     // Đăng ký vào tab 'Test Cases' và 'Test Statistics'
     registerIndexAndStats(ss, targetTabName, featureName, 'Module');
   }
+
 
   const startRow = 12;
   let updatedCount = 0;
@@ -508,7 +554,105 @@ function syncReport55(ss, payload) {
 
 /**
  * =========================================================================
- * XỬ LÝ MASTER TEST MATRIX & NON-UNIT CASES
+ * XỬ LÝ UPLOAD RAW TAB TỪ FILE EXCEL (ĐỒNG BỘ 100% CẤU TRÚC VÀ ĐỊNH DẠNG)
+ * =========================================================================
+ */
+function handleUploadRawTab(ss, payload) {
+  const tabName = String(payload.tabName || '').trim();
+  if (!tabName) throw new Error('Missing tabName in upload_raw_tab payload!');
+
+  let sheet = ss.getSheetByName(tabName);
+  const isNewTab = !sheet;
+  if (!sheet) {
+    sheet = ss.insertSheet(tabName);
+  }
+
+  if (payload.tabColor) {
+    sheet.setTabColor(payload.tabColor);
+  }
+
+  // Nếu là chunk đầu tiên hoặc chế độ replace thì clear toàn bộ sheet
+  if (payload.mode === 'replace' || payload.isFirstChunk) {
+    sheet.clear();
+  }
+
+  let currentRow = payload.startRow || 1;
+
+  // 1. Ghi các dòng tiêu đề (Title rows)
+  if (payload.titleRows && payload.titleRows.length > 0) {
+    payload.titleRows.forEach(tr => {
+      if (tr.values && tr.values.length > 0) {
+        const numCols = tr.values.length;
+        sheet.getRange(currentRow, 1, 1, numCols).setValues([tr.values]);
+        const rRange = sheet.getRange(currentRow, 1, 1, numCols);
+        if (tr.bold) rRange.setFontWeight('bold');
+        if (tr.fontSize) rRange.setFontSize(tr.fontSize);
+        if (tr.fontColor) rRange.setFontColor(tr.fontColor);
+        if (tr.bg) rRange.setBackground(tr.bg);
+        if (tr.height) sheet.setRowHeight(currentRow, tr.height);
+      }
+      currentRow++;
+    });
+  }
+
+  // 2. Ghi dòng Header
+  if (payload.headerRow && payload.headerRow.length > 0) {
+    const numCols = payload.headerRow.length;
+    sheet.getRange(currentRow, 1, 1, numCols).setValues([payload.headerRow]);
+    const headerRange = sheet.getRange(currentRow, 1, 1, numCols);
+    headerRange.setBackground(payload.headerBg || '#1B365D')
+               .setFontColor(payload.headerColor || '#FFFFFF')
+               .setFontWeight('bold')
+               .setHorizontalAlignment('center')
+               .setVerticalAlignment('middle')
+               .setWrap(true);
+    sheet.setRowHeight(currentRow, payload.headerHeight || 30);
+    currentRow++;
+  }
+
+  // 3. Ghi dữ liệu Data rows
+  const rows = payload.dataRows || [];
+  if (rows.length > 0) {
+    const numCols = rows[0].length;
+    const numRows = rows.length;
+    sheet.getRange(currentRow, 1, numRows, numCols).setValues(rows);
+    const dataRange = sheet.getRange(currentRow, 1, numRows, numCols);
+    dataRange.setBorder(true, true, true, true, true, true, '#D0D7DE', SpreadsheetApp.BorderStyle.SOLID);
+    dataRange.setVerticalAlignment('top');
+
+    // Tô màu xen kẽ
+    for (let i = 0; i < numRows; i++) {
+      const r = currentRow + i;
+      if (i % 2 === 1) {
+        sheet.getRange(r, 1, 1, numCols).setBackground('#F8F9FA');
+      }
+      // Highlight trạng thái PASS/FAIL
+      if (payload.statusColIdx !== undefined && payload.statusColIdx >= 0 && payload.statusColIdx < numCols) {
+        const stCell = sheet.getRange(r, payload.statusColIdx + 1);
+        const stVal = String(rows[i][payload.statusColIdx] || '').toUpperCase();
+        if (stVal.includes('PASS')) {
+          stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+        } else if (stVal.includes('FAIL')) {
+          stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+        }
+      }
+    }
+    currentRow += numRows;
+  }
+
+  // 4. Định dạng độ rộng cột nếu có
+  if (payload.colWidths && Array.isArray(payload.colWidths)) {
+    payload.colWidths.forEach((w, idx) => {
+      if (w > 0) sheet.setColumnWidth(idx + 1, w);
+    });
+  }
+
+  return { tab: tabName, isNewTab, totalRows: sheet.getLastRow(), totalCols: sheet.getLastColumn() };
+}
+
+/**
+ * =========================================================================
+ * XỬ LÝ MASTER TEST MATRIX & NON-UNIT CASES (HỖ TRỢ ĐA TAB & FORMAT 15 CỘT)
  * =========================================================================
  */
 function syncTestMatrix(ss, payload) {
@@ -516,18 +660,39 @@ function syncTestMatrix(ss, payload) {
   const tester = payload.tester || 'AI-Agent';
   const testDate = payload.testDate || getTodayFormatted();
 
-  let sheet = ss.getSheetByName('Test Cases (Non-Unit)') || ss.getSheetByName('Test Cases') || ss.getSheets()[1] || ss.getSheets()[0];
-  if (!sheet) throw new Error('Cannot find Test Cases tab in Test Matrix sheet!');
+  // Xác định tab đích: Nếu có tabName chỉ định, hoặc có chứa dữ liệu Cross-Test thì ghi vào đúng tab
+  const isCrossTest = payload.tabName === 'Cross-Test FE07-19 (217 TCs)' ||
+                      items.some(it => it.testData || it.data || it.author || it.isCrossTest);
+  const isFunctional = payload.tabName === 'Functional Tests (181 TCs)' || payload.format === 'functional';
 
-  const lastRow = Math.max(sheet.getLastRow(), 4);
+  let targetTabName = payload.tabName;
+  if (!targetTabName) {
+    if (isCrossTest) targetTabName = 'Cross-Test FE07-19 (217 TCs)';
+    else if (isFunctional) targetTabName = 'Functional Tests (181 TCs)';
+    else targetTabName = 'Test Cases (Non-Unit)';
+  }
+
+  let sheet = ss.getSheetByName(targetTabName);
+  if (!sheet) {
+    // Nếu tab chưa tồn tại thì fallback về tab có sẵn hoặc tạo mới
+    sheet = ss.getSheetByName('Test Cases (Non-Unit)') || ss.getSheetByName('Test Cases') || ss.getSheets()[1] || ss.getSheets()[0];
+  }
+
+  const activeTabName = sheet.getName();
+  const is15Cols = activeTabName.includes('Cross-Test') || isCrossTest;
+  const is12ColsFunc = activeTabName.includes('Functional') || isFunctional;
+
+  const headerRow = (activeTabName === 'Test Matrix' || activeTabName === 'Traceability Matrix') ? 5 : 4;
+  const startRow = headerRow + 1;
+  const lastRow = Math.max(sheet.getLastRow(), headerRow);
   const existingMap = new Map();
 
-  if (lastRow > 4) {
-    const ids = sheet.getRange(5, 1, lastRow - 4, 1).getValues();
+  if (lastRow >= startRow) {
+    const ids = sheet.getRange(startRow, 1, lastRow - headerRow, 1).getValues();
     ids.forEach((r, idx) => {
       const tcId = String(r[0] || '').trim();
       if (tcId) {
-        existingMap.set(tcId, 5 + idx);
+        existingMap.set(tcId, startRow + idx);
       }
     });
   }
@@ -539,64 +704,103 @@ function syncTestMatrix(ss, payload) {
   items.forEach(item => {
     const rawReportType = String(item.reportType || item.report_type || '').trim();
     // Quy tắc: KHÔNG đồng bộ Unit Test 5.1 vào bảng Test Matrix
-    if (rawReportType === '5.1' || String(item.id || '').startsWith('TC-UT')) {
+    if (rawReportType === '5.1' || String(item.id || item.tcId || '').startsWith('TC-UT')) {
       return;
     }
 
-    const tcId = String(item.id || item.testCaseId || '').trim();
+    const tcId = String(item.id || item.testCaseId || item.tcId || item.code || '').trim();
     if (!tcId) return;
 
-    const moduleName = String(item.module || item.moduleName || payload.featureCode || 'BÁN HÀNG & POS');
-    const scenario = String(item.scenario || item.description || item.title || '');
-    const testType = String(item.type || 'Luồng nghiệp vụ');
-    const reportType = rawReportType || '5.3';
+    const moduleName = String(item.module || item.moduleName || item.subsystem || item.featureCode || payload.featureCode || 'BÁN HÀNG & POS');
+    const criteria = String(item.criteria || item.tieuChi || 'Luồng nghiệp vụ');
+    const techType = String(item.techType || item.type || 'Happy');
+    const priority = String(item.priority || item.uuTien || 'P1');
+    const scenario = String(item.scenario || item.description || item.title || item.name || '');
     const given = String(item.given || item.preConditions || '');
     const when = String(item.when || item.steps || item.procedure || '');
+    const testData = String(item.testData || item.data || item.inputParams || '');
     const then = String(item.then || item.expected || item.expectedResults || '');
+    const author = String(item.author || item.nguoiViet || 'Nguyễn Trường An');
+    const runner = String(item.runner || item.tester || item.nguoiChay || tester);
     const actual = String(item.actual || item.actualResults || 'Xác nhận thành công');
-    const itemTester = String(item.tester || tester);
     const status = formatStatus(item.status || item.actualStatus || 'PASS');
+    const defectId = String(item.defectId || item.bugId || item.notes || '');
     const date = String(item.date || testDate);
+    const reportType = rawReportType || '5.3';
 
     if (existingMap.has(tcId)) {
       const rowIdx = existingMap.get(tcId);
-      sheet.getRange(rowIdx, 9).setValue(actual);
-      sheet.getRange(rowIdx, 10).setValue(itemTester);
-      sheet.getRange(rowIdx, 11).setValue(status);
-      sheet.getRange(rowIdx, 12).setValue(date);
-
-      const stCell = sheet.getRange(rowIdx, 11);
-      if (status === 'Passed' || status === 'PASS') {
-        stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
-      } else if (status === 'Failed' || status === 'FAIL') {
-        stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+      if (is15Cols) {
+        sheet.getRange(rowIdx, 13).setValue(actual);
+        sheet.getRange(rowIdx, 14).setValue(status);
+        sheet.getRange(rowIdx, 15).setValue(defectId);
+        const stCell = sheet.getRange(rowIdx, 14);
+        if (status === 'Passed' || status === 'PASS') {
+          stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+        } else if (status === 'Failed' || status === 'FAIL') {
+          stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+        }
+      } else if (is12ColsFunc) {
+        sheet.getRange(rowIdx, 11).setValue(status);
+        sheet.getRange(rowIdx, 12).setValue(defectId);
+        const stCell = sheet.getRange(rowIdx, 11);
+        if (status === 'Passed' || status === 'PASS') {
+          stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+        } else if (status === 'Failed' || status === 'FAIL') {
+          stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+        }
+      } else {
+        sheet.getRange(rowIdx, 9).setValue(actual);
+        sheet.getRange(rowIdx, 10).setValue(runner);
+        sheet.getRange(rowIdx, 11).setValue(status);
+        sheet.getRange(rowIdx, 12).setValue(date);
+        const stCell = sheet.getRange(rowIdx, 11);
+        if (status === 'Passed' || status === 'PASS') {
+          stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
+        } else if (status === 'Failed' || status === 'FAIL') {
+          stCell.setBackground('#F8D7DA').setFontColor('#721C24').setFontWeight('bold');
+        }
       }
       updated++;
     } else {
-      toAppend.push([
-        tcId, moduleName, scenario, testType, reportType,
-        given, when, then, actual, itemTester, status, date
-      ]);
+      if (is15Cols) {
+        toAppend.push([
+          tcId, moduleName, criteria, techType, priority,
+          scenario, given, when, testData, then,
+          author, runner, actual, status, defectId
+        ]);
+      } else if (is12ColsFunc) {
+        toAppend.push([
+          tcId, moduleName, criteria, techType, priority,
+          scenario, given, when, then, runner, status, defectId
+        ]);
+      } else {
+        toAppend.push([
+          tcId, moduleName, scenario, criteria, reportType,
+          given, when, then, actual, runner, status, date
+        ]);
+      }
       inserted++;
     }
   });
 
   if (toAppend.length > 0) {
-    const startRow = sheet.getLastRow() + 1;
+    const startAppendRow = sheet.getLastRow() + 1;
     const numRows = toAppend.length;
-    const numCols = 12;
-    const range = sheet.getRange(startRow, 1, numRows, numCols);
+    const numCols = toAppend[0].length;
+    const range = sheet.getRange(startAppendRow, 1, numRows, numCols);
     range.setValues(toAppend);
 
+    const statusColIdx = is15Cols ? 14 : 11;
     for (let r = 0; r < numRows; r++) {
-      const targetRow = startRow + r;
+      const targetRow = startAppendRow + r;
       const rowRange = sheet.getRange(targetRow, 1, 1, numCols);
       rowRange.setBorder(true, true, true, true, true, true, '#D0D7DE', SpreadsheetApp.BorderStyle.SOLID);
       if (targetRow % 2 === 0) {
         rowRange.setBackground('#F7F9FC');
       }
-      const stCell = sheet.getRange(targetRow, 11);
-      const stVal = toAppend[r][10];
+      const stCell = sheet.getRange(targetRow, statusColIdx);
+      const stVal = toAppend[r][statusColIdx - 1];
       if (stVal === 'Passed' || stVal === 'PASS') {
         stCell.setBackground('#D4EDDA').setFontColor('#155724').setFontWeight('bold');
       } else if (stVal === 'Failed' || stVal === 'FAIL') {
@@ -607,7 +811,7 @@ function syncTestMatrix(ss, payload) {
 
   updateMatrixTabStats(ss);
 
-  return { tab: sheet.getName(), updated, inserted, total: existingMap.size + inserted };
+  return { tab: sheet.getName(), is15Cols, updated, inserted, total: existingMap.size + inserted };
 }
 
 /**
@@ -844,6 +1048,109 @@ function registerIndexAndStats(ss, sheetName, moduleTitle, typeLabel) {
       statsSheet.appendRow(['', nextNo, sheetName, 0, 0, 0, 0, 0]);
     }
   }
+}
+
+/**
+ * Tự động tính toán lại toàn bộ Mục lục (Test Cases) và Thống kê (Test Statistics)
+ */
+function rebuildReportIndexAndStats(ss, targetType) {
+  const ignoreSheets = ['Cover', 'Test Cases', 'Test Statistics', 'Template'];
+  const allSheets = ss.getSheets().filter(s => !ignoreSheets.includes(s.getName()));
+  const statsList = [];
+  const startRow = (targetType === '5.1') ? 12 : 11;
+
+  allSheets.forEach((sheet, idx) => {
+    const sName = sheet.getName();
+    const lastRow = sheet.getLastRow();
+    let total = 0;
+    let passed = 0;
+    let failed = 0;
+    let pending = 0;
+
+    if (lastRow >= startRow) {
+      const numRows = lastRow - startRow + 1;
+      const statusCol = 6;
+      const data = sheet.getRange(startRow, 1, numRows, Math.max(statusCol, sheet.getLastColumn())).getValues();
+      data.forEach(r => {
+        const id = String(r[0] || '').trim();
+        if (id && !id.startsWith('<') && !id.startsWith('Function') && !id.startsWith('Scenario') && !id.startsWith('methodName')) {
+          total++;
+          const st = String(r[statusCol - 1] || '').trim().toLowerCase();
+          if (st === 'passed' || st === 'pass') passed++;
+          else if (st === 'failed' || st === 'fail') failed++;
+          else pending++;
+        }
+      });
+    }
+
+    // Cập nhật header trong chính sheet đó
+    try {
+      if (targetType === '5.1') {
+        sheet.getRange('B3').setValue(total);
+        sheet.getRange('B5').setValue(passed);
+        sheet.getRange('C5').setValue(failed);
+        sheet.getRange('D5').setValue(pending);
+      } else if (targetType === '5.2' || targetType === '5.3') {
+        sheet.getRange('B4').setValue(total);
+        sheet.getRange('B6').setValue(passed);
+        sheet.getRange('C6').setValue(failed);
+        sheet.getRange('D6').setValue(pending);
+      }
+    } catch (e) {}
+
+    statsList.push({
+      no: idx + 1,
+      name: sName,
+      passed,
+      failed,
+      pending,
+      na: 0,
+      total
+    });
+  });
+
+  // 1. Cập nhật tab 'Test Cases'
+  const indexSheet = ss.getSheetByName('Test Cases');
+  if (indexSheet) {
+    const maxRows = indexSheet.getMaxRows();
+    if (maxRows >= 9) {
+      indexSheet.getRange(9, 1, Math.max(1, maxRows - 8), indexSheet.getMaxColumns()).clearContent();
+    }
+    const indexRows = statsList.map(s => ['', s.no, s.name, s.name, `Kiểm thử ${targetType} cho ${s.name}`, 'Đã hoàn thành']);
+    if (indexRows.length > 0) {
+      ensureRowExists(indexSheet, 8 + indexRows.length);
+      indexSheet.getRange(9, 1, indexRows.length, indexRows[0].length).setValues(indexRows);
+      const range = indexSheet.getRange(9, 2, indexRows.length, 5);
+      range.setBorder(true, true, true, true, true, true, '#D0D7DE', SpreadsheetApp.BorderStyle.SOLID);
+    }
+  }
+
+  // 2. Cập nhật tab 'Test Statistics'
+  const statsSheet = ss.getSheetByName('Test Statistics');
+  if (statsSheet) {
+    const maxRows = statsSheet.getMaxRows();
+    if (maxRows >= 11) {
+      statsSheet.getRange(11, 1, Math.max(1, maxRows - 10), statsSheet.getMaxColumns()).clearContent();
+    }
+    const statsRows = statsList.map(s => ['', s.no, s.name, s.passed, s.failed, s.pending, s.na, s.total]);
+    if (statsRows.length > 0) {
+      ensureRowExists(statsSheet, 10 + statsRows.length);
+      statsSheet.getRange(11, 1, statsRows.length, statsRows[0].length).setValues(statsRows);
+      const range = statsSheet.getRange(11, 2, statsRows.length, 7);
+      range.setBorder(true, true, true, true, true, true, '#D0D7DE', SpreadsheetApp.BorderStyle.SOLID);
+    }
+    // Cập nhật tổng số dòng 7
+    let sumPassed = 0, sumFailed = 0, sumPending = 0, sumTotal = 0;
+    statsList.forEach(s => { sumPassed += s.passed; sumFailed += s.failed; sumPending += s.pending; sumTotal += s.total; });
+    try {
+      statsSheet.getRange('B7').setValue(sumPassed);
+      statsSheet.getRange('C7').setValue(sumFailed);
+      statsSheet.getRange('D7').setValue(sumPending);
+      statsSheet.getRange('F7').setValue(sumTotal);
+    } catch (e) {}
+  }
+
+  return { sheetsCount: statsList.length, statsList };
 }
 
 /**
