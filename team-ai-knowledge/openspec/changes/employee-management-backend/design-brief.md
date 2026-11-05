@@ -9,8 +9,9 @@ flowchart TD
         B1 -->|POST /api/v1/employees/{id}/identity-account| C1_Acc[Cấp tài khoản Users]
     end
 
-    subgraph C2 ["Cụm 2: Lập lịch Ca làm việc"]
-        A2[Owner/Manager] -->|POST /api/v1/schedules/batch| B2[Gán ca tuần/tháng]
+    subgraph C2 ["Cụm 2: Cấu hình Ca & Lập lịch Ca làm việc"]
+        A2[Owner/Manager] -->|POST/PUT /api/v1/shift-configs| B2_Cfg[Cấu hình Ca đa chi nhánh / qua đêm]
+        A2 -->|POST /api/v1/schedules/batch| B2[Gán ca tuần/tháng theo ShiftConfig]
         B2 -->|POST /api/v1/schedules/publish| C2_Pub[Ban hành lịch]
         C2_Pub -->|GET /api/v1/schedules/my-schedule| D2[Nhân viên xem ca cá nhân]
     end
@@ -42,12 +43,23 @@ flowchart TD
 1. `GET /api/v1/employees`: Danh sách nhân viên phân trang, tìm kiếm họ tên/mã/SĐT, lọc theo `branchId` và `status`.
 2. `GET /api/v1/employees/{id}`: Chi tiết hồ sơ nhân viên, chi nhánh, thông tin lương và tài khoản liên kết.
 3. `POST /api/v1/employees`: Tạo mới nhân viên. Tự sinh `EmployeeCode` tuần tự dạng `NV0001`, validate trùng CCCD/SĐT.
-   - Body: `CreateEmployeeRequest` (`FullName`, `CitizenId`, `Phone`, `Email`, `BranchId`, `JobTitle`, `DateOfBirth`, `Gender`, `SalaryType`, `BaseRate`, `LunchAllowance`, `TravelAllowance`, `BankName`, `BankAccountNumber`, `BankAccountHolder`).
-4. `PUT /api/v1/employees/{id}`: Cập nhật thông tin hồ sơ nhân viên và mức lương.
+   - Body: `CreateEmployeeRequest` (`FullName`, `CitizenId`, `Phone`, `Email`, `BranchId`, `JobTitle`, `DateOfBirth`, `Gender`, `SalaryType`, `BaseRate`, `Allowances`, `BankName`, `BankAccountNumber`, `BankAccountHolder`).
+4. `PUT /api/v1/employees/{id}`: Cập nhật thông tin hồ sơ nhân viên và mức lương kèm đồng bộ phụ cấp 3 chiều (Sync & Diffing).
 5. `PATCH /api/v1/employees/{id}/status`: Đổi trạng thái (`active` / `inactive`).
 6. `POST /api/v1/employees/{id}/identity-account`: Cấp tài khoản đăng nhập (`Users`), mã hóa mật khẩu BCrypt, gán quyền (`Role`).
+7. `DELETE /api/v1/employees/{id}`: Xóa nhân viên theo quy tắc `BR-EMP-03` (chỉ cho phép xóa khi chưa có dữ liệu ca làm việc và phiếu lương; xóa sạch phụ cấp liên kết khi xóa hợp lệ).
 
-### Cụm 2: Lập lịch & Ban hành Ca (`SchedulesController` - `/api/v1/schedules`)
+### Cụm 2: Cấu hình Ca & Lập lịch Ca làm việc
+#### A. Quản lý Danh mục & Cấu hình Ca (`ShiftConfigsController` - `/api/v1/shift-configs`)
+1. `GET /api/v1/shift-configs`: Danh sách cấu hình ca làm việc, lọc theo `branchId` và `status`.
+2. `GET /api/v1/shift-configs/{id}`: Xem chi tiết cấu hình ca.
+3. `POST /api/v1/shift-configs`: Tạo mới cấu hình ca làm việc.
+   - Body: `CreateShiftConfigRequest` (`Name`, `StartTime`, `EndTime`, `WorkHours`, `CheckInStart`, `CheckInEnd`, `IsNextDayCheckIn`, `BranchIds`, `ColorCode`, `Description`).
+   - Hỗ trợ ca qua đêm (`IsNextDayCheckIn = true`) và áp dụng cho nhiều chi nhánh (`BranchIds` multi-branch JSONB).
+4. `PUT /api/v1/shift-configs/{id}`: Cập nhật thông tin cấu hình ca làm việc.
+5. `DELETE /api/v1/shift-configs/{id}`: Xóa hoặc vô hiệu hóa cấu hình ca làm việc (chặn xóa nếu đã có ca phân công `EmployeeSchedule` tham chiếu).
+
+#### B. Lập lịch & Ban hành Ca (`SchedulesController` - `/api/v1/schedules`)
 1. `GET /api/v1/schedules`: Lấy danh sách lịch làm việc theo dải ngày (`fromDate`, `toDate`) và `branchId`.
 2. `GET /api/v1/schedules/my-schedule`: Dành cho nhân viên đang đăng nhập xem lịch ca cá nhân theo tuần.
 3. `POST /api/v1/schedules/batch`: Phân ca hàng loạt theo nhân viên và dải ngày.
@@ -104,8 +116,8 @@ flowchart TD
    - `AuditedBy` (string?, null)
    - `AuditedAtUtc` (DateTime?, null)
    - `DenominationDetailsJson` (string?, null - lưu chi tiết số lượng 9 mệnh giá tiền mặt kiểm đếm)
-2. **Bổ sung bảng / hỗ trợ cấu hình ca `WorkShifts`** (nếu chưa có, hoặc chuẩn hóa trên `EmployeeSchedule`):
-   - Quản lý định nghĩa ca: `ShiftCode`, `ShiftName`, `StartTime`, `EndTime`, `AllowedCheckInMinutesBefore`, `AllowedCheckInMinutesAfter`.
+2. **Cấu hình ca làm việc `ShiftConfigs`**:
+   - Quản lý định nghĩa ca: `ShiftConfigId`, `Name`, `StartTime`, `EndTime`, `WorkHours`, `CheckInStart`, `CheckInEnd`, `IsNextDayCheckIn`, `BranchIds` (jsonb), `ColorCode`.
 3. **Index & Multi-tenancy**:
    - Partial Unique Index `IX_Employees_TenantId_EmployeeCode` WHERE `IsDeleted = false`.
    - Unique Index `IX_Payslips_TenantId_EmployeeId_PeriodMonth` chống sinh đúp bảng lương trong cùng kỳ.
@@ -117,11 +129,14 @@ flowchart TD
 1. **`GBR-POS-04` (Drawer Balancing Rule)**:
    - Độ lệch tiền mặt: $\Delta = \text{ActualCashCounted} - (\text{OpeningFloat} + \text{TotalCashIn} - \text{TotalCashOut})$.
    - Nếu $|\Delta| > 0$, nhân viên bắt buộc phải điền trường `DiscrepancyNotes` giải trình lý do trước khi bấm xác nhận chốt ca.
-2. **GPS Geofencing Rule**:
+2. **`BR-EMP-03` (Employee Deletion Protection Rule)**:
+   - Chỉ được phép xóa nhân viên khi chưa có dữ liệu `EmployeeSchedule` và `Payslip`.
+   - Xóa sạch `EmployeeAllowances` khi xóa nhân viên hợp lệ.
+3. **GPS Geofencing Rule**:
    - Khoảng cách được tính bằng công thức Haversine:
      $$d = 2R \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\varphi}{2}\right) + \cos(\varphi_1)\cos(\varphi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
    - Nếu $d > \text{CheckinRadiusMeters}$ (mặc định 100m), hệ thống cảnh báo và gắn cờ `IsGpsValid = false`.
-3. **Phân quyền truy cập (RBAC)**:
-   - `STORE_OWNER`: Toàn quyền 5 cụm (tạo nhân viên, cấp tài khoản, duyệt ca Z-Report, khởi tạo bảng lương, chi trả Sổ quỹ).
-   - `BRANCH_MANAGER`: Quản lý nhân viên chi nhánh, lập lịch tuần, duyệt công bổ sung, kiểm đếm ca chi nhánh.
+4. **Phân quyền truy cập (RBAC)**:
+   - `STORE_OWNER`: Toàn quyền 5 cụm (tạo nhân viên, cấu hình ca, cấp tài khoản, duyệt ca Z-Report, khởi tạo bảng lương, chi trả Sổ quỹ).
+   - `BRANCH_MANAGER`: Quản lý nhân viên chi nhánh, cấu hình ca áp dụng chi nhánh, lập lịch tuần, duyệt công bổ sung, kiểm đếm ca chi nhánh.
    - `CASHIER` / `STAFF`: Chỉ xem lịch cá nhân, chấm công ca của mình, mở/đóng ca POS của phiên mình phụ trách, xem phiếu lương cá nhân.
