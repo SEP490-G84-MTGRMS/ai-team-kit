@@ -23,9 +23,9 @@
 - [x] T12 — Xây dựng `BranchAttendancePoliciesController` với các endpoints: `GET /api/v1/attendance-policies/branch/{branchId}`, `PUT /api/v1/attendance-policies/branch/{branchId}`, và `POST /api/v1/attendance-policies/copy` (REQ-07)
 
 #### Nhóm 2.3: Lập lịch & Ban hành Ca làm việc (Schedules)
-- [ ] T13 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-03)
-- [ ] T14 — Triển khai `IScheduleRepository`, `IScheduleService` và `ScheduleService` với thuật toán kiểm tra chống xung đột khung giờ ca trong ngày và cơ chế ban hành ca tuần (`publish`) (REQ-03)
-- [ ] T15 — Xây dựng `SchedulesController` với các endpoints: tra cứu lịch theo dải ngày, lịch cá nhân `my-schedule`, phân ca batch và ban hành ca (REQ-03)
+- [x] T13 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-03)
+- [x] T14 — Triển khai `IScheduleRepository`, `IScheduleService` và `ScheduleService` với thuật toán kiểm tra chống xung đột khung giờ ca trong ngày và cơ chế ban hành ca tuần (`publish`) (REQ-03)
+- [x] T15 — Xây dựng `SchedulesController` với các endpoints: tra cứu lịch theo dải ngày, lịch cá nhân `my-schedule`, phân ca batch và ban hành ca (REQ-03)
 
 ### Cụm 3: Chấm công số & Bảng công
 - [ ] T16 — Xây dựng các DTOs cho Chấm công và hàm tính khoảng cách GPS Geofencing theo công thức toán học Haversine trong `MT_GRMS.Application/HR/Attendance` (REQ-04)
