@@ -7,3 +7,7 @@ Chuyển sang bước Brainstorm để phân tích kỹ thuật chi tiết layou
 ## Brainstorm · 2026-11-05 11:53
 
 Chuyển sang bước Verify Spec để thực hiện Skeptic review và lập tasks.md chi tiết.
+
+## Verify Spec · 2026-11-05 11:59
+
+Tiến hành code và tick lần lượt 8 task trong tasks.md.

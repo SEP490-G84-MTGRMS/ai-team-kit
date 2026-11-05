@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 11:53
 
 Đã duyệt exploration.md và specs.md (bố cục in 2 dòng, thu ngân động, chọn đơn vị đặt trước).
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 11:59
+
+Đã duyệt Skeptic review và danh sách 8 tasks thực thi. Chuyển sang bước Apply.
