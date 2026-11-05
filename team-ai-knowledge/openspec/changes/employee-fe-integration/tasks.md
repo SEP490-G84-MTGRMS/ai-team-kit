@@ -10,7 +10,8 @@
 - [x] T7 — Xây dựng 2 component dùng chung `ConfirmModal.tsx` và `NotificationModal.tsx` trong `src/components/common/` dựa trên mẫu chuẩn của `product` để tái sử dụng toàn hệ thống (REQ-FE-EMP-07)
 - [x] T8 — Tích hợp `ConfirmModal` và `NotificationModal` vào luồng Xóa nhân viên, Toggle trạng thái và Lưu form; xử lý bắt mã lỗi `EMPLOYEE_HAS_WORK_HISTORY` (BR-EMP-03) khi nhân viên đã có ca hoặc phiếu lương (REQ-FE-EMP-06)
 - [x] T9 — Triển khai `shiftConfigApi.ts` kết nối `/api/v1/hr/shift-configs` và `/api/v1/shift-configs`, đồng bộ với các màn hình `ShiftConfigPage`, `ShiftFormModal` (REQ-FE-EMP-08)
+- [x] T12 — Nâng cấp `AddScheduleModal.tsx` và `scheduleApi.ts`: gọi API `createRecurringSchedule`, lọc ca theo chi nhánh nhân viên, tính ngày kết thúc đến hết tháng sau khi để trống, bỏ giới hạn 31 ngày, loại bỏ nhãn tự động gia hạn và map đúng `shiftCode` (REQ-FE-EMP-09)
 
 ## Test
 - [x] T10 — Viết Unit Tests cho `employeeApi.ts` và `employeeMapper.ts` kiểm chứng chuyển đổi dữ liệu, regex UUID và xử lý gọi API (REQ-FE-EMP-01)
-- [x] T11 — Kiểm tra toàn diện luồng màn hình, chạy `npm run build` và verify không có lỗi runtime/linting (0 errors) (REQ-FE-EMP-02)
+- [x] T11 — Kiểm tra toàn diện luồng màn hình, chạy `npm run build` và verify không có lỗi runtime/linting (0 errors, 106 unit tests passed) (REQ-FE-EMP-02, REQ-FE-EMP-09)
