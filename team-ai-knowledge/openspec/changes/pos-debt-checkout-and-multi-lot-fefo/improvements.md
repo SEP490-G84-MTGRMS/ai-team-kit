@@ -11,3 +11,7 @@ Khảo sát kỹ thuật toán trừ kho và luồng in ấn trước khi sửa 
 ## Verify Spec · 2026-11-05 07:34
 
 Kế hoạch 5 task chia rõ từng lớp DB, Frontend, Backend, Test giúp kiểm soát chặt chẽ tiến độ.
+
+## Apply · 2026-11-05 07:37
+
+Hoàn tất 5/5 task đồng bộ CSDL, Frontend UI, Decoupling in bill và kiểm chứng FEFO.
