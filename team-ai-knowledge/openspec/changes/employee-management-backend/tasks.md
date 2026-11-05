@@ -2,7 +2,7 @@
 
 ## DB
 - [ ] T1 — Bổ sung các cột kiểm soát duyệt ca (`IsAudited`, `AuditedBy`, `AuditedAtUtc`, `DenominationDetailsJson`) vào entity `ShiftZReport` và tạo EF Core Migration (REQ-05)
-- [x] T2 — Cấu hình Fluent API trong `AppDbContext` cho các thực thể HR (`Employee`, `ShiftConfig`, `BranchAttendancePolicy`, `EmployeeSchedule`, `Payslip`, `EmployeeAllowance`) với các chỉ mục Index chống trùng lặp theo Tenant (REQ-01, REQ-02, REQ-07, REQ-03, REQ-06)
+- [x] T2 — Cấu hình Fluent API trong `AppDbContext` cho các thực thể HR (`Employee`, `ShiftConfig`, `BranchAttendancePolicy`, `EmployeeSchedule`, `Payslip`, `EmployeeAllowance`) với các chỉ mục Index chống trùng lặp theo Tenant và cấu hình cột `ShiftCode` VARCHAR(30) (REQ-01, REQ-02, REQ-07, REQ-03, REQ-06)
 
 ## Backend
 ### Cụm 1: Quản lý Hồ sơ Nhân viên & Cấp tài khoản
@@ -23,9 +23,9 @@
 - [x] T12 — Xây dựng `BranchAttendancePoliciesController` với các endpoints: `GET /api/v1/attendance-policies/branch/{branchId}`, `PUT /api/v1/attendance-policies/branch/{branchId}`, và `POST /api/v1/attendance-policies/copy` (REQ-07)
 
 #### Nhóm 2.3: Lập lịch & Ban hành Ca làm việc (Schedules)
-- [x] T13 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-03)
-- [x] T14 — Triển khai `IScheduleRepository`, `IScheduleService` và `ScheduleService` với thuật toán kiểm tra chống xung đột khung giờ ca trong ngày và cơ chế ban hành ca tuần (`publish`) (REQ-03)
-- [x] T15 — Xây dựng `SchedulesController` với các endpoints: tra cứu lịch theo dải ngày, lịch cá nhân `my-schedule`, phân ca batch và ban hành ca (REQ-03)
+- [x] T13 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (hỗ trợ `CreateRecurringScheduleRequest`, `BatchCreateScheduleRequest` với `HasEndDate`, `EndDate`, và `RepeatDays`) (REQ-03)
+- [x] T14 — Triển khai `IScheduleRepository`, `IScheduleService` và `ScheduleService` với thuật toán kiểm tra chống xung đột ca trong ngày (cho phép nhiều ca, max trùng $\le 12$h), tự động tính ngày kết thúc đến hết tháng sau khi bỏ trống, chuẩn hóa `ShiftCode` max 30 ký tự chống tràn cột database, và cơ chế ban hành ca tuần (`publish`) (REQ-03)
+- [x] T15 — Xây dựng `SchedulesController` với các endpoints: tra cứu lịch theo dải ngày, lịch cá nhân `my-schedule`, phân ca batch, đăng ký ca lặp định kỳ `POST /api/v1/schedules/recurring` và ban hành ca (REQ-03)
 
 ### Cụm 3: Chấm công số & Bảng công
 - [ ] T16 — Xây dựng các DTOs cho Chấm công và hàm tính khoảng cách GPS Geofencing theo công thức toán học Haversine trong `MT_GRMS.Application/HR/Attendance` (REQ-04)
@@ -48,7 +48,7 @@
 - [x] T27 — Viết Unit Tests cho `EmployeeService` kiểm chứng sinh mã `NVxxxx`, kiểm tra trùng CCCD/SĐT, cấp tài khoản, cơ chế đồng bộ phụ cấp đa chiều và kiểm tra chặn xóa `BR-EMP-03` (REQ-01)
 - [x] T28 — Viết Unit Tests cho `ShiftConfigService` kiểm chứng CRUD ca làm việc, validate ca qua đêm và multi-branch (REQ-02)
 - [x] T29 — Viết Unit Tests cho `BranchAttendancePolicyService` kiểm chứng lấy chính sách fallback default, Upsert và sao chép đa chi nhánh (REQ-07)
-- [x] T30 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, chặn xung đột thời gian và ban hành lịch (REQ-03)
+- [x] T30 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, ca lặp định kỳ (`CreateRecurringAsync`) tạo lịch đến hết tháng sau hoặc đến ngày kết thúc chỉ định, cho phép nhiều ca trùng $\le 12$h, chặn xung đột $> 12$h và ban hành lịch (REQ-03)
 - [ ] T31 — Viết Unit Tests cho `AttendanceService` kiểm chứng tính khoảng cách GPS Geofencing, áp dụng dung sai chính sách chi nhánh và giờ công thực tế (REQ-04)
 - [ ] T32 — Viết Unit Tests cho `CashierShiftService` kiểm chứng kiểm đếm 9 mệnh giá, quy tắc `GBR-POS-04` và tự động sinh Phiếu thu Sổ quỹ (REQ-05)
 - [ ] T33 — Viết Unit Tests cho `PayrollService` kiểm chứng tính NetSalary, chặn đúp kỳ lương và tự động sinh Phiếu chi Sổ quỹ (REQ-06)
