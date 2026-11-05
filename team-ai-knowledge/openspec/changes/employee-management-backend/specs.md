@@ -5,11 +5,17 @@
 | Method | Path | Request Body | Response | Mã lỗi |
 |---|---|---|---|---|
 | GET | `/api/v1/employees` | Query: `keyword`, `branchId`, `status`, `page`, `pageSize` | `PagedList<EmployeeSummaryDto>` | 401, 403 |
-| GET | `/api/v1/employees/{id}` | — | `EmployeeDetailDto` | 401, 404 |
-| POST | `/api/v1/employees` | `CreateEmployeeRequest` | 201 Created `EmployeeDetailDto` | 400, 409 (trùng SĐT/CCCD) |
-| PUT | `/api/v1/employees/{id}` | `UpdateEmployeeRequest` | 200 OK `EmployeeDetailDto` | 400, 404, 409 |
+| GET | `/api/v1/employees/{id}` | — | `EmployeeResponse` | 401, 404 |
+| POST | `/api/v1/employees` | `CreateEmployeeRequest` | 201 Created `EmployeeResponse` | 400, 409 (trùng SĐT/CCCD) |
+| PUT | `/api/v1/employees/{id}` | `UpdateEmployeeRequest` | 200 OK `EmployeeResponse` | 400, 404, 409 |
 | PATCH | `/api/v1/employees/{id}/status` | `UpdateEmployeeStatusRequest` | 200 OK | 400, 404 |
 | POST | `/api/v1/employees/{id}/identity-account` | `CreateIdentityAccountRequest` | 200 OK `UserDto` | 400, 404, 409 |
+| DELETE | `/api/v1/employees/{id}` | — | 200 OK | 400, 404 |
+| GET | `/api/v1/shift-configs` | Query: `branchId`, `status` | `List<ShiftConfigDto>` | 401, 403 |
+| GET | `/api/v1/shift-configs/{id}` | — | `ShiftConfigDto` | 401, 404 |
+| POST | `/api/v1/shift-configs` | `CreateShiftConfigRequest` | 201 Created `ShiftConfigDto` | 400, 409 |
+| PUT | `/api/v1/shift-configs/{id}` | `UpdateShiftConfigRequest` | 200 OK `ShiftConfigDto` | 400, 404, 409 |
+| DELETE | `/api/v1/shift-configs/{id}` | — | 200 OK | 400, 404 |
 | GET | `/api/v1/schedules` | Query: `branchId`, `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401, 403 |
 | GET | `/api/v1/schedules/my-schedule` | Query: `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401 |
 | POST | `/api/v1/schedules/batch` | `BatchAssignScheduleRequest` | 200 OK `List<EmployeeScheduleDto>` | 400 (xung đột ca), 404 |
@@ -32,19 +38,32 @@
 
 ## ADDED Requirements
 
-### Requirement: REQ-01 Quản lý Hồ sơ Nhân viên & Cấp mã tuần tự
+### Requirement: REQ-01 Quản lý Hồ sơ Nhân viên & Đồng bộ Phụ cấp (Sync & Diffing)
 Hệ thống **MUST** hỗ trợ tạo, tra cứu, chỉnh sửa hồ sơ nhân viên và cấp tài khoản đăng nhập Identity.
 Hệ thống **MUST** tự động sinh mã nhân viên tuần tự theo định dạng `NV0001`, `NV0002` theo từng Tenant và ngăn chặn trùng lặp mã cũng như trùng lặp CCCD/SĐT trong cùng tenant.
+Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **MUST** áp dụng thuật toán so sánh và đồng bộ hóa (Sync & Diffing) 3 chiều:
+1. **Thêm mới (Insert)**: Phụ cấp trong payload chưa có Id hoặc `Guid.Empty` $\rightarrow$ tạo mới bản ghi.
+2. **Cập nhật (Update)**: Phụ cấp có Id tồn tại trong cả database và payload $\rightarrow$ giữ nguyên Id, cập nhật Tên và Số tiền.
+3. **Xóa (Delete)**: Phụ cấp có trong database nhưng không còn trong payload $\rightarrow$ xóa vĩnh viễn khỏi cơ sở dữ liệu qua `RemoveRange`.
 
 #### Scenario: Tạo hồ sơ nhân viên mới thành công
-- **GIVEN** Store Owner hoặc Branch Manager đã đăng nhập và gửi thông tin nhân viên hợp lệ kèm mức lương cơ bản.
+- **GIVEN** Store Owner hoặc Branch Manager đã đăng nhập và gửi thông tin nhân viên hợp lệ kèm mức lương cơ bản và chi nhánh trực thuộc.
 - **WHEN** Gửi request `POST /api/v1/employees`.
 - **THEN** Hệ thống sinh mã tuần tự tiếp theo (VD `NV0005`), lưu vào DB với `TenantId` hiện tại, trả về status 201 Created kèm dữ liệu nhân viên.
 
 #### Scenario: Ngăn chặn trùng lặp CCCD hoặc SĐT
 - **GIVEN** Một nhân viên đã tồn tại trong Tenant với CCCD `001202009999` hoặc SĐT `0988776655`.
-- **WHEN** Quản trị viên cố gắng tạo nhân viên mới có cùng CCCD hoặc SĐT đó.
-- **THEN** Hệ thống MUST trả về mã lỗi 409 Conflict với thông báo lỗi chi tiết, không tạo bản ghi mới.
+- **WHEN** Quản trị viên cố gắng tạo hoặc sửa nhân viên có cùng CCCD hoặc SĐT đó.
+- **THEN** Hệ thống MUST trả về mã lỗi 409 Conflict với thông báo lỗi chi tiết, không lưu bản ghi.
+
+#### Scenario: Cập nhật phụ cấp an toàn không ngắt liên kết quan hệ (Sync & Diffing)
+- **GIVEN** Nhân viên đang có 2 phụ cấp trong DB: Phụ cấp Xăng xe (`Id = guid_1`, 500.000đ) và Phụ cấp Ăn trưa (`Id = guid_2`, 650.000đ).
+- **WHEN** Quản trị viên gửi request `PUT /api/v1/employees/{id}` với danh sách phụ cấp mới gồm: Phụ cấp Ăn trưa (`Id = guid_2`, tăng lên 700.000đ) và Phụ cấp Chuyên cần (không có Id, 300.000đ).
+- **THEN** Hệ thống:
+  - Cập nhật số tiền Phụ cấp Ăn trưa thành 700.000đ (giữ nguyên `guid_2`).
+  - Thêm mới bản ghi Phụ cấp Chuyên cần với Id mới.
+  - Xóa bỏ Phụ cấp Xăng xe khỏi database mà không gây lỗi ngắt quan hệ (severed relationship).
+  - Trả về HTTP 200 OK với danh sách phụ cấp đã đồng bộ.
 
 #### Scenario: Cấp tài khoản đăng nhập cho nhân viên
 - **GIVEN** Nhân viên chưa có tài khoản đăng nhập (`UserId == null`).
@@ -53,7 +72,20 @@ Hệ thống **MUST** tự động sinh mã nhân viên tuần tự theo định
 
 ---
 
-### Requirement: REQ-02 Lập lịch & Ban hành Ca làm việc
+### Requirement: REQ-02 Cấu hình Ca làm việc Đa chi nhánh & Chấm công qua đêm
+Hệ thống **MUST** quản lý danh mục ca làm việc (`ShiftConfigs`), cho phép cấu hình khung giờ làm việc (`StartTime`, `EndTime`), tổng giờ làm việc (`WorkHours`), và khung giờ cho phép chấm công (`CheckInStart`, `CheckInEnd`).
+Hệ thống **MUST** hỗ trợ cấu hình phạm vi áp dụng cho một hoặc nhiều chi nhánh (`BranchIds` multi-branch JSONB).
+Hệ thống **MUST** hỗ trợ ca qua đêm hoặc chấm công kết thúc vào ngày hôm sau (`IsNextDayCheckIn = true`).
+
+#### Scenario: Thêm mới ca làm việc áp dụng nhiều chi nhánh
+- **GIVEN** Quản lý tạo ca "Tối" (17:00 - 21:00, 4h công), giờ chấm công từ 14:00 đến 00:00 ngày hôm sau.
+- **AND** Phạm vi áp dụng gồm 2 chi nhánh: "Chi nhánh trung tâm" và "Chi nhánh HCM".
+- **WHEN** Gửi `POST /api/v1/shift-configs`.
+- **THEN** Hệ thống lưu cấu hình ca với `BranchIds` chứa danh sách ID của 2 chi nhánh, trả về HTTP 201 Created.
+
+---
+
+### Requirement: REQ-03 Lập lịch & Ban hành Ca làm việc
 Hệ thống **MUST** cho phép lập lịch làm việc theo tuần/tháng cho nhân viên chi nhánh và **MUST** kiểm tra ngăn chặn xung đột thời gian ca của cùng một nhân viên trong ngày.
 
 #### Scenario: Phân ca hàng loạt theo tuần thành công
@@ -66,25 +98,15 @@ Hệ thống **MUST** cho phép lập lịch làm việc theo tuần/tháng cho 
 - **WHEN** Người quản lý gửi request phân thêm ca Giao thoa (12:00 - 18:00) cho nhân viên A cùng ngày đó.
 - **THEN** Hệ thống MUST trả về mã lỗi 400 Bad Request chỉ rõ nhân viên A đang bị trùng lặp thời gian làm việc.
 
-#### Scenario: Ban hành lịch làm việc tuần
-- **GIVEN** Các ca làm việc trong tuần đang ở trạng thái `draft`.
-- **WHEN** Gửi request `POST /api/v1/schedules/publish` cho khoảng thời gian tuần đó.
-- **THEN** Tất cả các ca thuộc dải ngày được chuyển trạng thái sang `scheduled`, nhân viên có thể xem lịch trên app cá nhân.
-
 ---
 
-### Requirement: REQ-03 Chấm công số với Xác thực GPS Geofencing
+### Requirement: REQ-04 Chấm công số với Xác thực GPS Geofencing
 Hệ thống **MUST** xác thực tọa độ GPS của thiết bị khi nhân viên thực hiện Check-in / Check-out so với tọa độ chi nhánh làm việc theo công thức Haversine. Hệ thống **MUST** tự động tính số phút đi muộn (`LateMinutes`) và tổng số giờ công thực tế (`ActualWorkHours`).
 
 #### Scenario: Chấm công vào ca đúng vị trí chi nhánh
 - **GIVEN** Nhân viên có ca trực từ 06:00 đến 14:00, vị trí GPS của nhân viên cách chi nhánh 25 mét (nhỏ hơn bán kính cho phép 100 mét).
 - **WHEN** Nhân viên gửi `POST /api/v1/attendance/check-in` lúc 06:05.
 - **THEN** Hệ thống ghi nhận `CheckInTime = UtcNow`, gán `IsGpsValid = true`, tính `LateMinutes = 5`, cập nhật ca làm việc sang `in_progress`.
-
-#### Scenario: Chấm công ngoài phạm vi chi nhánh (Cảnh báo GPS)
-- **GIVEN** Nhân viên gửi yêu cầu check-in với tọa độ cách chi nhánh 800 mét (> 100m).
-- **WHEN** Nhân viên gửi `POST /api/v1/attendance/check-in`.
-- **THEN** Hệ thống MUST đánh dấu `IsGpsValid = false`, lưu khoảng cách thực tế, đánh dấu trạng thái cần người quản lý duyệt giải trình.
 
 #### Scenario: Chấm công ra ca và tổng hợp giờ công
 - **GIVEN** Nhân viên đã check-in lúc 06:00 và hoàn thành ca lúc 14:00.
@@ -93,46 +115,20 @@ Hệ thống **MUST** xác thực tọa độ GPS của thiết bị khi nhân v
 
 ---
 
-### Requirement: REQ-04 Đóng ca POS, Đối soát 9 Mệnh giá & Tự động sinh Phiếu thu Sổ quỹ
+### Requirement: REQ-05 Đóng ca POS, Đối soát 9 Mệnh giá & Tự động sinh Phiếu thu Sổ quỹ
 Hệ thống **MUST** quản lý chu trình phiên ca thu ngân POS. Khi đóng ca, nhân viên **MUST** khai báo số lượng 9 mệnh giá tiền mặt. Nếu có chênh lệch thừa/thiếu tiền mặt so với lý thuyết, nhân viên **MUST** giải trình lý do theo quy tắc `GBR-POS-04`. Khi chủ cửa hàng duyệt ca, hệ thống **MUST** tự động sinh Phiếu thu tiền mặt vào Sổ quỹ (`Cashbooks` type `INCOME`).
-
-#### Scenario: Khai báo 9 mệnh giá và phát hiện chênh lệch tiền mặt
-- **GIVEN** Ca làm việc có tiền lý thuyết `ExpectedCash = 5,000,000đ`. Nhân viên đếm 9 mệnh giá tiền mặt thực tế được `4,950,000đ` (thiếu 50,000đ).
-- **WHEN** Nhân viên gửi request `POST /api/v1/cashier-shifts/{id}/close` không kèm `DiscrepancyNotes`.
-- **THEN** Hệ thống MUST từ chối với lỗi 400 Bad Request yêu cầu bắt buộc nhập giải trình chênh lệch tiền mặt.
-- **WHEN** Nhân viên điền ghi chú giải trình "Nhầm tiền thối khách hàng 50k" và gửi lại.
-- **THEN** Hệ thống khóa ca, lưu `ShiftZReport` với `Discrepancy = -50,000đ`, `Status = Closed`.
-
-#### Scenario: Chủ cửa hàng duyệt ca và tự động hạch toán Sổ quỹ
-- **GIVEN** Ca thu ngân đã đóng và chờ duyệt (`IsAudited == false`), số tiền nộp về két chính là `3,500,000đ`.
-- **WHEN** Chủ cửa hàng gửi request `POST /api/v1/cashier-shifts/{id}/audit-approve`.
-- **THEN** Hệ thống cập nhật ca thành `IsAudited = true`, đồng thời tự động gọi `ICashbookService.ReceiveCashAsync()` tạo Phiếu thu loại `INCOME` với `Amount = 3,500,000đ`, `SourceType = "CASHIER_SHIFT"`, `ReferenceCode` chứa mã ca.
 
 ---
 
-### Requirement: REQ-05 Payroll Engine & Chi trả Lương Tích hợp Sổ quỹ
+### Requirement: REQ-06 Payroll Engine & Chi trả Lương Tích hợp Sổ quỹ
 Hệ thống **MUST** cung cấp động cơ tính lương tự động quét ngày công từ `EmployeeSchedules` trong tháng, tính toán lương cơ bản, làm ngoài giờ, phụ cấp, thưởng và phạt đi trễ. Khi phê duyệt chi trả lương, hệ thống **MUST** tự động sinh Phiếu chi lương vào Sổ quỹ (`Cashbooks` type `EXPENSE`).
-
-#### Scenario: Khởi tạo bảng lương tháng tự động
-- **GIVEN** Tháng 10/2026 có 3 nhân viên đã hoàn thành các ca làm việc và có cấu hình lương cơ bản.
-- **WHEN** Chủ cửa hàng gửi request `POST /api/v1/payroll/generate?periodMonth=2026-10`.
-- **THEN** Hệ thống tính toán tổng giờ công, trừ tiền phạt đi muộn, cộng phụ cấp và tạo 3 bản ghi `Payslips` với trạng thái `UNPAID`.
-
-#### Scenario: Ngăn chặn khởi tạo đúp bảng lương của cùng một kỳ
-- **GIVEN** Bảng lương kỳ `2026-10` đã được khởi tạo.
-- **WHEN** Người dùng gửi lại request khởi tạo cho cùng kỳ `2026-10`.
-- **THEN** Hệ thống MUST báo lỗi 409 Conflict, yêu cầu hủy hoặc cập nhật bảng lương hiện tại thay vì tạo trùng lặp.
-
-#### Scenario: Chi trả lương qua Tiền mặt / VietQR và tự động sinh Phiếu chi Sổ quỹ
-- **GIVEN** Phiếu lương của nhân viên Nguyễn Văn A có `NetSalary = 8,500,000đ` đang ở trạng thái `UNPAID`.
-- **WHEN** Chủ cửa hàng thực hiện chi trả và gửi `POST /api/v1/payroll/payslips/{id}/pay` với `PaymentMethod = "VIETQR"`.
-- **THEN** Hệ thống cập nhật phiếu lương thành `PAID`, đồng thời tự động gọi `ICashbookService.DisburseCashAsync()` tạo Phiếu chi loại `EXPENSE` với `Amount = 8,500,000đ`, `SourceType = "SALARY"`, `ReferenceCode = PayslipCode`.
 
 ---
 
 ## Acceptance Checklist
-- [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users` và validate trùng SĐT/CCCD.
-- [ ] REQ-02: Phân ca hàng loạt theo tuần/tháng, ban hành ca và kiểm tra ngăn chặn trùng lặp khung giờ ca.
-- [ ] REQ-03: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, tính đúng `LateMinutes` và `ActualWorkHours`.
-- [ ] REQ-04: Mở/đóng ca POS với khai báo 9 mệnh giá, đối soát chênh lệch `GBR-POS-04`, khóa Z-Report và tự động sinh Phiếu thu Sổ quỹ (`INCOME`) khi chủ duyệt.
-- [ ] REQ-05: Payroll Engine tổng hợp ngày công tháng tự động, tính đúng NetSalary, chi trả VietQR/Tiền mặt và tự động sinh Phiếu chi Sổ quỹ (`EXPENSE`).
+- [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD và đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn.
+- [ ] REQ-02: Quản lý danh mục ca làm việc `ShiftConfigs`, hỗ trợ multi-branch và ca chấm công qua đêm.
+- [ ] REQ-03: Phân ca hàng loạt theo tuần/tháng, ban hành ca và kiểm tra ngăn chặn trùng lặp khung giờ ca.
+- [ ] REQ-04: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, tính đúng `LateMinutes` và `ActualWorkHours`.
+- [ ] REQ-05: Mở/đóng ca POS với khai báo 9 mệnh giá, đối soát chênh lệch `GBR-POS-04`, khóa Z-Report và tự động sinh Phiếu thu Sổ quỹ (`INCOME`) khi chủ duyệt.
+- [ ] REQ-06: Payroll Engine tổng hợp ngày công tháng tự động, tính đúng NetSalary, chi trả VietQR/Tiền mặt và tự động sinh Phiếu chi Sổ quỹ (`EXPENSE`).
