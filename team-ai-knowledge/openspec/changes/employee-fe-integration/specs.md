@@ -18,6 +18,7 @@
 | PUT | `/api/v1/hr/shift-configs/{id}` | `UpdateShiftConfigPayload` | `ApiResponse<ShiftConfigDto>` | 400, 404 |
 | PATCH | `/api/v1/hr/shift-configs/{id}/status` | `{ isActive: boolean }` | `ApiResponse<ShiftConfigDto>` | 400, 404 |
 | DELETE | `/api/v1/hr/shift-configs/{id}` | Path param: `id` | `ApiResponse<object>` | 400, 404 |
+| POST | `/api/v1/schedules/recurring` | `CreateRecurringSchedulePayload` | `ApiResponse<ScheduleResponse[]>` | 400 (xung đột ca > 12h, ngày kết thúc không hợp lệ) |
 
 ---
 
@@ -93,13 +94,31 @@ Frontend **MUST** tích hợp module `shiftConfigApi.ts` tương thích với AP
 
 ---
 
+### Requirement: REQ-FE-EMP-09 Lập lịch Làm việc Định kỳ & Tích hợp AddScheduleModal
+Frontend **MUST** tích hợp modal lập lịch làm việc `AddScheduleModal.tsx` và API `scheduleApi.createRecurringSchedule`:
+1. **Lọc ca làm việc theo chi nhánh:** Chỉ hiển thị các cấu hình ca khả dụng thuộc chi nhánh mà nhân viên hiện tại đang công tác (`branchId` và danh sách `branchIds`).
+2. **Gợi ý nhân viên cùng chi nhánh:** Mục "Thêm lịch tương tự cho nhân viên khác" chỉ hiển thị các nhân viên làm việc cùng chi nhánh với nhân viên đang được xếp ca.
+3. **Quy tắc ngày kết thúc:**
+   - Khi không tích chọn "Có ngày kết thúc": Hệ thống gửi `hasEndDate: false, endDate: null`, giao diện hiển thị thông báo rõ ràng thời gian tạo lịch đến hết tháng hiện tại và tháng sau (`đến ngày DD/MM/YYYY`).
+   - Khi tích chọn "Có ngày kết thúc": Hiển thị input date cho phép chọn ngày đến (không giới hạn 31 ngày), hiển thị thông báo tạo lịch đến ngày được chọn.
+   - Giao diện **MUST NOT** hiển thị nhãn/text liên quan đến tự động gia hạn (đã loại bỏ).
+4. **Chuẩn hóa mã ca:** `WorkShiftDefinition` bổ sung trường `code?: string` lấy từ `c.shiftCode`. Khi submit, modal gửi đúng `shiftCode` thay vì truyền Guid ID, tránh lỗi database `character varying(30)`.
+
+#### Scenario: Xếp ca lặp không ngày kết thúc hiển thị đúng ngày hết tháng sau
+- **GIVEN** Người dùng mở modal `AddScheduleModal` cho nhân viên chi nhánh Trung tâm vào tháng 11/2026.
+- **WHEN** Chọn ca sáng, lặp Thứ 2 đến Thứ 6 và bỏ chọn "Có ngày kết thúc".
+- **THEN** Giao diện hiển thị ghi chú: "Không kết thúc: Hệ thống sẽ tự động tạo lịch đến hết tháng hiện tại và tháng sau (đến ngày 31/12/2026)". Bấm lưu thành công, danh sách ca làm việc được nạp lại trên bảng lịch.
+
+---
+
 ## Acceptance Checklist
-- [ ] REQ-FE-EMP-01: Module `employeeApi.ts` và `employeeMapper.ts` hoàn chỉnh, kiểm tra regex UUID để bảo toàn ID phụ cấp cho backend sync an toàn.
-- [ ] REQ-FE-EMP-02: `EmployeeListPage.tsx` nạp dữ liệu từ Backend API và tích hợp thanh `TablePagination` chung.
-- [ ] REQ-FE-EMP-03: `EmployeeFormModal.tsx` hỗ trợ chọn 1 chi nhánh làm việc, upload ảnh Cloudinary mượt mà, validate lỗi và hiển thị NotificationModal.
-- [ ] REQ-FE-EMP-04: `EmployeeDetailModal.tsx` gọi API nạp dữ liệu chi tiết thực tế, format ngày `DD/MM/YYYY`, optimistic pre-fill.
-- [ ] REQ-FE-EMP-05: Toàn bộ 16 modal trong phân hệ nhân viên được cố định kích thước đồng nhất `900px × 85vh`.
-- [ ] REQ-FE-EMP-06: Xóa nhân viên qua `ConfirmModal`, bắt lỗi `EMPLOYEE_HAS_WORK_HISTORY` (BR-EMP-03) hiển thị `NotificationModal` cảnh báo, toggle trạng thái `active/inactive` có popup phản hồi.
-- [ ] REQ-FE-EMP-07: Bộ modal dùng chung `ConfirmModal` và `NotificationModal` trong `src/components/common/` hoạt động ổn định trên toàn hệ thống.
-- [ ] REQ-FE-EMP-08: Quản lý danh mục ca `ShiftConfig` tích hợp `shiftConfigApi` hỗ trợ ca qua đêm và multi-branch.
-- [ ] Kiểm thử: Build sạch 0 lỗi (`npm run build`) và unit test frontend pass 100%.
+- [x] REQ-FE-EMP-01: Module `employeeApi.ts` và `employeeMapper.ts` hoàn chỉnh, kiểm tra regex UUID để bảo toàn ID phụ cấp cho backend sync an toàn.
+- [x] REQ-FE-EMP-02: `EmployeeListPage.tsx` nạp dữ liệu từ Backend API và tích hợp thanh `TablePagination` chung.
+- [x] REQ-FE-EMP-03: `EmployeeFormModal.tsx` hỗ trợ chọn 1 chi nhánh làm việc, upload ảnh Cloudinary mượt mà, validate lỗi và hiển thị NotificationModal.
+- [x] REQ-FE-EMP-04: `EmployeeDetailModal.tsx` gọi API nạp dữ liệu chi tiết thực tế, format ngày `DD/MM/YYYY`, optimistic pre-fill.
+- [x] REQ-FE-EMP-05: Toàn bộ 16 modal trong phân hệ nhân viên được cố định kích thước đồng nhất `900px × 85vh`.
+- [x] REQ-FE-EMP-06: Xóa nhân viên qua `ConfirmModal`, bắt lỗi `EMPLOYEE_HAS_WORK_HISTORY` (BR-EMP-03) hiển thị `NotificationModal` cảnh báo, toggle trạng thái `active/inactive` có popup phản hồi.
+- [x] REQ-FE-EMP-07: Bộ modal dùng chung `ConfirmModal` và `NotificationModal` trong `src/components/common/` hoạt động ổn định trên toàn hệ thống.
+- [x] REQ-FE-EMP-08: Quản lý danh mục ca `ShiftConfig` tích hợp `shiftConfigApi` hỗ trợ ca qua đêm và multi-branch.
+- [x] REQ-FE-EMP-09: `AddScheduleModal.tsx` và `scheduleApi.ts` tích hợp API lịch lặp, lọc theo chi nhánh nhân viên, xử lý không ngày kết thúc đến hết tháng sau, bỏ giới hạn 31 ngày và map đúng `shiftCode`.
+- [x] Kiểm thử: Build sạch 0 lỗi (`npm run build`) và unit test frontend pass 100% (106/106 tests).
