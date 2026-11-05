@@ -16,6 +16,9 @@
 | POST | `/api/v1/shift-configs` | `CreateShiftConfigRequest` | 201 Created `ShiftConfigDto` | 400, 409 |
 | PUT | `/api/v1/shift-configs/{id}` | `UpdateShiftConfigRequest` | 200 OK `ShiftConfigDto` | 400, 404, 409 |
 | DELETE | `/api/v1/shift-configs/{id}` | — | 200 OK | 400, 404 |
+| GET | `/api/v1/attendance-policies/branch/{branchId}` | — | `AttendancePolicyDto` | 401, 403, 404 |
+| PUT | `/api/v1/attendance-policies/branch/{branchId}` | `UpsertAttendancePolicyRequest` | 200 OK `AttendancePolicyDto` | 400, 401, 403, 404 |
+| POST | `/api/v1/attendance-policies/copy` | `CopyAttendancePolicyRequest` | 200 OK `CopyAttendancePolicyResultDto` | 400, 401, 403, 404 |
 | GET | `/api/v1/schedules` | Query: `branchId`, `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401, 403 |
 | GET | `/api/v1/schedules/my-schedule` | Query: `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401 |
 | POST | `/api/v1/schedules/batch` | `BatchAssignScheduleRequest` | 200 OK `List<EmployeeScheduleDto>` | 400 (xung đột ca), 404 |
@@ -42,7 +45,7 @@
 Hệ thống **MUST** hỗ trợ tạo, tra cứu, chỉnh sửa hồ sơ nhân viên và cấp tài khoản đăng nhập Identity.
 Hệ thống **MUST** tự động sinh mã nhân viên tuần tự theo định dạng `NV0001`, `NV0002` theo từng Tenant và ngăn chặn trùng lặp mã cũng như trùng lặp CCCD/SĐT trong cùng tenant.
 Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **MUST** áp dụng thuật toán so sánh và đồng bộ hóa (Sync & Diffing) 3 chiều:
-1. **Thêm mới (Insert)**: Phụ cấp trong payload chưa có Id hoặc `Guid.Empty` $\rightarrow$ tạo mới bản ghi qua `_context.EmployeeAllowances.Add()` và gán tường minh `EntityState.Added` (ngăn ngừa EF Core hiểu nhầm Id sinh sẵn từ constructor của `BaseTenantEntity` thành `Modified` gây `DbUpdateConcurrencyException`).
+1. **Thêm mới (Insert)**: Phụ cấp trong payload chưa có Id hoặc `Guid.Empty` $\rightarrow$ tạo mới bản ghi qua `_context.EmployeeAllowances.Add()` và gán tường minh `EntityState.Added`.
 2. **Cập nhật (Update)**: Phụ cấp có Id tồn tại trong cả database và payload $\rightarrow$ giữ nguyên Id, cập nhật Tên và Số tiền, gán `EntityState.Modified`.
 3. **Xóa (Delete)**: Phụ cấp có trong database nhưng không còn trong payload $\rightarrow$ xóa vĩnh viễn khỏi cơ sở dữ liệu qua `_context.EmployeeAllowances.RemoveRange(toDelete)` mà **không** gọi `employee.Allowances.Remove(item)` trên collection in-memory nhằm triệt tiêu ngoại lệ đứt gãy quan hệ (`severed relationship`) do khóa ngoại `EmployeeId` là non-nullable.
 
@@ -88,15 +91,55 @@ Hệ thống **MUST** thực thi quy tắc nghiệp vụ `BR-EMP-03`: Chỉ cho 
 ---
 
 ### Requirement: REQ-02 Cấu hình Ca làm việc Đa chi nhánh & Chấm công qua đêm
-Hệ thống **MUST** quản lý danh mục ca làm việc (`ShiftConfigs`), cho phép cấu hình khung giờ làm việc (`StartTime`, `EndTime`), tổng giờ làm việc (`WorkHours`), và khung giờ cho phép chấm công (`CheckInStart`, `CheckInEnd`).
+Hệ thống **MUST** quản lý danh mục ca làm việc (`ShiftConfigs`), cho phép cấu hình khung giờ làm việc (`StartTime`, `EndTime`), tổng giờ làm việc (`DurationHours`), và khung giờ cho phép chấm công (`AllowedCheckInStart`, `AllowedCheckInEnd`).
 Hệ thống **MUST** hỗ trợ cấu hình phạm vi áp dụng cho một hoặc nhiều chi nhánh (`BranchIds` multi-branch JSONB).
-Hệ thống **MUST** hỗ trợ ca qua đêm hoặc chấm công kết thúc vào ngày hôm sau (`IsNextDayCheckIn = true`).
+Hệ thống **MUST** hỗ trợ ca qua đêm hoặc chấm công kết thúc vào ngày hôm sau (`IsCheckInNextDay = true`).
 
 #### Scenario: Thêm mới ca làm việc áp dụng nhiều chi nhánh
 - **GIVEN** Quản lý tạo ca "Tối" (17:00 - 21:00, 4h công), giờ chấm công từ 14:00 đến 00:00 ngày hôm sau.
 - **AND** Phạm vi áp dụng gồm 2 chi nhánh: "Chi nhánh trung tâm" và "Chi nhánh HCM".
 - **WHEN** Gửi `POST /api/v1/shift-configs`.
 - **THEN** Hệ thống lưu cấu hình ca với `BranchIds` chứa danh sách ID của 2 chi nhánh, trả về HTTP 201 Created.
+
+---
+
+### Requirement: REQ-07 Chính sách Chấm công Chi nhánh & Sao chép Cấu hình (Branch Attendance Policy)
+Hệ thống **MUST** hỗ trợ quản lý Chính sách Chấm công độc lập theo từng Chi nhánh (`BranchAttendancePolicy`), tách biệt hoàn toàn với danh mục ca `ShiftConfigs`, tránh trùng lặp dữ liệu và cho phép cấu hình linh hoạt theo từng cơ sở:
+1. **Thiết lập Số giờ & Quy đổi Ngày công:**
+   - Số giờ của 1 ngày công chuẩn (`StandardDayHours` - mặc định 8.00m).
+   - Bật/tắt quy đổi giờ làm thành ngày công (`IsConvertHoursToDays`).
+   - Danh sách mức quy đổi định dạng JSON (`ConversionRulesJson` - VD: từ 1h đến dưới 4h30 tính 0.5 công; từ 4h30 trở lên tính 1 công).
+   - Ghi nhận vi phạm đi muộn / về sớm nếu làm nửa công (`RecordLateEarlyIfHalfDay`).
+2. **Cài đặt Đi muộn – Về sớm (Grace Period):**
+   - Bật/tắt và số phút trễ cho phép (`EnableLateThreshold`, `LateThresholdMinutes`).
+   - Bật/tắt và số phút về sớm cho phép (`EnableEarlyLeaveThreshold`, `EarlyLeaveThresholdMinutes`).
+3. **Cài đặt Làm thêm giờ (Overtime - OT):**
+   - Bật/tắt và số phút vào sớm bắt đầu tính OT (`EnableOtBeforeShift`, `OtBeforeShiftMinutes`).
+   - Bật/tắt và số phút tan ca muộn bắt đầu tính OT (`EnableOtAfterShift`, `OtAfterShiftMinutes`).
+   - Bật tính toàn bộ 100% thời gian làm thêm thực tế (`EnableOtAllActualTime`).
+4. **Cơ chế Sao chép Cấu hình sang Chi nhánh khác:**
+   - Cho phép Store Owner sao chép toàn bộ bộ quy tắc chấm công của một chi nhánh nguồn (`SourceBranchId`) sang danh sách nhiều chi nhánh đích (`TargetBranchIds`) trong cùng Tenant chỉ với một thao tác.
+
+#### Scenario: Lấy chính sách chấm công của chi nhánh (Tự động fallback về default)
+- **GIVEN** Chi nhánh mới tạo chưa từng thiết lập chính sách chấm công trong database.
+- **WHEN** Gửi request `GET /api/v1/attendance-policies/branch/{branchId}`.
+- **THEN** Hệ thống tự động khởi tạo đối tượng `AttendancePolicyDto` với giá trị mặc định chuẩn (8h/công, mốc quy đổi 0.5 công và 1 công, dung sai trễ 0 phút), trả về HTTP 200 OK.
+
+#### Scenario: Cập nhật chính sách chấm công cho chi nhánh (Upsert)
+- **GIVEN** Quản lý chi nhánh thiết lập ngày công chuẩn là 8 giờ, cho phép đi muộn 15 phút, tính làm thêm sau ca 30 phút.
+- **WHEN** Gửi request `PUT /api/v1/attendance-policies/branch/{branchId}` kèm payload hợp lệ.
+- **THEN** Hệ thống kiểm tra: nếu chi nhánh đã có bản ghi thì Update, nếu chưa có thì Insert bản ghi mới với `BranchId` và `TenantId` hiện tại, trả về HTTP 200 OK kèm thông tin đã lưu.
+
+#### Scenario: Sao chép chính sách chấm công sang nhiều chi nhánh đích
+- **GIVEN** Chi nhánh A ("Chi nhánh trung tâm") đã hoàn tất cấu hình chính sách chấm công chuẩn.
+- **AND** Hệ thống có 2 chi nhánh khác là Chi nhánh B ("HCM") và Chi nhánh C ("Đà Nẵng") trong cùng Tenant.
+- **WHEN** Quản lý gửi request `POST /api/v1/attendance-policies/copy` với `SourceBranchId = A` và `TargetBranchIds = [B, C]`.
+- **THEN** Hệ thống sao chép toàn bộ tham số của chi nhánh A sang chi nhánh B và C (thực hiện Upsert), trả về HTTP 200 OK với số lượng chi nhánh đã cập nhật thành công (2 chi nhánh).
+
+#### Scenario: Từ chối sao chép khi chi nhánh đích không thuộc Tenant
+- **GIVEN** Quản lý chỉ định `TargetBranchIds` chứa một ID chi nhánh không tồn tại hoặc thuộc quyền sở hữu của Tenant khác.
+- **WHEN** Gửi request `POST /api/v1/attendance-policies/copy`.
+- **THEN** Hệ thống từ chối thực hiện, trả về HTTP 400 Bad Request hoặc 404 Not Found, không thay đổi dữ liệu chi nhánh ngoại lai.
 
 ---
 
@@ -116,17 +159,13 @@ Hệ thống **MUST** cho phép lập lịch làm việc theo tuần/tháng cho 
 ---
 
 ### Requirement: REQ-04 Chấm công số với Xác thực GPS Geofencing
-Hệ thống **MUST** xác thực tọa độ GPS của thiết bị khi nhân viên thực hiện Check-in / Check-out so với tọa độ chi nhánh làm việc theo công thức Haversine. Hệ thống **MUST** tự động tính số phút đi muộn (`LateMinutes`) và tổng số giờ công thực tế (`ActualWorkHours`).
+Hệ thống **MUST** xác thực tọa độ GPS của thiết bị khi nhân viên thực hiện Check-in / Check-out so với tọa độ chi nhánh làm việc theo công thức Haversine. Hệ thống **MUST** áp dụng `BranchAttendancePolicy` của chi nhánh để tự động tính số phút đi muộn (`LateMinutes`) có trừ dung sai (`LateThresholdMinutes`), về sớm (`EarlyMinutes`), số phút làm thêm (`OtMinutes`) và tổng số ngày công ghi nhận.
 
-#### Scenario: Chấm công vào ca đúng vị trí chi nhánh
-- **GIVEN** Nhân viên có ca trực từ 06:00 đến 14:00, vị trí GPS của nhân viên cách chi nhánh 25 mét (nhỏ hơn bán kính cho phép 100 mét).
-- **WHEN** Nhân viên gửi `POST /api/v1/attendance/check-in` lúc 06:05.
-- **THEN** Hệ thống ghi nhận `CheckInTime = UtcNow`, gán `IsGpsValid = true`, tính `LateMinutes = 5`, cập nhật ca làm việc sang `in_progress`.
-
-#### Scenario: Chấm công ra ca và tổng hợp giờ công
-- **GIVEN** Nhân viên đã check-in lúc 06:00 và hoàn thành ca lúc 14:00.
-- **WHEN** Nhân viên gửi `POST /api/v1/attendance/check-out`.
-- **THEN** Hệ thống ghi nhận `CheckOutTime = UtcNow`, tính `ActualWorkHours = 8.00`, chuyển trạng thái ca sang `completed`.
+#### Scenario: Chấm công vào ca đúng vị trí chi nhánh và áp dụng dung sai đi muộn
+- **GIVEN** Chi nhánh cấu hình cho phép đi muộn 15 phút (`LateThresholdMinutes = 15`).
+- **AND** Nhân viên có ca từ 08:00 đến 17:00, thực hiện check-in hợp lệ lúc 08:12 (trễ 12 phút, nhỏ hơn 15 phút).
+- **WHEN** Nhân viên gửi `POST /api/v1/attendance/check-in`.
+- **THEN** Hệ thống ghi nhận `CheckInTime = UtcNow`, gán `IsGpsValid = true`, tính `LateMinutes = 0` (trong phạm vi dung sai cho phép), cập nhật ca làm việc sang `in_progress`.
 
 ---
 
@@ -136,14 +175,15 @@ Hệ thống **MUST** quản lý chu trình phiên ca thu ngân POS. Khi đóng 
 ---
 
 ### Requirement: REQ-06 Payroll Engine & Chi trả Lương Tích hợp Sổ quỹ
-Hệ thống **MUST** cung cấp động cơ tính lương tự động quét ngày công từ `EmployeeSchedules` trong tháng, tính toán lương cơ bản, làm ngoài giờ, phụ cấp, thưởng và phạt đi trễ. Khi phê duyệt chi trả lương, hệ thống **MUST** tự động sinh Phiếu chi lương vào Sổ quỹ (`Cashbooks` type `EXPENSE`).
+Hệ thống **MUST** cung cấp động cơ tính lương tự động quét ngày công từ `EmployeeSchedules` trong tháng, tính toán lương cơ bản, làm ngoài giờ, phụ cấp, thưởng và phạt đi trễ theo chính sách `BranchAttendancePolicy` của từng chi nhánh. Khi phê duyệt chi trả lương, hệ thống **MUST** tự động sinh Phiếu chi lương vào Sổ quỹ (`Cashbooks` type `EXPENSE`).
 
 ---
 
 ## Acceptance Checklist
 - [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD, đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn và chặn xóa nhân viên đã có ca làm việc hoặc phiếu lương (BR-EMP-03, xóa sạch phụ cấp khi xóa nhân viên hợp lệ).
 - [ ] REQ-02: Quản lý danh mục ca làm việc `ShiftConfigs`, hỗ trợ multi-branch và ca chấm công qua đêm.
+- [ ] REQ-07: Quản lý chính sách chấm công chi nhánh `BranchAttendancePolicy`, quy đổi giờ thành ngày công, dung sai đi muộn/về sớm, làm thêm giờ (OT) và API sao chép cấu hình đa chi nhánh.
 - [ ] REQ-03: Phân ca hàng loạt theo tuần/tháng, ban hành ca và kiểm tra ngăn chặn trùng lặp khung giờ ca.
-- [ ] REQ-04: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, tính đúng `LateMinutes` và `ActualWorkHours`.
+- [ ] REQ-04: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, áp dụng chính sách chi nhánh tính đúng `LateMinutes` và giờ công.
 - [ ] REQ-05: Mở/đóng ca POS với khai báo 9 mệnh giá, đối soát chênh lệch `GBR-POS-04`, khóa Z-Report và tự động sinh Phiếu thu Sổ quỹ (`INCOME`) khi chủ duyệt.
 - [ ] REQ-06: Payroll Engine tổng hợp ngày công tháng tự động, tính đúng NetSalary, chi trả VietQR/Tiền mặt và tự động sinh Phiếu chi Sổ quỹ (`EXPENSE`).
