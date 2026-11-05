@@ -10,7 +10,7 @@
 | PUT | `/api/v1/employees/{id}` | `UpdateEmployeeRequest` | 200 OK `EmployeeResponse` | 400, 404, 409 |
 | PATCH | `/api/v1/employees/{id}/status` | `UpdateEmployeeStatusRequest` | 200 OK | 400, 404 |
 | POST | `/api/v1/employees/{id}/identity-account` | `CreateIdentityAccountRequest` | 200 OK `UserDto` | 400, 404, 409 |
-| DELETE | `/api/v1/employees/{id}` | — | 200 OK | 400, 404 |
+| DELETE | `/api/v1/employees/{id}` | — | 200 OK | 400 (đã có ca làm việc/phiếu lương), 404 |
 | GET | `/api/v1/shift-configs` | Query: `branchId`, `status` | `List<ShiftConfigDto>` | 401, 403 |
 | GET | `/api/v1/shift-configs/{id}` | — | `ShiftConfigDto` | 401, 404 |
 | POST | `/api/v1/shift-configs` | `CreateShiftConfigRequest` | 201 Created `ShiftConfigDto` | 400, 409 |
@@ -46,6 +46,8 @@ Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **M
 2. **Cập nhật (Update)**: Phụ cấp có Id tồn tại trong cả database và payload $\rightarrow$ giữ nguyên Id, cập nhật Tên và Số tiền, gán `EntityState.Modified`.
 3. **Xóa (Delete)**: Phụ cấp có trong database nhưng không còn trong payload $\rightarrow$ xóa vĩnh viễn khỏi cơ sở dữ liệu qua `_context.EmployeeAllowances.RemoveRange(toDelete)` mà **không** gọi `employee.Allowances.Remove(item)` trên collection in-memory nhằm triệt tiêu ngoại lệ đứt gãy quan hệ (`severed relationship`) do khóa ngoại `EmployeeId` là non-nullable.
 
+Hệ thống **MUST** thực thi quy tắc nghiệp vụ `BR-EMP-03`: Chỉ cho phép xóa nhân viên khi nhân viên đó **chưa từng lưu trữ bất kỳ dữ liệu ca làm việc / lịch làm việc (`EmployeeSchedule`) và phiếu lương (`Payslip`)**. Nếu nhân viên đã phát sinh ca làm việc hoặc phiếu lương, hệ thống **MUST** từ chối xóa và yêu cầu chuyển trạng thái sang `Inactive` (Ngừng làm việc) để bảo toàn lịch sử chấm công và tính toàn vẹn dữ liệu sổ quỹ/lương.
+
 #### Scenario: Tạo hồ sơ nhân viên mới thành công
 - **GIVEN** Store Owner hoặc Branch Manager đã đăng nhập và gửi thông tin nhân viên hợp lệ kèm mức lương cơ bản và chi nhánh trực thuộc.
 - **WHEN** Gửi request `POST /api/v1/employees`.
@@ -64,6 +66,11 @@ Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **M
   - Thêm mới bản ghi Phụ cấp Chuyên cần với `EntityState.Added` (chèn thành công, không bị lỗi Concurrency).
   - Xóa bỏ Phụ cấp Xăng xe khỏi database mà không gây lỗi ngắt quan hệ (severed relationship).
   - Trả về HTTP 200 OK với danh sách phụ cấp đã đồng bộ.
+
+#### Scenario: Từ chối xóa nhân viên đã có dữ liệu ca làm việc hoặc phiếu lương (BR-EMP-03)
+- **GIVEN** Nhân viên đã có ít nhất một ca làm việc (`EmployeeSchedule`) hoặc phiếu lương (`Payslip`) trong hệ thống.
+- **WHEN** Quản trị viên gửi request `DELETE /api/v1/employees/{id}`.
+- **THEN** Hệ thống MUST từ chối xóa và trả về HTTP 400 Bad Request với mã lỗi `EMPLOYEE_HAS_WORK_HISTORY`, kèm thông báo hướng dẫn chuyển trạng thái nhân viên sang 'Ngừng làm việc' thay vì xóa.
 
 #### Scenario: Cấp tài khoản đăng nhập cho nhân viên
 - **GIVEN** Nhân viên chưa có tài khoản đăng nhập (`UserId == null`).
@@ -126,7 +133,7 @@ Hệ thống **MUST** cung cấp động cơ tính lương tự động quét ng
 ---
 
 ## Acceptance Checklist
-- [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD và đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn.
+- [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD, đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn và chặn xóa nhân viên đã có ca làm việc hoặc phiếu lương (BR-EMP-03).
 - [ ] REQ-02: Quản lý danh mục ca làm việc `ShiftConfigs`, hỗ trợ multi-branch và ca chấm công qua đêm.
 - [ ] REQ-03: Phân ca hàng loạt theo tuần/tháng, ban hành ca và kiểm tra ngăn chặn trùng lặp khung giờ ca.
 - [ ] REQ-04: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, tính đúng `LateMinutes` và `ActualWorkHours`.
