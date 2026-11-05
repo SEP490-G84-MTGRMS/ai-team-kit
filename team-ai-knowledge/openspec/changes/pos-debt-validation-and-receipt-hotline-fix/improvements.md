@@ -11,3 +11,7 @@ Kiểm tra kỹ tương thích ngược khi xóa dòng chân bill trên các kh�
 ## Verify Spec · 2026-11-05 10:33
 
 Thực hiện code theo đúng nguyên tắc Karpathy: sửa đúng chỗ, tối thiểu và an toàn.
+
+## Apply · 2026-11-05 10:40
+
+Bổ sung báo cáo nghiệm thu chi tiết cho 4 kịch bản kiểm thử: modal thu nợ nợ = 0, tìm kiếm khách hàng tên tiếng Việt, in bill POS không dòng thừa và hotline chi nhánh.
