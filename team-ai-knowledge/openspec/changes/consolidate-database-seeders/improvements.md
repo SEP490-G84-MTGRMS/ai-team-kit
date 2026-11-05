@@ -7,3 +7,7 @@
 ## Brainstorm · 2026-11-05 17:28
 
 Đã thống nhất giữ AppDbContext sạch sẽ và hợp nhất toàn bộ dữ liệu mẫu vào DbInitializer chia theo các hàm phân hệ riêng biệt
+
+## Verify Spec · 2026-11-05 17:30
+
+Đã hoàn tất kế hoạch 5 task chi tiết và review phản biện 5/5 điểm
