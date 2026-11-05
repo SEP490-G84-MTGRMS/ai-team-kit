@@ -15,3 +15,7 @@ Tiến hành code và tick lần lượt 8 task trong tasks.md.
 ## Apply · 2026-11-05 12:44
 
 Tiến hành tạo test-report.md và xác minh toàn bộ các kịch bản nghiệm thu trong bước Test.
+
+## Test · 2026-11-05 12:48
+
+Định dạng 2 dòng cho máy in nhiệt POS-58 Font B giải quyết triệt để vấn đề tràn tên hàng hóa; việc phân loại động Chủ cửa hàng / Thu ngân và đơn vị tính đặt trước giúp luồng bán hàng nhất quán.

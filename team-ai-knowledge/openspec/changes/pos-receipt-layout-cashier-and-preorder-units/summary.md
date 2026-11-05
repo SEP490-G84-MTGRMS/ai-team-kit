@@ -15,3 +15,7 @@
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 12:44
 
 Đã hoàn thành 8 tasks trong tasks.md và hoàn thiện code backend/frontend cho cả 3 yêu cầu.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 12:48
+
+Đã kiểm thử toàn diện: 349/349 .NET unit tests passed, Frontend build 0 lỗi, 3/3 POS unit tests pass. Tất cả các yêu cầu về in hóa đơn 2 dòng, tên thu ngân/chủ cửa hàng động, đơn vị đặt trước và gỡ icon tòa nhà đã hoàn tất và kiểm chứng thành công.
