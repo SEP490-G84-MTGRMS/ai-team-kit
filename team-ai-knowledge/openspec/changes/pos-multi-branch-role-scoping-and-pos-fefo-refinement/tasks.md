@@ -1,7 +1,7 @@
 # Tasks: Đa Chi Nhánh, Phân Quyền Vai Trò POS & Tối Ưu Tra Cứu FEFO
 
 ## 1. Database & Seed Data (DB)
-- [ ] T1: Mở rộng `DbInitializer.cs`: Thêm 2 chi nhánh mới cho An Nhiên Mart (`BR-AN-02` Cầu Giấy, `BR-AN-03` Đống Đa), gắn hồ sơ `Employee` cho `0917778888` (Ba Đình) và `0916667777` (Cầu Giấy), phân bổ tồn kho `BranchStock` & `Batches` đa chi nhánh (REQ-01).
+- [x] T1: Mở rộng `DbInitializer.cs`: Thêm 2 chi nhánh mới cho An Nhiên Mart (`BR-AN-02` Cầu Giấy, `BR-AN-03` Đống Đa), gắn hồ sơ `Employee` cho `0917778888` (Ba Đình) và `0916667777` (Cầu Giấy), phân bổ tồn kho `BranchStock` & `Batches` đa chi nhánh (REQ-01).
 
 ## 2. Frontend UI & State Management
 - [ ] T2: Nâng cấp `PosHeader.tsx`: Render dropdown chuyển chi nhánh khi user là `STORE_OWNER`, render badge cố định khi là `EMPLOYEE`, thêm nút công cụ "Tra cứu Lô FEFO" (REQ-02, REQ-04).
