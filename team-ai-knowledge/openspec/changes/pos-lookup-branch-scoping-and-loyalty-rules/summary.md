@@ -11,3 +11,11 @@ Phê duyệt exploration.md, design-brief.md, specs.md: Xóa nút Tra cứu Lô 
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 17:27
 
 Phê duyệt review/skeptic.md và tasks.md (T1-T5), sẵn sàng chuyển sang bước Apply để code.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 17:48
+
+Hoàn thành 5/5 tasks bước Apply: xóa nút tra cứu trên PosHeader, bổ sung phân quyền chọn chi nhánh tại InventoryLookupPage, bổ sung PointsRedeemed trong OrderCreateRequest và OrderService, viết unit test REQ_FE16_RedeemRewardPoints.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 17:56
+
+Duyệt nghiệm thu kiểm thử: REQ-LOOKUP-DEL-01, REQ-LOOKUP-SCOPE-02, REQ-FE16-LOYALTY-03 và REQ-FE16-PROMO-FULL đều PASS. 353/353 backend unit tests PASS, npm run build PASS.
