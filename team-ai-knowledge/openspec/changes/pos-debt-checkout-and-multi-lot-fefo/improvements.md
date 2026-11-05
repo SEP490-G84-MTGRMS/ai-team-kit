@@ -15,3 +15,7 @@ Kế hoạch 5 task chia rõ từng lớp DB, Frontend, Backend, Test giúp ki�
 ## Apply · 2026-11-05 07:37
 
 Hoàn tất 5/5 task đồng bộ CSDL, Frontend UI, Decoupling in bill và kiểm chứng FEFO.
+
+## Test · 2026-11-05 07:38
+
+Đã xác minh toàn bộ test case từ backend, frontend đến live integration database.
