@@ -59,18 +59,20 @@ Tại màn hình Quản lý đơn hàng (`InvoiceManagementPage.tsx`):
 
 ---
 
-### Requirement: REQ-04 Tùy Chọn Tra Cứu Tồn Kho & Lô FEFO Nhanh Tại POS
+### Requirement: REQ-04 Tùy Chọn Tra Cứu Tồn Kho & Chọn Bán Theo Lô FEFO Tại POS
 Hệ thống POS MUST cung cấp nút công cụ tùy chọn "Tra cứu Lô FEFO" ngay trên giao diện bán hàng để mở Modal tra cứu nhanh (`PosInventoryLookupModal`):
 1. Modal SHALL hỗ trợ tìm kiếm sản phẩm theo tên hoặc quét barcode.
 2. Modal MUST hiển thị tồn kho hiện tại của chi nhánh đang bán và bảng so sánh tồn kho của các chi nhánh khác trong cùng chuỗi.
 3. Modal MUST hiển thị danh sách các lô hàng (`Batches`) kèm số ngày còn lại và ngày hết hạn, sắp xếp theo nguyên tắc FEFO (lô cận date nhất lên đầu).
+4. Mỗi dòng lô hàng trong Modal MUST có nút **"✓ Chọn bán lô này"** cho phép thu ngân chỉ định đích danh lô hàng đưa vào giỏ hàng POS với mã lô cụ thể (thay vì mặc định tự động trừ theo FEFO).
 
-#### Scenario: Thu ngân mở modal tra cứu lô FEFO và xem tồn chéo đa chi nhánh
+#### Scenario: Thu ngân mở modal tra cứu lô FEFO và chọn bán đích danh một lô
 - **GIVEN** Thu ngân đang ở màn hình bán hàng POS có giỏ hàng đang phục vụ khách
 - **WHEN** Thu ngân bấm vào nút "Tra cứu Lô FEFO" trên thanh công cụ
 - **THEN** Modal tra cứu nhanh mở ra tại chỗ mà không làm mất giỏ hàng hay chuyển hướng trang
-- **AND WHEN** Thu ngân quét mã barcode của sản phẩm (ví dụ "Bia Hà Nội Sleek")
-- **THEN** Modal hiển thị tồn khả dụng tại chi nhánh hiện tại, tồn tại các chi nhánh khác (Cầu Giấy, Đống Đa) và chi tiết các lô hàng sắp hết hạn.
+- **AND WHEN** Thu ngân tra cứu sản phẩm "Bia Hà Nội Sleek" và thấy các lô hàng
+- **AND WHEN** Thu ngân bấm "✓ Chọn bán lô này" tại dòng lô `LOT-BIA-202612`
+- **THEN** Sản phẩm được thêm vào giỏ hàng POS với mã lô cụ thể `LOT-BIA-202612`, hiển thị nhãn lô trực quan trên dòng sản phẩm trong giỏ hàng và Modal tự động đóng lại.
 
 ---
 
@@ -80,5 +82,5 @@ Hệ thống POS MUST cung cấp nút công cụ tùy chọn "Tra cứu Lô FEFO
 - [ ] Bộ lọc chi nhánh tại Quản lý đơn hàng khóa theo chi nhánh của nhân viên khi đăng nhập `EMPLOYEE`.
 - [ ] Nút Hủy hóa đơn chỉ mở cho `STORE_OWNER`, ẩn đối với `EMPLOYEE`.
 - [ ] Nút Đổi trả hàng hoạt động bình thường cho cả `STORE_OWNER` và `EMPLOYEE`.
-- [ ] Modal tra cứu nhanh Lô FEFO & tồn kho đa chi nhánh hoạt động mượt mà, tiện dụng.
+- [ ] Modal tra cứu nhanh Lô FEFO hỗ trợ xem tồn kho chéo đa chi nhánh và có nút "✓ Chọn bán lô này" đưa đúng lô vào giỏ hàng.
 - [ ] Toàn bộ Backend Unit Tests và Frontend Vite Build vượt qua 100%.
