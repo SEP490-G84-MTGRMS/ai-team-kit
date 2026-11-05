@@ -18,9 +18,9 @@
 - [x] T9 — Xây dựng `ShiftConfigsController` với đầy đủ RESTful API endpoints: tra cứu theo chi nhánh, xem chi tiết, tạo mới, cập nhật và xóa cấu hình ca (REQ-02)
 
 #### Nhóm 2.2: Quản lý Chính sách Chấm công Chi nhánh (BranchAttendancePolicy)
-- [ ] T10 — Xây dựng các DTOs, Request/Response và FluentValidation cho Chính sách Chấm công trong `MT_GRMS.Application/HR/AttendancePolicies/Dtos` (hỗ trợ `StandardDayHours`, `IsConvertHoursToDays`, `ConversionRulesJson`, dung sai đi muộn `LateThresholdMinutes`, về sớm, và làm thêm giờ OT) (REQ-07)
-- [ ] T11 — Triển khai `IBranchAttendancePolicyRepository`/`BranchAttendancePolicyRepository` và `IBranchAttendancePolicyService`/`BranchAttendancePolicyService` xử lý lấy chính sách (fallback default nếu chưa có), Upsert theo chi nhánh và cơ chế sao chép đa chi nhánh (`CopyPolicyAsync`) (REQ-07)
-- [ ] T12 — Xây dựng `BranchAttendancePoliciesController` với các endpoints: `GET /api/v1/attendance-policies/branch/{branchId}`, `PUT /api/v1/attendance-policies/branch/{branchId}`, và `POST /api/v1/attendance-policies/copy` (REQ-07)
+- [x] T10 — Xây dựng các DTOs, Request/Response và FluentValidation cho Chính sách Chấm công trong `MT_GRMS.Application/HR/AttendancePolicies/Dtos` (hỗ trợ `StandardDayHours`, `IsConvertHoursToDays`, `ConversionRulesJson`, dung sai đi muộn `LateThresholdMinutes`, về sớm, và làm thêm giờ OT) (REQ-07)
+- [x] T11 — Triển khai `IBranchAttendancePolicyRepository`/`BranchAttendancePolicyRepository` và `IBranchAttendancePolicyService`/`BranchAttendancePolicyService` xử lý lấy chính sách (fallback default nếu chưa có), Upsert theo chi nhánh và cơ chế sao chép đa chi nhánh (`CopyPolicyAsync`) (REQ-07)
+- [x] T12 — Xây dựng `BranchAttendancePoliciesController` với các endpoints: `GET /api/v1/attendance-policies/branch/{branchId}`, `PUT /api/v1/attendance-policies/branch/{branchId}`, và `POST /api/v1/attendance-policies/copy` (REQ-07)
 
 #### Nhóm 2.3: Lập lịch & Ban hành Ca làm việc (Schedules)
 - [ ] T13 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-03)
@@ -47,7 +47,7 @@
 ## Test
 - [x] T27 — Viết Unit Tests cho `EmployeeService` kiểm chứng sinh mã `NVxxxx`, kiểm tra trùng CCCD/SĐT, cấp tài khoản, cơ chế đồng bộ phụ cấp đa chiều và kiểm tra chặn xóa `BR-EMP-03` (REQ-01)
 - [x] T28 — Viết Unit Tests cho `ShiftConfigService` kiểm chứng CRUD ca làm việc, validate ca qua đêm và multi-branch (REQ-02)
-- [ ] T29 — Viết Unit Tests cho `BranchAttendancePolicyService` kiểm chứng lấy chính sách fallback default, Upsert và sao chép đa chi nhánh (REQ-07)
+- [x] T29 — Viết Unit Tests cho `BranchAttendancePolicyService` kiểm chứng lấy chính sách fallback default, Upsert và sao chép đa chi nhánh (REQ-07)
 - [x] T30 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, chặn xung đột thời gian và ban hành lịch (REQ-03)
 - [ ] T31 — Viết Unit Tests cho `AttendanceService` kiểm chứng tính khoảng cách GPS Geofencing, áp dụng dung sai chính sách chi nhánh và giờ công thực tế (REQ-04)
 - [ ] T32 — Viết Unit Tests cho `CashierShiftService` kiểm chứng kiểm đếm 9 mệnh giá, quy tắc `GBR-POS-04` và tự động sinh Phiếu thu Sổ quỹ (REQ-05)
