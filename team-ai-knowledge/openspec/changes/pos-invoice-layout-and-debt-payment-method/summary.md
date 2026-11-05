@@ -11,3 +11,7 @@ Duyệt exploration và specs delta cho hiển thị hóa đơn bán nợ CREDIT
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 07:52
 
 Duyệt kết quả review của Skeptic và checklist 5 task triển khai sửa lỗi hiển thị nợ và layout bảng.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 08:06
+
+Duyệt kết quả Apply: Đã hoàn tất 5 task sửa mapping CREDIT, cân đối độ rộng các cột bảng hóa đơn và bỏ ngoặc rỗng thu ngân.

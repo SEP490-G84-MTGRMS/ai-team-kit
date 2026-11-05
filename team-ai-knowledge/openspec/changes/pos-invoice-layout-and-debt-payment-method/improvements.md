@@ -11,3 +11,7 @@ Thống nhất enum PaymentMethod giữa backend và frontend (CREDIT vs DEBT) �
 ## Verify Spec · 2026-11-05 07:52
 
 Checklist 5 task rõ ràng theo từng phân hệ frontend và kiểm thử.
+
+## Apply · 2026-11-05 08:06
+
+Cân đối lại độ rộng các cột bảng CSS giúp giao diện POS và quản lý hóa đơn chuyên nghiệp hơn.
