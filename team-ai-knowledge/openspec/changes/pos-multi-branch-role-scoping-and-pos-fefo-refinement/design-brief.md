@@ -41,14 +41,27 @@ sequenceDiagram
   - Nút **"Đổi trả hàng"**: Hiển thị đầy đủ để nhân viên linh hoạt đổi hàng hỏng/lỗi cho khách tại quầy.
   - Nút **"Hủy hóa đơn"**: Ẩn hoàn toàn (hoặc hiển thị disabled kèm chú thích rõ "Chỉ Chủ cửa hàng mới có quyền hủy hóa đơn").
 
-### Luồng 4: Tra Cứu Tồn Kho & Lô FEFO Nhanh (Quick Option Modal)
-- Nút bấm **"Tra cứu Lô & Hạn dùng"** tích hợp trực tiếp trên `PosHeader` hoặc thanh công cụ POS.
-- Khi bấm: Mở `PosInventoryLookupModal` ngay trên màn hình bán hàng, không cần rời giỏ hàng.
-- Cho phép:
-  1. Quét mã vạch (Barcode) hoặc gõ tên sản phẩm.
-  2. Hiển thị tồn khả dụng tại chi nhánh hiện tại.
-  3. Hiển thị bảng đối chiếu tồn kho tại các chi nhánh khác (Ba Đình, Cầu Giấy, Đống Đa).
-  4. Hiển thị danh sách các lô hàng (`Batches`) kèm số lượng tồn và ngày hết hạn xếp theo thứ tự FEFO (cận date nhất lên đầu).
+### Luồng 4: Tra Cứu Tồn Kho & Lựa Chọn Bán Theo Lô FEFO (`PosInventoryLookupModal`)
+```mermaid
+sequenceDiagram
+    actor Cashier as Thu ngân POS
+    participant POS as PosCheckoutPage
+    participant Modal as PosInventoryLookupModal
+
+    Cashier->>POS: Bấm nút "Tra cứu Lô FEFO"
+    POS->>Modal: Mở Quick Modal tra cứu tại chỗ (không rời giỏ hàng)
+    Cashier->>Modal: Nhập tên / Quét mã barcode
+    Modal-->>Cashier: Hiển thị tồn chi nhánh hiện tại + chi nhánh khác + Danh sách Lô date
+    alt Bán theo Lô FEFO tự động (mặc định)
+        Cashier->>Modal: Chỉ xem thông tin rồi đóng Modal
+        Cashier->>POS: Quét barcode / chọn món thông thường -> Backend tự trừ lô cận date nhất
+    else Chỉ định bán Lô cụ thể (Option)
+        Cashier->>Modal: Bấm "✓ Chọn bán lô này" tại dòng lô mong muốn
+        Modal->>POS: Đưa sản phẩm kèm mã lô (ví dụ LOT-BIA-202612) vào giỏ hàng
+        Modal->>Modal: Đóng Modal
+        POS->>POS: Giỏ hàng hiển thị nhãn: Lô LOT-BIA-202612
+    end
+```
 
 ---
 
@@ -72,9 +85,19 @@ sequenceDiagram
 - Khối thông tin sản phẩm:
   - Thẻ tóm tắt: Tên sản phẩm, Đơn vị tính, Tổng tồn kho toàn chuỗi.
   - Bảng 1: Phân bổ tồn kho theo Chi nhánh (Ba Đình, Cầu Giấy, Đống Đa).
-  - Bảng 2: Danh sách các Lô hàng (Số lô, Hạn sử dụng, Số ngày còn lại, Trạng thái date: An toàn / Cận date, Tồn lô).
+  - Bảng 2: Danh sách các Lô hàng (`Batches`):
+    - Mã Lô (`batchId`)
+    - Hạn sử dụng (`expDate`)
+    - Số ngày còn lại & Trạng thái: Cận date (cam/đỏ), An toàn (xanh lá)
+    - Tồn khả dụng
+    - Cột thao tác: **Nút "✓ Chọn bán lô này"** (Primary button xanh emerald nhỏ gọn). Khi bấm, đưa sản phẩm gắn mã lô đó vào giỏ hàng POS và đóng modal.
 
-### 2.3. `InvoiceManagementPage.tsx`
+### 2.3. `PosCheckoutPage.tsx`
+- Nhận event `onSelectBatchFromModal(product, batchId)`:
+  - Tạo món giỏ hàng gắn `batchCode = batchId`.
+  - Hiển thị badge lô cụ thể trên dòng giỏ hàng: `Lô: ${batchId}` (thay vì mặc định `LÔ-FEFO`).
+
+### 2.4. `InvoiceManagementPage.tsx`
 - `branchFilter`:
   - Khởi tạo giá trị mặc định theo vai trò đăng nhập.
   - Nếu là `EMPLOYEE`, disable selector lọc chi nhánh hoặc ẩn dropdown, cố định ở chi nhánh nhân viên.
