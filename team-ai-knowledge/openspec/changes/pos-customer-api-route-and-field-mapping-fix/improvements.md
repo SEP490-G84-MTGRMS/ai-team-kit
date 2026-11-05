@@ -3,3 +3,7 @@
 ## Spec · 2026-11-05 10:48
 
 Bổ sung route song song api/v1/[controller] và chuẩn hóa mapping DTO giữa backend và frontend POS.
+
+## Brainstorm · 2026-11-05 10:49
+
+Đảm bảo hỗ trợ cả hai chuẩn endpoint /api/customers và /api/v1/customers để không ảnh hưởng đến bất kỳ màn hình nào khác.
