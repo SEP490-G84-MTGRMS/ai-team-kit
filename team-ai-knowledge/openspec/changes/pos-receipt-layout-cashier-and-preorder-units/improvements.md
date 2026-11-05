@@ -11,3 +11,7 @@ Chuyển sang bước Verify Spec để thực hiện Skeptic review và lập t
 ## Verify Spec · 2026-11-05 11:59
 
 Tiến hành code và tick lần lượt 8 task trong tasks.md.
+
+## Apply · 2026-11-05 12:44
+
+Tiến hành tạo test-report.md và xác minh toàn bộ các kịch bản nghiệm thu trong bước Test.
