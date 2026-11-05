@@ -13,9 +13,9 @@
 
 ### Cụm 2: Cấu hình Ca & Lập lịch làm việc
 #### Nhóm 2.1: Quản lý Danh mục & Cấu hình Ca (ShiftConfigs)
-- [ ] T7 — Xây dựng các DTOs, Request/Response và FluentValidation cho Cấu hình Ca trong `MT_GRMS.Application/HR/ShiftConfigs/Dtos` (hỗ trợ khung giờ `StartTime`/`EndTime`, `WorkHours`, đa chi nhánh `BranchIds`, ca qua đêm `IsNextDayCheckIn`) (REQ-02)
-- [ ] T8 — Xây dựng `IShiftConfigRepository`/`ShiftConfigRepository` và `IShiftConfigService`/`ShiftConfigService` xử lý CRUD danh mục ca và phạm vi chi nhánh (REQ-02)
-- [ ] T9 — Xây dựng `ShiftConfigsController` với đầy đủ RESTful API endpoints: tra cứu theo chi nhánh, xem chi tiết, tạo mới, cập nhật và xóa cấu hình ca (REQ-02)
+- [x] T7 — Xây dựng các DTOs, Request/Response và FluentValidation cho Cấu hình Ca trong `MT_GRMS.Application/HR/ShiftConfigs/Dtos` (hỗ trợ khung giờ `StartTime`/`EndTime`, `WorkHours`, đa chi nhánh `BranchIds`, ca qua đêm `IsNextDayCheckIn`) (REQ-02)
+- [x] T8 — Xây dựng `IShiftConfigRepository`/`ShiftConfigRepository` và `IShiftConfigService`/`ShiftConfigService` xử lý CRUD danh mục ca và phạm vi chi nhánh (REQ-02)
+- [x] T9 — Xây dựng `ShiftConfigsController` với đầy đủ RESTful API endpoints: tra cứu theo chi nhánh, xem chi tiết, tạo mới, cập nhật và xóa cấu hình ca (REQ-02)
 
 #### Nhóm 2.2: Lập lịch & Ban hành Ca làm việc (Schedules)
 - [ ] T10 — Xây dựng các DTOs, Request/Response và FluentValidation cho Lịch làm việc trong `MT_GRMS.Application/HR/Schedules/Dtos` (REQ-03)
@@ -41,8 +41,8 @@
 
 ## Test
 - [x] T24 — Viết Unit Tests cho `EmployeeService` kiểm chứng sinh mã `NVxxxx`, kiểm tra trùng CCCD/SĐT, cấp tài khoản, cơ chế đồng bộ phụ cấp đa chiều và kiểm tra chặn xóa `BR-EMP-03` (REQ-01)
-- [ ] T25 — Viết Unit Tests cho `ShiftConfigService` kiểm chứng CRUD ca làm việc, validate ca qua đêm và multi-branch (REQ-02)
-- [ ] T26 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, chặn xung đột thời gian và ban hành lịch (REQ-03)
+- [x] T25 — Viết Unit Tests cho `ShiftConfigService` kiểm chứng CRUD ca làm việc, validate ca qua đêm và multi-branch (REQ-02)
+- [x] T26 — Viết Unit Tests cho `ScheduleService` kiểm chứng phân ca batch, chặn xung đột thời gian và ban hành lịch (REQ-03)
 - [ ] T27 — Viết Unit Tests cho `AttendanceService` kiểm chứng tính khoảng cách GPS Geofencing, số phút trễ và giờ công thực tế (REQ-04)
 - [ ] T28 — Viết Unit Tests cho `CashierShiftService` kiểm chứng kiểm đếm 9 mệnh giá, quy tắc `GBR-POS-04` và tự động sinh Phiếu thu Sổ quỹ (REQ-05)
 - [ ] T29 — Viết Unit Tests cho `PayrollService` kiểm chứng tính NetSalary, chặn đúp kỳ lương và tự động sinh Phiếu chi Sổ quỹ (REQ-06)
