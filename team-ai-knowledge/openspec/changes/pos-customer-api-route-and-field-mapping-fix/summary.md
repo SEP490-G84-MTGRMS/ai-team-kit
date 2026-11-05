@@ -11,3 +11,7 @@ User đã duyệt exploration.md và specs.md cho việc sửa route 404 và fie
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 10:49
 
 User đã duyệt bước Verify Spec. Bắt đầu áp dụng code.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 10:53
+
+User đã duyệt bước Apply. Hoàn thành toàn bộ 3 task, route kép và DTO mapping đã hoạt động chuẩn xác.
