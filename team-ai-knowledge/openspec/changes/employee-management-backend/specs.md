@@ -42,9 +42,9 @@
 Hệ thống **MUST** hỗ trợ tạo, tra cứu, chỉnh sửa hồ sơ nhân viên và cấp tài khoản đăng nhập Identity.
 Hệ thống **MUST** tự động sinh mã nhân viên tuần tự theo định dạng `NV0001`, `NV0002` theo từng Tenant và ngăn chặn trùng lặp mã cũng như trùng lặp CCCD/SĐT trong cùng tenant.
 Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **MUST** áp dụng thuật toán so sánh và đồng bộ hóa (Sync & Diffing) 3 chiều:
-1. **Thêm mới (Insert)**: Phụ cấp trong payload chưa có Id hoặc `Guid.Empty` $\rightarrow$ tạo mới bản ghi.
-2. **Cập nhật (Update)**: Phụ cấp có Id tồn tại trong cả database và payload $\rightarrow$ giữ nguyên Id, cập nhật Tên và Số tiền.
-3. **Xóa (Delete)**: Phụ cấp có trong database nhưng không còn trong payload $\rightarrow$ xóa vĩnh viễn khỏi cơ sở dữ liệu qua `RemoveRange`.
+1. **Thêm mới (Insert)**: Phụ cấp trong payload chưa có Id hoặc `Guid.Empty` $\rightarrow$ tạo mới bản ghi qua `_context.EmployeeAllowances.Add()` và gán tường minh `EntityState.Added` (ngăn ngừa EF Core hiểu nhầm Id sinh sẵn từ constructor của `BaseTenantEntity` thành `Modified` gây `DbUpdateConcurrencyException`).
+2. **Cập nhật (Update)**: Phụ cấp có Id tồn tại trong cả database và payload $\rightarrow$ giữ nguyên Id, cập nhật Tên và Số tiền, gán `EntityState.Modified`.
+3. **Xóa (Delete)**: Phụ cấp có trong database nhưng không còn trong payload $\rightarrow$ xóa vĩnh viễn khỏi cơ sở dữ liệu qua `_context.EmployeeAllowances.RemoveRange(toDelete)` mà **không** gọi `employee.Allowances.Remove(item)` trên collection in-memory nhằm triệt tiêu ngoại lệ đứt gãy quan hệ (`severed relationship`) do khóa ngoại `EmployeeId` là non-nullable.
 
 #### Scenario: Tạo hồ sơ nhân viên mới thành công
 - **GIVEN** Store Owner hoặc Branch Manager đã đăng nhập và gửi thông tin nhân viên hợp lệ kèm mức lương cơ bản và chi nhánh trực thuộc.
@@ -61,7 +61,7 @@ Khi cập nhật phụ cấp nhân viên (`EmployeeAllowance`), hệ thống **M
 - **WHEN** Quản trị viên gửi request `PUT /api/v1/employees/{id}` với danh sách phụ cấp mới gồm: Phụ cấp Ăn trưa (`Id = guid_2`, tăng lên 700.000đ) và Phụ cấp Chuyên cần (không có Id, 300.000đ).
 - **THEN** Hệ thống:
   - Cập nhật số tiền Phụ cấp Ăn trưa thành 700.000đ (giữ nguyên `guid_2`).
-  - Thêm mới bản ghi Phụ cấp Chuyên cần với Id mới.
+  - Thêm mới bản ghi Phụ cấp Chuyên cần với `EntityState.Added` (chèn thành công, không bị lỗi Concurrency).
   - Xóa bỏ Phụ cấp Xăng xe khỏi database mà không gây lỗi ngắt quan hệ (severed relationship).
   - Trả về HTTP 200 OK với danh sách phụ cấp đã đồng bộ.
 
