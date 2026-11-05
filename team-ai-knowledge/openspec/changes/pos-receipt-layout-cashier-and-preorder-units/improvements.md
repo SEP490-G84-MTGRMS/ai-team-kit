@@ -3,3 +3,7 @@
 ## Spec · 2026-11-05 11:49
 
 Chuyển sang bước Brainstorm để phân tích kỹ thuật chi tiết layout ESC/POS 2 dòng, cơ chế truyền cashierName/vai trò người tạo, và giải pháp dropdown đơn vị tính cho PreOrderModal.
+
+## Brainstorm · 2026-11-05 11:53
+
+Chuyển sang bước Verify Spec để thực hiện Skeptic review và lập tasks.md chi tiết.
