@@ -62,3 +62,4 @@ Màn hình Quản lý Sản phẩm theo Cửa hàng (`/store-owner/stores/produc
 4. Giá vốn và MOQ hiển thị chính xác theo liên kết NCC của chi nhánh, không có lỗ hổng cho phép chỉnh sửa giá nhập từ màn hình chi nhánh.
 5. Chặn tuyệt đối hành vi gỡ sản phẩm khỏi chi nhánh khi tồn kho vật lý vẫn còn (`QuantityOnHand > 0`).
 6. Toàn bộ unit tests backend (`BranchProductManagementTests`) và các test frontend liên quan pass 100%.
+

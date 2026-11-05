@@ -134,3 +134,4 @@ Bảng giao diện `StoreProductTable.tsx` **MUST** hiển thị:
 - [x] Modal Gán SP hỗ trợ tìm chi nhánh text và danh sách khả dụng chuẩn xác.
 - [x] Modal Sửa SP hỗ trợ sửa giá theo từng ĐVT và lưu thành công.
 - [x] Toàn bộ test suite `BranchProductManagementTests` pass 100%.
+

@@ -67,3 +67,4 @@ Chọn **Phương án 2**. Đây là giải pháp căn cơ, sạch sẽ, giải 
    - *Biện pháp*: Cấu hình Unique Index trên `(TenantId, BranchProductId, ProductUnitId)` và áp dụng cơ chế Upsert (nếu đã có thì update giá, chưa có thì insert, nếu giá bằng giá Master thì có thể xóa override để tiết kiệm dung lượng).
 3. **Rủi ro ảnh hưởng đến các màn hình khác (POS, Bán hàng, Kiểm kho)**:
    - *Biện pháp*: Viết bộ unit tests hoàn chỉnh trong `BranchProductManagementTests`, bao phủ các case: lấy danh sách phân trang, gán sản phẩm, sửa giá độc lập giữa các chi nhánh, đổi trạng thái cô lập, chặn gỡ khi còn tồn kho.
+

@@ -210,3 +210,4 @@ public class AssignableBranchProductDto
 2. **Khóa chỉnh sửa MOQ/Cost**: Tuyệt đối không nhận hoặc ghi đè MOQ/Cost từ `UpdateBranchProductCommand` sang bảng `SupplierProducts` hay `Products`.
 3. **Branch Isolation**: Thay đổi giá tại Chi nhánh 1 chỉ tạo/cập nhật `BranchProduct` của Chi nhánh 1, không làm thay đổi giá của Chi nhánh 2 hay Master Product.
 4. **Safety Check khi gỡ SP**: Kiểm tra `SUM(QuantityOnHand) > 0` thì trả lỗi nghiệp vụ `CANNOT_REMOVE_PRODUCT_WITH_STOCK` (HTTP 400).
+

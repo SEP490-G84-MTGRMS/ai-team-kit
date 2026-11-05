@@ -54,3 +54,4 @@ npx vitest run src/features/supplier/__tests__/assignProductModalLogic.test.ts s
 ## 4. Đánh giá chất lượng & Lỗi tồn đọng
 - **Lỗi tồn đọng**: Không có lỗi blocking nào đối với tính năng tách bảng `BranchProducts` và override giá ĐVT.
 - **Kết luận**: Tính năng đạt tiêu chuẩn chấp thuận nghiệm thu (Acceptance Criteria), sẵn sàng chuyển sang bước lưu trữ (Archive).
+

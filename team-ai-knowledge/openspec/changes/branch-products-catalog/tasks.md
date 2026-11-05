@@ -26,3 +26,4 @@
 - [x] T17 — Xây dựng và kiểm tra bộ unit test backend `BranchProductManagementTests` bao phủ 11 kịch bản nghiệp vụ. (REQ-BPC-01 đến REQ-BPC-06)
 - [x] T18 — Xây dựng và kiểm tra bộ unit test backend `SupplierProductManagementTests` xác thực điều khoản giá sỉ và liên kết NCC. (REQ-BPC-03, REQ-BPC-04)
 - [x] T19 — Chạy kiểm thử frontend vitest cho `assignProductModalLogic.test.ts` và `supplierProductValidation.test.ts`. (REQ-BPC-07, REQ-BPC-08)
+

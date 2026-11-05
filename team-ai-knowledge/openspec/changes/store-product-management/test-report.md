@@ -25,3 +25,4 @@ tested_by: minhduc118a
 
 ## 3. Kết luận
 Tất cả các tính năng hoàn thiện của màn hình Quản lý Sản phẩm theo Cửa hàng đã được kiểm thử và xác nhận hoạt động ổn định trên nhánh `feat/supplier-branch-products-crud`.
+
