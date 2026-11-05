@@ -4,7 +4,8 @@
 | Method | Path / Action | Request Param / Body | Response DTO | Error / Status |
 |---|---|---|---|---|
 | GET | `/api/purchase-orders` | `PoListFilterState` (branchId, supplierId, status, dateFrom, dateTo, keyword, pageIndex, pageSize) | `{ items: PurchaseOrderListItem[], totalCount: number, pageIndex: number, pageSize: number }` | 400 (Lỗi validation), 401 (Chưa đăng nhập) |
-| GET | `/api/purchase-orders/:id` | `id: string` | `PurchaseOrderListItem` (bao gồm `items: PurchaseOrderItemDetail[]`) | 404 (Không tìm thấy PO) |
+| GET | `/api/purchase-orders/:id` | `id: string` | `PurchaseOrderListItem` (bao gồm `items: PurchaseOrderItemDetail[]`, `revisions: PurchaseOrderRevisionDto[]`) | 404 (Không tìm thấy PO) |
+| GET | `/api/purchase-orders/:id/revisions` | `id: string` | `List<PurchaseOrderRevisionDto>` | 404 (Không tìm thấy PO) |
 
 ---
 
@@ -93,10 +94,23 @@ Hệ thống **MUST** trực quan hóa trạng thái đơn hàng bằng huy hi�
 
 ---
 
+### Requirement: REQ-06 Lịch sử Điều chỉnh Đơn hàng (Purchase Order Revisions & Audit)
+Hệ thống **MUST** theo dõi và ghi nhận đầy đủ lịch sử các lần điều chỉnh đơn hàng (`PurchaseOrderRevision`):
+- Mỗi lần Store Owner điều chỉnh số lượng hoặc thông tin dòng PO sau khi đã gửi, hệ thống tự động sinh một bản ghi Revision gồm: Phiên bản (`RevisionNumber`), Người sửa (`ChangedBy`), Thời điểm sửa (`CreatedAt`), Lý do sửa (`ChangeReason`), và danh sách các dòng chi tiết thay đổi (`OldQty`, `NewQty`, `DeltaAmount`).
+- Drawer xem chi tiết PO SHALL có tab hoặc khu vực "Lịch sử điều chỉnh" để Store Owner xem lại chi tiết sự khác biệt giữa các phiên bản đơn hàng.
+
+#### Scenario: Xem lịch sử điều chỉnh PO
+- **GIVEN** Đơn hàng `PO-20261014-002` đã được điều chỉnh số lượng từ 20 xuống 15 cho sản phẩm sữa tươi.
+- **WHEN** Store Owner mở xem chi tiết đơn hàng và chuyển sang mục Lịch sử điều chỉnh.
+- **THEN** Hệ thống hiển thị bản ghi Revision #1 với người sửa, thời gian và chỉ báo "Sữa tươi: 20 -> 15 (Giảm 5)".
+
+---
+
 ## Acceptance Checklist
-- [ ] REQ-01: Bảng dữ liệu hiển thị đầy đủ 10 cột, sticky header, định dạng số tiền tiếng Việt tabular-nums.
-- [ ] REQ-02: Bộ lọc 5 tiêu chí (Chi nhánh, NCC, Trạng thái, Khoảng ngày, Từ khóa) hoạt động chính xác.
-- [ ] REQ-03: Phân trang mượt mà, hỗ trợ chọn 10/20/30/50 bản ghi/trang.
-- [ ] REQ-04: Slide-over Drawer xem chi tiết PO mở mượt mà, hiển thị bảng mặt hàng và tổng tiền chuẩn xác.
-- [ ] REQ-05: Toàn bộ 5 trạng thái PO (`SENT`, `CONFIRMED`, `PARTIALLY_RECEIVED`, `RECEIVED`, `CANCELLED`) được gắn badge màu chuẩn.
-- [ ] Route `/store-owner/purchase-orders/list` được tích hợp vào router của ứng dụng và hoạt động ổn định.
+- [x] REQ-01: Bảng dữ liệu hiển thị đầy đủ 10 cột, sticky header, định dạng số tiền tiếng Việt tabular-nums.
+- [x] REQ-02: Bộ lọc 5 tiêu chí (Chi nhánh, NCC, Trạng thái, Khoảng ngày, Từ khóa) hoạt động chính xác.
+- [x] REQ-03: Phân trang mượt mà, hỗ trợ chọn 10/20/30/50 bản ghi/trang.
+- [x] REQ-04: Slide-over Drawer xem chi tiết PO mở mượt mà, hiển thị bảng mặt hàng và tổng tiền chuẩn xác.
+- [x] REQ-05: Toàn bộ 5 trạng thái PO (`SENT`, `CONFIRMED`, `PARTIALLY_RECEIVED`, `RECEIVED`, `CANCELLED`) được gắn badge màu chuẩn.
+- [x] REQ-06: Quản lý lịch sử sửa đổi PO (PurchaseOrderRevision) hiển thị rõ ràng audit trail.
+- [x] Route `/store-owner/purchase-orders/list` được tích hợp vào router của ứng dụng và hoạt động ổn định.
