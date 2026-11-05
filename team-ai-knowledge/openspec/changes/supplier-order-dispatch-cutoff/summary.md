@@ -11,3 +11,7 @@
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-13 16:16
 
 Đã duyệt Skeptic Review và danh sách 10 tasks cho Trung tâm Chốt Đơn & Tách PO theo NCC.
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-11-05 16:49
+
+Duyệt Apply: Toàn bộ tasks T1-T13 đã hoàn thành, Backend DTOs/Service/Controller sẵn sàng, FE Modal fixed center tinh gọn không dropdown, build FE/BE pass 100%.
