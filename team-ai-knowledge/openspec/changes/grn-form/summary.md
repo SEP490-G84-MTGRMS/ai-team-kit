@@ -15,3 +15,7 @@
 ## Apply — ✅ Approve bởi @minhduc118a · 2026-11-05 17:01
 
 Duyệt Apply: Form lập phiếu nhập kho GRN, 4-metric quantity verification, FEFO batch quản lý HSD hoàn thành.
+
+## Test — ✅ Approve bởi @minhduc118a · 2026-11-05 17:01
+
+Duyệt Test Report: PASS 6/6 test cases cho phiếu nhập kho GRN.
