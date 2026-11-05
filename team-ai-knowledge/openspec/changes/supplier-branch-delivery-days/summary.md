@@ -11,3 +11,7 @@ Duyệt bước Brainstorm: Hoàn thành exploration.md, design-brief.md, specs.
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-11-05 16:45
 
 Duyệt Verify Spec: Review skeptic 5/5, tasks checklist T1-T12 đã sẵn sàng
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-11-05 16:45
+
+Đã implement toàn bộ tasks T1-T12: Migration DB DeliveryDaysOfWeek, BE DTOs/Entities/Service, FE AssignModal/EditModal/Table và kiểm thử build thành công.
