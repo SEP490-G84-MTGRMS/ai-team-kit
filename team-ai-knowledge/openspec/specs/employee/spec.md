@@ -108,3 +108,4 @@ Khi thực hiện chi trả lương (`POST /api/v1/payroll/payslips/{id}/pay`), 
 2. **Tải Chi tiết Thực tế & Optimistic Pre-fill**: Modal xem chi tiết nhân viên (`EmployeeDetailModal`) **MUST** tự động gọi API `GET /api/v1/employees/{id}`, hiển thị dữ liệu có sẵn ngay tức thì để tránh chớp trắng màn hình, format ngày sinh/ngày làm theo chuẩn `DD/MM/YYYY`.
 3. **Phân trang dùng chung**: Trang danh sách nhân viên **MUST** tích hợp component `TablePagination` chung của hệ thống.
 4. **Tải ảnh Cloudinary**: Form nhân viên **MUST** tích hợp upload ảnh trực tiếp lên Cloudinary thông qua API Backend `POST /api/v1/media/upload`, hiển thị loading spinner và validate dung lượng $\le 5\text{MB}$.
+
