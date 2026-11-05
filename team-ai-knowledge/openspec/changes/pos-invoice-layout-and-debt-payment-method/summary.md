@@ -15,3 +15,7 @@ Duyệt kết quả review của Skeptic và checklist 5 task triển khai sửa
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 08:06
 
 Duyệt kết quả Apply: Đã hoàn tất 5 task sửa mapping CREDIT, cân đối độ rộng các cột bảng hóa đơn và bỏ ngoặc rỗng thu ngân.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 08:20
+
+Duyệt báo cáo test: test-report.md verdict PASS, hiển thị nợ và layout bảng hóa đơn hoàn tất chuẩn xác.
