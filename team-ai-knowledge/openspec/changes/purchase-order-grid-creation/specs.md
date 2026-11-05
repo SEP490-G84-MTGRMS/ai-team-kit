@@ -8,16 +8,17 @@
 | GET | `/api/v1/purchase-orders/grid-products` | Query: `supplierId`, `branchId`, `fromDate`, `toDate` | `List<GridProductDto>` (Products, AvailabilityRules, CutoffSchedules, ExistingQuantities) | `400` |
 | POST | `/api/v1/purchase-orders/grid-submit` | Body: `SubmitGridPoCommand` | `SubmitGridResultDto` (CreatedPoIds, SplitPosList, Status) | `400 Bad Request` (vi phạm MOQ/LeadTime/Cutoff) |
 | POST | `/api/v1/purchase-orders/grid-draft` | Body: `SaveGridDraftCommand` | `200 OK` | `400` |
-| POST | `/api/v1/purchase-orders/grid-export-excel` | Body: `ExportGridCommand` | File Stream (CSV / XLSX) | `400` |
-| POST | `/api/v1/purchase-orders/grid-import-excel` | Form-data: File | `List<ImportResultItem>` | `400` |
+| POST | `/api/v1/purchase-orders/excel/export` | Body: `ExportOrderMatrixCommand { BranchId, SupplierId, FromDate, ToDate }` | File Stream (`.xlsx` formatted & styled) | `400 Bad Request` |
+| POST | `/api/purchase-orders/excel/import/validate` | Form-data: `file` (.xlsx), `branchId`, `supplierId`, `fromDate`, `toDate` | `ExcelImportPreviewDto` (IsValid, ValidCount, WarningCount, ErrorCount, Rows, Summary) | `400 Bad Request`, `FILE_INVALID`, `BRANCH_ACCESS_DENIED` |
+| POST | `/api/purchase-orders/excel/import/apply` | Body: `ApplyExcelImportCommand { BranchId, SupplierId, FromDate, ToDate, ValidatedCells }` | `ApplyImportResultDto { UpdatedCellsCount, Status }` | `400 Bad Request` |
 
 ## 2. Yêu cầu Chi tiết (Detailed Requirements)
 
 ### Requirement: REQ-POGRID-01 Ma trận đặt hàng đa ngày theo lịch giao NCC (Tối đa 31 ngày)
 Hệ thống MUST hỗ trợ lập kế hoạch đặt hàng cho nhiều ngày giao hàng trong tương lai trên cùng một bảng ma trận, với phạm vi tối đa 31 ngày (1 tháng).
-Các cột ngày giao hàng phải được hiển thị chính xác theo lịch giao của Nhà cung cấp:
+Các cột ngày giao hàng phải được hiển thị chính xác theo lịch giao của Nhà cung cấp và cấu hình riêng của từng chi nhánh:
 - Ô bị khóa và hiển thị gạch ngang `—` nếu:
-  1. Ngày nằm ngoài danh sách ngày giao hàng trong tuần của Nhà cung cấp (`activeDeliveryDays`).
+  1. Ngày nằm ngoài danh sách ngày giao hàng của Chi nhánh đối với Nhà cung cấp (`DeliveryDaysOfWeek`).
   2. Ngày nằm trong danh sách ngày nghỉ/lễ (`holidays` / `blackoutDates`).
   3. Ngày vi phạm thời gian chuẩn bị (`LeadDays`).
 
@@ -105,10 +106,39 @@ Người dùng có thể xem gợi ý và chọn áp dụng số lượng gợi 
 
 ---
 
-### Requirement: REQ-POGRID-07 Tiện ích Sao chép tuần trước & Xuất/Nhập Excel
-- Nút "Copy Prev Week": Tự động sao chép số lượng từ 7 ngày trước đó vào các ô hợp lệ của tuần đang xem.
-- Xuất Excel: Xuất toàn bộ bảng kế hoạch ra file `.csv` / `.xlsx` hiển thị đầy đủ thông tin sản phẩm, đơn giá, MOQ, và số lượng theo từng ngày.
-- Nhập Excel: Nạp file bảng tính để điền tự động số lượng vào các ô hợp lệ chưa qua cutoff.
+### Requirement: REQ-POGRID-07 Quy trình Excel Import/Export 3 Giai đoạn và Định dạng Trang trí
+Hệ thống MUST cung cấp tính năng Xuất và Nhập Excel cho Ma trận đặt hàng:
+1. **Quy tắc Nghiệp vụ**:
+   - Excel Import CHỈ cập nhật dữ liệu nháp (Draft Matrix), KHÔNG trực tiếp tạo Purchase Order và KHÔNG ghi nhận nhập kho.
+   - PO chỉ được tạo khi người dùng thực hiện Finalize / Chốt đơn trên hệ thống.
+2. **Quy trình Nhập Excel 3 Giai đoạn (Validate → Preview → Apply)**:
+   - **Giai đoạn 1: Validate file & ngữ cảnh**:
+     - Kiểm tra file rỗng, định dạng chỉ chấp nhận `.xlsx`, giới hạn dung lượng ≤ 5 MB.
+     - Validate quyền truy cập `BranchId`, quan hệ `SupplierId` gắn active với Branch, kiểm tra Tenant isolation.
+     - Parse template header, đối chiếu danh sách Product Code/Barcode và dải ngày giao hàng.
+     - Kiểm tra tính hợp lệ của từng ô: ngày quá cutoff, ngày không giao (`SUPPLIER_OFF`), vi phạm MOQ/OrderMultiple.
+   - **Giai đoạn 2: Preview**:
+     - Trả về danh sách ô hợp lệ, ô cảnh báo và danh sách lỗi cụ thể (`FILE_INVALID`, `BRANCH_ACCESS_DENIED`, `MOQ_VIOLATION`, v.v.).
+     - Nếu có lỗi (ERROR): Khóa nút Apply, hiển thị bảng lỗi chi tiết theo dòng/cột.
+     - Nếu không có lỗi (Valid hoặc chỉ có Warning): Mở nút Apply cho phép áp dụng.
+   - **Giai đoạn 3: Apply**:
+     - Cập nhật số lượng vào bảng nháp `PurchaseOrderDetails` (ghi nhận `StoreQty` cho Store Owner hoặc `EmployeeQty` cho Nhân viên).
+     - Tự động tải lại ma trận hiển thị số liệu mới nhất.
+3. **Định dạng Xuất Excel Thẩm mỹ (Styled Excel Export)**:
+   - Header bảng màu xanh thương hiệu chuyên nghiệp (`#0d9488` hoặc `#1e293b`), chữ trắng in đậm, căn giữa.
+   - Các cột cố định sản phẩm (Mã hàng, Mã vạch, Tên hàng, ĐVT, Đơn giá, MOQ) được căn chỉnh độ rộng tự động và freeze panes.
+   - Các cột ngày giao hàng được tô màu phân biệt: Cột ngày giao hợp lệ có nền trắng/xanh nhạt, cột ngày không giao được tô nền xám nhạt (`#f1f5f9`) kèm ô khóa không sửa.
+   - Định dạng số tiền và số lượng chuẩn phân cách hàng nghìn.
+
+#### Scenario: Nhập file Excel có lỗi MOQ
+- GIVEN Người dùng tải lên file Excel có mặt hàng A với số lượng 3, nhưng MOQ của NCC là 5.
+- WHEN Bấm "Tải lên & Kiểm tra".
+- THEN Modal hiển thị bảng Preview với dòng lỗi màu đỏ: "Sản phẩm A: Số lượng 3 nhỏ hơn MOQ 5", nút "Xác nhận áp dụng" bị vô hiệu hóa.
+
+#### Scenario: Nhập file Excel hợp lệ và Apply
+- GIVEN Toàn bộ các dòng trong file Excel đều hợp lệ và không vi phạm cutoff.
+- WHEN Người dùng bấm "Áp dụng vào ma trận".
+- THEN Hệ thống cập nhật các ô nháp trong DB, hiển thị toast thành công và reload lại lưới ma trận.
 
 ---
 
@@ -119,11 +149,12 @@ Người dùng có thể xem gợi ý và chọn áp dụng số lượng gợi 
 ---
 
 ## 3. Acceptance Checklist
-- [ ] REQ-POGRID-01: Ma trận hỗ trợ phạm vi tối đa 31 ngày, khóa chuẩn các ngày nghỉ, ngày lễ, ngày vi phạm lead time.
-- [ ] REQ-POGRID-02: Vận hành đúng 3 giá trị `EmployeeQty`, `StoreQty` (nullable), `FinalQty`. Phân biệt rõ `0` và `NULL`.
-- [ ] REQ-POGRID-03: Cột ngày giao hiển thị rõ trạng thái Cutoff; chốt ngày đến hạn cutoff mà không khóa ngày tương lai.
-- [ ] REQ-POGRID-04: Tạo PO tách bạch 100% theo [Chi nhánh + NCC + Ngày giao]. Không tạo dòng cho sản phẩm có FinalQty = 0.
-- [ ] REQ-POGRID-05: Cảnh báo vi phạm MOQ và bội số đặt hàng.
-- [ ] REQ-POGRID-06: Hiển thị và hỗ trợ điền số lượng đề xuất (Suggested Qty).
-- [ ] REQ-POGRID-07: Sao chép tuần trước và Xuất/Nhập Excel hoạt động chính xác.
-- [ ] REQ-POGRID-08: Tự động phân loại trạng thái tín dụng nếu vượt hạn mức công nợ.
+- [x] REQ-POGRID-01: Ma trận hỗ trợ phạm vi tối đa 31 ngày, khóa chuẩn các ngày nghỉ, ngày lễ, ngày vi phạm lead time hoặc không thuộc DeliveryDaysOfWeek của chi nhánh.
+- [x] REQ-POGRID-02: Vận hành đúng 3 giá trị `EmployeeQty`, `StoreQty` (nullable), `FinalQty`. Phân biệt rõ `0` và `NULL`.
+- [x] REQ-POGRID-03: Cột ngày giao hiển thị rõ trạng thái Cutoff; chốt ngày đến hạn cutoff mà không khóa ngày tương lai.
+- [x] REQ-POGRID-04: Tạo PO tách bạch 100% theo [Chi nhánh + NCC + Ngày giao]. Không tạo dòng cho sản phẩm có FinalQty = 0.
+- [x] REQ-POGRID-05: Cảnh báo vi phạm MOQ và bội số đặt hàng.
+- [x] REQ-POGRID-06: Hiển thị và hỗ trợ điền số lượng đề xuất (Suggested Qty).
+- [x] REQ-POGRID-07: Quy trình Excel Import/Export 3 pha (Validate -> Preview -> Apply) và Excel Export format thẩm mỹ hoàn thiện.
+- [x] REQ-POGRID-08: Tự động phân loại trạng thái tín dụng nếu vượt hạn mức công nợ.
+- [x] Toàn bộ code biên dịch và build thành công không lỗi.
