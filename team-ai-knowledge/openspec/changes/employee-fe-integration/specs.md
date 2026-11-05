@@ -10,45 +10,43 @@
 | PUT | `/api/v1/employees/{id}` | `UpdateEmployeePayload` | `ApiResponse<EmployeeBackendDetailDto>` | 400, 404, 409 |
 | PATCH | `/api/v1/employees/{id}/status` | `{ status: "active" \| "inactive" }` | `ApiResponse<object>` | 400, 404 |
 | POST | `/api/v1/employees/{id}/identity-account` | `CreateIdentityAccountPayload` | `ApiResponse<{ userId, username, role }>` | 400, 409 (trùng username) |
-| DELETE | `/api/v1/employees/{id}` | Path param: `id` | `ApiResponse<object>` | 400, 404 |
+| DELETE | `/api/v1/employees/{id}` | Path param: `id` | `ApiResponse<object>` | 400 (`EMPLOYEE_HAS_WORK_HISTORY`), 404 |
 | POST | `/api/v1/media/upload` | `FormData: file, folder` | `ApiResponse<{ url: string }>` | 400, 500 |
+| GET | `/api/v1/hr/shift-configs` | Query: `branchId`, `isActive` | `ApiResponse<ShiftConfigDto[]>` | 401, 403 |
+| GET | `/api/v1/hr/shift-configs/{id}` | Path param: `id` | `ApiResponse<ShiftConfigDto>` | 404 |
+| POST | `/api/v1/hr/shift-configs` | `CreateShiftConfigPayload` | `ApiResponse<ShiftConfigDto>` | 400, 409 (`DUPLICATE_SHIFT_CODE`) |
+| PUT | `/api/v1/hr/shift-configs/{id}` | `UpdateShiftConfigPayload` | `ApiResponse<ShiftConfigDto>` | 400, 404 |
+| PATCH | `/api/v1/hr/shift-configs/{id}/status` | `{ isActive: boolean }` | `ApiResponse<ShiftConfigDto>` | 400, 404 |
+| DELETE | `/api/v1/hr/shift-configs/{id}` | Path param: `id` | `ApiResponse<object>` | 400, 404 |
 
 ---
 
 ## ADDED Requirements
 
-### Requirement: REQ-FE-EMP-01 Client API Module & Data Mapper
+### Requirement: REQ-FE-EMP-01 Client API Module & Data Mapper với Khớp nối ID Phụ cấp
 Hệ thống Frontend **MUST** cung cấp module `employeeApi.ts` đóng gói các phương thức gọi API qua `httpClient` và bộ mapper `employeeMapper.ts` chuẩn hóa dữ liệu giữa Backend DTOs và Frontend model `Employee`.
-Mapper **MUST** giữ nguyên ID của các khoản phụ cấp khi chuyển đổi giữa DTO và Model để hỗ trợ thuật toán đồng bộ hóa (Sync & Diffing) của Backend.
+Mapper **MUST** giữ nguyên ID của các khoản phụ cấp khi chuyển đổi giữa DTO và Model. Khi gửi payload tạo mới hoặc cập nhật (`mapFormToCreatePayload`), hệ thống **MUST** kiểm tra định dạng UUID:
+- Các phụ cấp cũ có ID dạng UUID chuẩn $\rightarrow$ giữ nguyên `id` để Backend thực hiện `UPDATE` hoặc `DELETE`.
+- Các phụ cấp mới tạo từ UI mang ID tạm (VD: `al_1730784...`) $\rightarrow$ gán `id = undefined` để Backend nhận biết thực hiện `INSERT` với `EntityState.Added`, ngăn chặn triệt để lỗi `DbUpdateConcurrencyException`.
+- Các phụ cấp bị bỏ chọn (`enabled = false`) hoặc có số tiền $\le 0$ $\rightarrow$ bị loại khỏi payload gửi lên để Backend dọn dẹp khỏi cơ sở dữ liệu.
 
-#### Scenario: Chuyển đổi dữ liệu từ Backend DTO sang Frontend Employee
-- **GIVEN** Dữ liệu `EmployeeBackendDetailDto` trả về từ Backend chứa `baseRate = 8500000`, `salaryType = "monthly"`, và danh sách `allowances` có `id = "guid-123"`.
-- **WHEN** Chạy qua hàm `mapBackendDetailToEmployee`.
-- **THEN** Kết quả trả về đối tượng `Employee` có đầy đủ thông tin lương, và phụ cấp giữ nguyên `id = "guid-123"`.
+#### Scenario: Chuyển đổi dữ liệu và đồng bộ phụ cấp an toàn
+- **GIVEN** Nhân viên đang có 2 phụ cấp trong DB: Phụ cấp Xăng xe (`id = "01a1aa16-1a0f-77dd-b92e-26c84ea398e6"`) và Phụ cấp Ăn trưa (`id = "01a1aa27-7de3-7656-b507-effecc5160b3"`).
+- **WHEN** Người dùng sửa Phụ cấp Xăng xe thành 60.000đ, bấm "+ Thêm khoản phụ cấp" tạo Phụ cấp Trách nhiệm (ID tạm `al_179385...`, 500.000đ), và xóa Phụ cấp Ăn trưa.
+- **THEN** Hàm `mapFormToCreatePayload` xuất ra mảng `allowances` gồm 2 phần tử: 1 phần tử có `id` UUID và 1 phần tử có `id: undefined`. Request `PUT /api/v1/employees/{id}` gửi thành công, Backend cập nhật chính xác mà không gặp lỗi ngắt liên kết hay lỗi số dòng bị ảnh hưởng = 0.
 
 ---
 
 ### Requirement: REQ-FE-EMP-02 Tải Danh sách Phân trang & Phân trang Chuẩn dùng chung
-Trang `EmployeeListPage` **MUST** tải danh sách nhân viên từ Backend API `GET /api/v1/employees`, hỗ trợ tìm kiếm từ khóa có debounce, lọc theo chi nhánh, trạng thái.
+Trang `EmployeeListPage` **MUST** tải danh sách nhân viên từ Backend API `GET /api/v1/employees`, hỗ trợ tìm kiếm từ khóa có debounce 300ms, lọc theo chi nhánh và trạng thái hoạt động.
 Phân trang của bảng **MUST** tích hợp component phân trang dùng chung của dự án `TablePagination` (`src/components/common/TablePagination`), hỗ trợ chuyển trang, chọn kích thước trang (`10`, `20`, `50`) và nhảy trang trực tiếp.
-
-#### Scenario: Tải danh sách thành công khi mở trang
-- **GIVEN** Người dùng mở trang `/employees`.
-- **WHEN** Component mount.
-- **THEN** Hiển thị loading skeleton, sau đó render danh sách nhân viên trả về từ Backend kèm thanh điều hướng `TablePagination` chuẩn.
 
 ---
 
-### Requirement: REQ-FE-EMP-03 Thêm mới và Chỉnh sửa Nhân viên (Chọn 1 Chi nhánh & Upload Ảnh Cloudinary)
-Modal `EmployeeFormModal` **MUST** gửi request tạo mới (`POST`) hoặc cập nhật (`PUT`) đến Backend API và hiển thị thông báo lỗi cụ thể nếu vi phạm ràng buộc (409 Conflict).
+### Requirement: REQ-FE-EMP-03 Thêm mới, Chỉnh sửa Nhân viên & Upload Ảnh Cloudinary
+Modal `EmployeeFormModal` **MUST** gửi request tạo mới (`POST`) hoặc cập nhật (`PUT`) đến Backend API và hiển thị thông báo lỗi cụ thể nếu vi phạm ràng buộc (409 Conflict: trùng CCCD hoặc SĐT).
 Nhân viên **MUST** được phân bổ làm việc tại duy nhất một chi nhánh chính thông qua dropdown chọn đơn lẻ (kèm tính năng tìm kiếm nhanh và huy hiệu "Trụ sở").
-Hệ thống **MUST** hỗ trợ tải ảnh đại diện nhân viên lên dịch vụ Cloudinary thông qua API backend `POST /api/v1/media/upload` (thư mục `mtgrms/employees`), kiểm tra kích thước file $\le 5\text{MB}$ và hiển thị trạng thái loading spinner trong khi upload.
-
-#### Scenario: Chỉnh sửa thông tin nhân viên kèm ảnh đại diện Cloudinary
-- **GIVEN** Người dùng mở form chỉnh sửa nhân viên, chọn ảnh đại diện từ máy tính.
-- **WHEN** Ảnh được chọn, hệ thống tự động upload lên Cloudinary, nhận về URL ảnh an toàn `https://res.cloudinary.com/...` và hiển thị preview.
-- **AND** Người dùng bấm **[Lưu thông tin]**.
-- **THEN** Request `PUT /api/v1/employees/{id}` được gửi đi với đầy đủ thông tin kèm `avatarUrl`, cập nhật thành công lên server.
+Hệ thống **MUST** hỗ trợ tải ảnh đại diện nhân viên lên dịch vụ Cloudinary thông qua API backend `POST /api/v1/media/upload` (thư mục `mtgrms/employees`), kiểm tra kích thước file $\le 5\text{MB}$ và hiển thị trạng thái loading spinner trong khi upload. Khi lưu thành công, hệ thống **MUST** hiển thị popup `NotificationModal` thông báo thành công cho người dùng.
 
 ---
 
@@ -56,11 +54,6 @@ Hệ thống **MUST** hỗ trợ tải ảnh đại diện nhân viên lên dị
 Modal `EmployeeDetailModal` **MUST** tự động gọi API `GET /api/v1/employees/{id}` khi mở để nạp dữ liệu thực tế và chính xác nhất từ cơ sở dữ liệu.
 Hệ thống **MUST** áp dụng cơ chế hiển thị lạc quan (Optimistic Pre-fill) từ dữ liệu tóm tắt của bảng danh sách để tránh tình trạng chớp màn hình trắng, đồng thời hiển thị trạng thái `Đang đồng bộ từ hệ thống...` ở thanh tiêu đề.
 Các trường dữ liệu như Ngày sinh, Ngày bắt đầu làm việc **MUST** được định dạng theo chuẩn Việt Nam `DD/MM/YYYY`. Nút **"Sửa thông tin"** trong modal chi tiết **MUST** truyền trực tiếp đối tượng đã được làm giàu sang form chỉnh sửa.
-
-#### Scenario: Mở modal xem chi tiết nhân viên
-- **GIVEN** Người dùng click vào một hàng nhân viên trên bảng.
-- **WHEN** `EmployeeDetailModal` mở ra.
-- **THEN** Modal hiển thị ngay thông tin cơ bản có sẵn, gọi ngầm API `GET /api/v1/employees/{id}`, cập nhật đầy đủ số CCCD, ngày sinh `DD/MM/YYYY`, ngân hàng, số tài khoản và bảng phụ cấp chi tiết.
 
 ---
 
@@ -70,16 +63,43 @@ Header và Footer của modal **MUST** được cố định tại đỉnh và �
 
 ---
 
-### Requirement: REQ-FE-EMP-06 Cấp Tài khoản Identity, Đổi Trạng thái và Xóa Nhân viên
-Giao diện **MUST** hỗ trợ cấp tài khoản đăng nhập cho nhân viên thông qua `CreateUserModal`, chuyển đổi trạng thái hoạt động (`active` / `inactive`), và xóa nhân viên có xác nhận an toàn.
+### Requirement: REQ-FE-EMP-06 Xóa Nhân viên, Xử lý Business Rule BR-EMP-03 & Đổi Trạng thái Hoạt động
+Giao diện **MUST** hỗ trợ chuyển đổi trạng thái hoạt động (`active` / `inactive`) thông qua API `PATCH /api/v1/employees/{id}/status` và hiển thị `NotificationModal` phản hồi kết quả tức thì.
+Khi thực hiện xóa nhân viên:
+1. Giao diện **MUST** mở `ConfirmModal` (`src/components/common/ConfirmModal.tsx`) với cảnh báo hành động không thể hoàn tác, yêu cầu người dùng xác nhận rõ ràng trước khi phát lệnh `DELETE`.
+2. Nếu nhân viên **chưa có ca làm việc hoặc phiếu lương** $\rightarrow$ API xóa thành công, giao diện hiển thị `NotificationModal` loại `success` ("Xóa nhân viên thành công") và tự động làm mới danh sách.
+3. Nếu nhân viên **đã phát sinh lịch ca (`EmployeeSchedule`) hoặc phiếu lương (`Payslip`)** $\rightarrow$ Backend trả về mã lỗi 400 kèm code `EMPLOYEE_HAS_WORK_HISTORY`. Giao diện **MUST** bắt lỗi này và hiển thị `NotificationModal` loại `error` với thông điệp giải thích rõ ràng và hướng dẫn người dùng chuyển trạng thái nhân viên sang "Ngừng làm việc" thay vì xóa, bảo toàn lịch sử chấm công và tính toàn vẹn dữ liệu.
+
+#### Scenario: Bắt lỗi BR-EMP-03 khi cố gắng xóa nhân viên đã có dữ liệu làm việc
+- **GIVEN** Người dùng chọn xóa một nhân viên đã từng tham gia ca làm việc hoặc có phiếu lương.
+- **WHEN** Xác nhận trên `ConfirmModal` và Backend trả về HTTP 400 với `errorCode: "EMPLOYEE_HAS_WORK_HISTORY"`.
+- **THEN** Giao diện kích hoạt `NotificationModal` tiêu đề "Không thể xóa nhân viên", nội dung nêu rõ nhân viên đã có lịch ca hoặc phiếu lương và gợi ý chuyển trạng thái sang "Ngừng làm việc".
+
+---
+
+### Requirement: REQ-FE-EMP-07 Popup Thông báo & Xác nhận Dùng chung Toàn hệ thống (Common Modals)
+Hệ thống **MUST** cung cấp 2 component modal dùng chung trong `src/components/common/`:
+- `ConfirmModal.tsx`: Hỗ trợ xác nhận các hành động nguy hiểm (Xóa, Hủy, Đổi trạng thái quan trọng) với các biến thể màu `danger` (đỏ), `warning` (cam), `primary` (xanh), nút Xác nhận và Hủy có trạng thái loading spinner.
+- `NotificationModal.tsx`: Hỗ trợ hiển thị kết quả thao tác (`success`, `error`, `warning`, `info`) với icon trực quan, tự động đóng hoặc bấm nút "Đã hiểu".
+Hai modal này được thiết kế theo chuẩn giao diện của phân hệ `product`, tái sử dụng toàn diện trên các trang Employee, Product và các phân hệ khác của MT-GRMS.
+
+---
+
+### Requirement: REQ-FE-EMP-08 Cấu hình Ca làm việc Đa chi nhánh Frontend (`ShiftConfig`)
+Frontend **MUST** tích hợp module `shiftConfigApi.ts` tương thích với API Backend (`/api/v1/hr/shift-configs` và `/api/v1/shift-configs`), hỗ trợ:
+- Tải danh sách cấu hình ca theo chi nhánh qua `getShiftConfigsByBranch`.
+- Thêm mới (`CreateShiftConfigModal`), chỉnh sửa (`ShiftFormModal`) với khung giờ `startTime`/`endTime`, ca qua đêm `isCheckInNextDay` và chọn nhiều chi nhánh áp dụng `branchIds`.
+- Cập nhật trạng thái bật/tắt ca qua `updateShiftConfigStatus` và xóa ca qua `deleteShiftConfig`.
 
 ---
 
 ## Acceptance Checklist
-- [ ] REQ-FE-EMP-01: Module `employeeApi.ts` và `employeeMapper.ts` hoàn chỉnh, bảo toàn ID phụ cấp cho backend sync.
+- [ ] REQ-FE-EMP-01: Module `employeeApi.ts` và `employeeMapper.ts` hoàn chỉnh, kiểm tra regex UUID để bảo toàn ID phụ cấp cho backend sync an toàn.
 - [ ] REQ-FE-EMP-02: `EmployeeListPage.tsx` nạp dữ liệu từ Backend API và tích hợp thanh `TablePagination` chung.
-- [ ] REQ-FE-EMP-03: `EmployeeFormModal.tsx` hỗ trợ chọn 1 chi nhánh làm việc, upload ảnh Cloudinary mượt mà và validate lỗi.
+- [ ] REQ-FE-EMP-03: `EmployeeFormModal.tsx` hỗ trợ chọn 1 chi nhánh làm việc, upload ảnh Cloudinary mượt mà, validate lỗi và hiển thị NotificationModal.
 - [ ] REQ-FE-EMP-04: `EmployeeDetailModal.tsx` gọi API nạp dữ liệu chi tiết thực tế, format ngày `DD/MM/YYYY`, optimistic pre-fill.
 - [ ] REQ-FE-EMP-05: Toàn bộ 16 modal trong phân hệ nhân viên được cố định kích thước đồng nhất `900px × 85vh`.
-- [ ] REQ-FE-EMP-06: Cấp tài khoản Identity, toggle trạng thái và xóa nhân viên tích hợp API backend hoàn tất.
-- [ ] Kiểm thử: Build và chạy toàn bộ unit tests PASS 100%.
+- [ ] REQ-FE-EMP-06: Xóa nhân viên qua `ConfirmModal`, bắt lỗi `EMPLOYEE_HAS_WORK_HISTORY` (BR-EMP-03) hiển thị `NotificationModal` cảnh báo, toggle trạng thái `active/inactive` có popup phản hồi.
+- [ ] REQ-FE-EMP-07: Bộ modal dùng chung `ConfirmModal` và `NotificationModal` trong `src/components/common/` hoạt động ổn định trên toàn hệ thống.
+- [ ] REQ-FE-EMP-08: Quản lý danh mục ca `ShiftConfig` tích hợp `shiftConfigApi` hỗ trợ ca qua đêm và multi-branch.
+- [ ] Kiểm thử: Build sạch 0 lỗi (`npm run build`) và unit test frontend pass 100%.
