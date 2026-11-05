@@ -3,3 +3,7 @@
 ## Spec — ✅ Approve bởi @Ortus24 · 2026-11-05 17:20
 
 User đồng ý với đề xuất gộp DatabaseSeeder vào DbInitializer, tinh gọn Program.cs
+
+## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-05 17:28
+
+User duyệt phương án gộp DatabaseSeeder vào DbInitializer, không đưa dữ liệu seed vào AppDbContext

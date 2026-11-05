@@ -3,3 +3,7 @@
 ## Spec · 2026-11-05 17:20
 
 Đã xác định rõ phạm vi gộp code và tiêu chí kiểm thử không làm mất dữ liệu demo
+
+## Brainstorm · 2026-11-05 17:28
+
+Đã thống nhất giữ AppDbContext sạch sẽ và hợp nhất toàn bộ dữ liệu mẫu vào DbInitializer chia theo các hàm phân hệ riêng biệt
