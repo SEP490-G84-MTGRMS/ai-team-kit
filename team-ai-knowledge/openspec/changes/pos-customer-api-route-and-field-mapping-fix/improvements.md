@@ -15,3 +15,7 @@ Thực thi code tối thiểu, chuẩn xác và khởi động lại API server 
 ## Apply · 2026-11-05 10:53
 
 Kiểm chứng trực tiếp dữ liệu PostgreSQL trả về qua API và build frontend thành công.
+
+## Test · 2026-11-05 10:54
+
+Hoàn thành kiểm thử và tiến hành merge specs vào openspec/specs/.

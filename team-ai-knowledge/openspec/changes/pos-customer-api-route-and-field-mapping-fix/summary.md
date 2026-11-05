@@ -15,3 +15,7 @@ User đã duyệt bước Verify Spec. Bắt đầu áp dụng code.
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 10:53
 
 User đã duyệt bước Apply. Hoàn thành toàn bộ 3 task, route kép và DTO mapping đã hoạt động chuẩn xác.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 10:54
+
+User đã duyệt test-report.md. Đã kiểm chứng trả về khách hàng Sơn từ PostgreSQL thật. Sẵn sàng lưu trữ.
