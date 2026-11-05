@@ -54,3 +54,4 @@ tags:
 - **Backend**: `dotnet build` đạt 0 lỗi, `dotnet test` đạt **341 / 341 tests PASS (100%)**.
 - **Frontend**: `tsc -b && vite build` hoàn thành trong **727ms (0 errors, 0 warnings)**.
 - **Knowledge Base**: `npm run validate` vượt qua 100% các bộ schema kiểm tra frontmatter.
+
