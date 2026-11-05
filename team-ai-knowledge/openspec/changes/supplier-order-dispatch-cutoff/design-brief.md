@@ -1,48 +1,56 @@
 # Design Brief: supplier-order-dispatch-cutoff
 
-## 1. Luồng Người Dùng (User Flow)
+## 1. Luồng Người Dùng Mới (User Flow)
 
 ```
 [Bảng lưới Order Matrix / Chi nhánh]
         │
-        ▼ (Sau khi lên số lượng hoặc truy cập từ menu Mua hàng)
-[MÀN HÌNH: TRUNG TÂM CHỐT ĐƠN & TÁCH PO THEO NCC]
+        ▼ (Sau khi hoàn thiện số lượng hoặc mở từ menu Mua hàng)
+[MÀN HÌNH: DISPATCH HUB - TRUNG TÂM CHỐT ĐƠN & PHÁT HÀNH PO]
 (/store-owner/purchase-orders/dispatch-hub)
         │
         ├──► [Khu vực 1: Top Urgency Bar]
-        │       - Nhìn nhanh: 8 NCC draft | 45.2M đ | 🔴 2 NCC sắp cutoff (< 2h)
-        │       - Action: Bấm [ ⚡ Chốt nhanh các đơn hết hạn hôm nay (2) ]
+        │       - Thống kê toàn hệ thống: Tổng NCC có đơn nháp | Tổng tiền | Cảnh báo deadline (< 2h 🔴)
+        │       - Hành động nhanh: [ ⚡ Chốt nhanh các đơn hết hạn hôm nay ]
         │
-        ├──► [Khu vực 2: Filter & Grouping Toolbar]
-        │       - Chuyển tab: [Tất cả (8)] [🔴 Cần chốt gấp (2)] [Hôm nay (3)] [Đợt tới (3)] [Đã gửi PO]
-        │       - Tìm kiếm theo tên NCC / ngành hàng
+        ├──► [Khu vực 2: Filter Toolbar]
+        │       - Lọc theo Tab: [Tất cả] [🔴 Cần chốt gấp] [Hôm nay] [Đợt tới] [Đã chốt]
+        │       - Tìm kiếm nhanh NCC theo tên/mã
         │
-        └──► [Khu vực 3: Danh sách Thẻ NCC (Accordion 2 tầng)]
+        └──► [Khu vực 3: Danh sách Thẻ NCC]
                 │
-                ├─► [Tầng 1: Summary Card]
-                │     - Tên NCC, Tag hàng, Giờ Cutoff & Countdown timer (còn 45p 🔴)
-                │     - Ngày giao dự kiến, Số SKU, Tổng SL, Tổng tiền
-                │     - Cảnh báo MOV (Đạt / Chưa đạt tối thiểu)
-                │     - Action: [ Xem chi tiết SKU ] hoặc [ Chốt & Tạo PO ]
-                │
-                └─► [Tầng 2: Chi tiết SKU khi mở rộng]
-                      - Bảng SKU: Tên, ĐVT, Đơn giá, Input sửa SL inline, Thành tiền, Trạng thái cutoff
-                      - Nhập ô Ghi chú riêng cho NCC (VD: "Giao trước 7h sáng giúp quán")
-                      - Nút [ Chốt & Gửi PO Ngay ]
-                                │
-                                ▼
-                        [Modal Xác nhận Phát hành PO]
-                        - Tóm tắt NCC, Ngày giao, Kênh gửi, Tổng tiền
-                        - Bấm [ Xác nhận & Phát hành PO ]
-                                │
-                                ▼
-                        Chuyển thẻ sang trạng thái "Đã chốt / Đã gửi PO" (Tag xanh)
+                └─► [Thẻ NCC]: Hiển thị hạn Cutoff, MOV, tổng tiền, nút [Chốt đơn] và link sang Order Matrix
+                        │
+                        ▼ (Bấm "Chốt đơn" hoặc "Chốt nhanh")
+                [GỌI API PREVIEW KHÔNG LƯU DB: POST /matrix/split/preview]
+                        │
+                        ▼
+                [MODAL XÁC NHẬN CHỐT ĐƠN NCC (CĂN GIỮA, FIXED, Z-INDEX 99999)]
+                - Segmented Scope Selector: [ Ngày giao gần nhất (NEAREST) ] | [ Cả tuần T2–CN (WEEK) ]
+                - 4 Summary Cards: Tổng số PO dự kiến | Số chi nhánh | Tổng SKU | Tổng giá trị dự kiến
+                - Bảng Preview 6 cột tinh gọn: Chi nhánh | Ngày giao | Số SKU | SL đặt | Giá trị | Trạng thái
+                  (KHÔNG CÓ dropdown mũi tên mở rộng sản phẩm chi tiết)
+                - Bảng cảnh báo bỏ qua (Skipped Groups): Quá cutoff / Đã chốt trước / Thiếu thông tin
+                - Textarea: Ghi chú gửi nhà cung cấp
+                - Sticky Footer: Nút [ Hủy ] và Nút [ Chốt ngày giao gần nhất / Chốt đơn cả tuần ]
+                        │
+                        ▼ (Store Owner bấm xác nhận)
+                [GỌI API CHỐT THẬT: POST /matrix/split (Batch Split)]
+                        │
+                        ├── Backend truy vấn trực tiếp DB Draft Matrix (FinalQty = StoreQty ?? EmployeeQty)
+                        ├── Kiểm tra độc lập từng group (BranchId + DeliveryDate)
+                        └── Phân rã 1 PO = 1 Branch + 1 Supplier + 1 DeliveryDate (Partial Success)
+                        │
+                        ▼
+                [KẾT QUẢ & TOAST THÔNG BÁO]
+                - Hiển thị số PO tạo thành công và danh sách group bị bỏ qua/lỗi (nếu có).
+                - Refresh lại danh sách Dispatch Hub và Matrix.
 ```
 
 ## 2. Thiết Kế Màn Hình & Kiến Trúc Component
 
-### 2.1. Cấu trúc Component
-- **`SupplierOrderDispatchHubPage.tsx`**: Trang chính quản lý state danh sách đơn draft theo NCC, filter, logic chốt đơn đơn lẻ & hàng loạt.
+### 2.1. Cấu trúc Component Frontend
+- **`SupplierOrderDispatchHubPage.tsx`**: Trang chính quản lý state danh sách đơn draft theo NCC, filter, gọi preview và execute split batch.
 - **`DispatchUrgencyBar.tsx`**: Thanh cảnh báo khẩn cấp đầu trang:
   - Khối thống kê: Tổng NCC draft, tổng tiền, tổng SKU.
   - Khối deadline badges: 🔴 Sắp hết hạn (< 2h) | 🟡 Trong hôm nay | ⚪ Đợt tới trong tuần.
@@ -50,49 +58,40 @@
 - **`DispatchFilterBar.tsx`**: Thanh lọc tab pills và tìm kiếm:
   - Tab pills: Tất cả, Cần chốt gấp, Hôm nay, Đợt tới, Đã chốt.
   - Ô search input: Tìm theo tên NCC, mã NCC hoặc nhóm sản phẩm.
-  - Dropdown chọn chi nhánh (nếu Store Owner muốn lọc theo chi nhánh).
-- **`SupplierDispatchCard.tsx`**: Thẻ NCC Accordion 2 tầng:
+- **`SupplierDispatchCard.tsx`**: Thẻ tóm tắt thông tin NCC:
   - Header: Huy hiệu mức độ khẩn cấp (URGENT / TODAY / LATER / COMPLETED), tên NCC, tag phân loại.
-  - Metas: ⏰ Cutoff time với countdown đếm ngược sống động; 🚚 Ngày giao dự kiến; 📦 Số SKU & Tổng SL; 💰 Tổng tiền.
-  - Cảnh báo MOV: Nếu chưa đạt thì hiển thị thanh tiến độ / cảnh báo cam `Chưa đạt đơn tối thiểu 1.000.000 đ (Hiện tại: 850.000 đ)`.
-  - Body (Accordion): Bảng mini SKU với input số lượng cho phép chỉnh sửa inline, tự động re-calculate tổng tiền và MOV. Input ghi chú NCC.
-- **`DispatchConfirmModal.tsx`**: Modal xác nhận trước khi phát hành PO độc lập:
-  - Thông tin NCC, Mã PO dự kiến (VD: `PO-20261014-SUP001`), Ngày giao hàng, Kênh gửi (Email / Zalo / B2B), Bảng tóm tắt danh sách mặt hàng, Tổng giá trị PO.
-  - Nút Hủy và Nút "Xác nhận & Phát hành Purchase Order".
+  - Metas: ⏰ Cutoff time với countdown đếm ngược; 🚚 Ngày giao dự kiến; 📦 Số SKU & Tổng SL; 💰 Tổng tiền.
+  - Cảnh báo MOV: Nếu chưa đạt thì hiển thị cảnh báo cam `Chưa đạt đơn tối thiểu 1.000.000 đ`.
+  - Action buttons: [Xem chi tiết ma trận đặt hàng] (deep-link sang OrderMatrixPage) và [Chốt đơn NCC] (mở DispatchConfirmModal).
+- **`DispatchConfirmModal.tsx`**: Modal xác nhận chốt đơn NCC tập trung:
+  - Định vị `fixed inset-0 z-[99999]` căn giữa màn hình với backdrop mờ tối, bo góc và bóng đổ nổi bật.
+  - Scope Selector: Segmented Control chọn giữa `NEAREST` và `WEEK`.
+  - 4 Cards Metrics: Tổng số PO dự kiến, Số chi nhánh có đơn, Tổng SKU, Tổng giá trị dự kiến (cảnh báo nếu thiếu giá).
+  - Preview Table: Bảng 6 cột rõ ràng (`Chi nhánh`, `Ngày giao`, `Số SKU`, `SL đặt`, `Giá trị dự kiến`, `Trạng thái`). Đã loại bỏ hoàn toàn icon mũi tên mở rộng và danh sách sản phẩm con bên dưới từng dòng.
+  - Skipped Groups Panel: Hiển thị các group bị bỏ qua và lý do rõ ràng.
+  - Textarea: Ghi chú gửi NCC đính kèm các PO tạo thành công.
+  - Sticky Footer: Nút Hủy và Nút Submit hành động với loading spinner và chống double-click.
 
-### 2.2. Dữ liệu Mô phỏng (Mock Data Model)
-- `SupplierDispatchGroup`:
-  - `id`: string (ID NCC)
-  - `code`: string (Mã NCC, VD: SUP-01)
-  - `name`: string (Tên NCC)
-  - `categoryTags`: string[] (Thực phẩm tươi sống / Gia vị khô / Bao bì)
-  - `cutoffTimeStr`: string (VD: "15:00 Hôm nay" / "11:00 Thứ Tư")
-  - `cutoffDate`: Date
-  - `urgency`: `'critical'` (< 2 giờ) | `'today'` (trong hôm nay) | `'later'` (các ngày sau) | `'completed'` (đã chốt)
-  - `expectedDelivery`: string (VD: "06:00 Sáng mai (15/10)")
-  - `minOrderValue`: number (MOV, VD: 1.000.000)
-  - `items`: `DispatchItemSku[]`
-  - `note`: string
-  - `status`: `'draft'` | `'dispatched'`
-  - `poCode`?: string (khi đã dispatch)
+### 2.2. Kiến Trúc Backend (ASP.NET Core)
+- **`PreviewSplitMatrixPoAsync`**:
+  - Nhận `SupplierId`, `Scope`, `ReferenceDate`, `BranchIds`.
+  - Đọc toàn bộ draft details của NCC trong phạm vi ngày yêu cầu.
+  - Nhóm theo `(BranchId, DeliveryDate)`.
+  - Kiểm tra Cutoff (`OrderMatrixRules.CalculateCutoff`), lịch làm việc của NCC, trạng thái đã chốt.
+  - Trả về DTO preview đầy đủ mà không thay đổi bất kỳ record nào trong DB.
+- **`SplitMatrixPoBatchAsync`**:
+  - Tái sử dụng cùng logic lọc và gom nhóm như Preview.
+  - Với mỗi group hợp lệ:
+    - Sinh mã PO duy nhất theo convention `PO-yyyyMMdd-XXXXX`.
+    - Tạo `PurchaseOrder` với `Status = COMMITTED`, `ParentDraftId`, `BranchId`, `SupplierId`, `DeliveryDate`, `Note`.
+    - Tạo các `PurchaseOrderDetail` với `FinalQty = detail.StoreQty ?? detail.EmployeeQty ?? 0`.
+    - Trừ hoặc đánh dấu các cell draft tương ứng.
+    - Ghi nhận `SUCCESS`.
+  - Với các group không hợp lệ: Ghi nhận `SKIPPED` hoặc `FAILED` mà không làm gián đoạn các group khác.
+  - Trả về `SplitMatrixBatchResultDto`.
 
-## 3. Xử Lý Các Nghiệp Vụ Nâng Cao (Edge Cases)
-1. **Một NCC có cả hàng ngày và hàng tuần**:
-   - Thẻ NCC tự động phân làm 2 nhóm con bên trong accordion:
-     - Nhóm A: "Giao sáng mai — Cutoff 15:00 hôm nay" (Hàng tươi sống).
-     - Nhóm B: "Giao cuối tuần — Cutoff Thứ 6" (Hàng đông lạnh/kho).
-   - Cho phép chọn chốt riêng từng nhóm hoặc chốt chung.
-2. **Quá giờ Cutoff (Overdue)**:
-   - Nếu thời gian hiện tại > Cutoff Time: Thẻ hiển thị cảnh báo đỏ `⚠️ Đã qua giờ cutoff đợt hôm nay (15:00). Lịch giao sẽ tự động chuyển sang ngày mốt (16/10)`. Khi chốt sẽ có xác nhận lùi ngày giao.
-3. **Chưa đủ giá trị đơn tối thiểu (MOV)**:
-   - Vô hiệu hóa nút Chốt đơn thông thường hoặc hiển thị nút cảnh báo `Chưa đạt MOV (Thiếu ... đ)`. Bấm vào sẽ gợi ý tăng số lượng mặt hàng.
-
-## 4. Tuân Thủ UI Design System (`RULE_UI_DESIGN_SYSTEM.md`)
-- Tone màu: Teal (`#0d9488`), nền thẻ trắng, viền rõ nét `#e2e8f0`, bóng đổ nhẹ `#0000000a`.
-- Huy hiệu Urgency:
-  - Critical: Nền đỏ `#fee2e2`, chữ đỏ `#b91c1c`, viền đỏ `#fca5a5` với icon đồng hồ nhấp nháy hoặc chấm tròn đỏ.
-  - Today: Nền vàng `#fef3c7`, chữ vàng `#b45309`, viền `#fcd34d`.
-  - Later: Nền xanh/xám `#f1f5f9`, chữ `#475569`.
-  - Completed: Nền xanh lá `#dcfce7`, chữ xanh `#15803d`, icon tick hoàn thành.
-- Các ô số tiền và số lượng luôn căn phải (`text-align: right`), định dạng `toLocaleString()`.
-- Responsive và không bị tràn ngang container.
+## 3. Quy Tắc Nghiệp Vụ Bất Biến (Invariant Business Rules)
+1. **1 PO = 1 Branch + 1 Supplier + 1 DeliveryDate**: Không tạo PO gộp nhiều ngày, không tạo PO gộp nhiều chi nhánh.
+2. **Nguồn dữ liệu DB Draft**: Không nhận số lượng từ client gửi lên để ngăn chặn dữ liệu cũ hoặc gian lận.
+3. **Partial Success**: Không dùng 1 transaction lớn bao phủ toàn bộ batch khiến 1 lỗi nhỏ làm hủy đơn của tất cả các chi nhánh khác. Mỗi group xử lý riêng biệt an toàn.
+4. **Múi giờ chuẩn**: Sử dụng múi giờ `Asia/Ho_Chi_Minh` cho toàn bộ các phép tính ngày bắt đầu tuần (Thứ Hai 00:00:00) và kết thúc tuần (Chủ nhật 23:59:59).
