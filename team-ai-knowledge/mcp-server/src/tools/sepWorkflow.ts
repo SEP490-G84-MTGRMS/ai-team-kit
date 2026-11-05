@@ -1094,9 +1094,14 @@ export function parseTestReportMarkdown(md: string): Array<Record<string, any>> 
       let expIdx = headers.findIndex(h => h.includes('expect') || h.includes('then') || h.includes('mong doi') || h.includes('ket qua mong'));
       let roleIdx = headers.findIndex(h => h.includes('role') || h.includes('actor') || h.includes('vai tro'));
       let priorityIdx = headers.findIndex(h => h.includes('priority') || h.includes('uu tien') || h.includes('muc do'));
-      let typeIdx = headers.findIndex(h => h.includes('report') || h.includes('loai') || h.includes('type'));
+      let typeIdx = headers.findIndex(h => h.includes('report') || (h.includes('loai') && !h.includes('ky thuat')) || h.includes('type'));
       let resIdx = headers.findIndex(h => (h.includes('ket qua') && !h.includes('mong')) || h.includes('result') || h.includes('status') || h.includes('verdict'));
-      let notesIdx = headers.findIndex(h => h.includes('note') || h.includes('ghi chu') || h.includes('feedback'));
+      let notesIdx = headers.findIndex(h => h.includes('note') || h.includes('ghi chu') || h.includes('feedback') || h.includes('bug'));
+      let dataIdx = headers.findIndex(h => h.includes('data') || h.includes('du lieu'));
+      let authorIdx = headers.findIndex(h => h.includes('author') || h.includes('nguoi viet') || h.includes('viet'));
+      let runnerIdx = headers.findIndex(h => h.includes('runner') || h.includes('nguoi chay') || h.includes('chay'));
+      let criteriaIdx = headers.findIndex(h => h.includes('criteria') || h.includes('tieu chi'));
+      let techTypeIdx = headers.findIndex(h => h.includes('ky thuat') || (h.includes('loai') && !h.includes('report')));
 
       if (cells.length >= 10 && (preIdx === -1 || stepsIdx === -1)) {
         if (idIdx === -1) idIdx = 0;
@@ -1136,8 +1141,15 @@ export function parseTestReportMarkdown(md: string): Array<Record<string, any>> 
       const rTypeMatch = typeVal.match(/5\.[1-5]/);
       const cleanReportType = rTypeMatch ? rTypeMatch[0] : (typeVal || '5.1');
 
+      const dataVal = dataIdx !== -1 ? cells[dataIdx] : '';
+      const authorVal = authorIdx !== -1 ? cells[authorIdx] : '';
+      const runnerVal = runnerIdx !== -1 ? cells[runnerIdx] : '';
+      const criteriaVal = criteriaIdx !== -1 ? cells[criteriaIdx] : '';
+      const techTypeVal = techTypeIdx !== -1 ? cells[techTypeIdx] : '';
+
       items.push({
         testId: idVal,
+        tcId: idVal,
         description: scnVal,
         scenario: scnVal,
         preConditions: preVal,
@@ -1155,6 +1167,12 @@ export function parseTestReportMarkdown(md: string): Array<Record<string, any>> 
         reportType: cleanReportType,
         notes: notesVal,
         feedback: notesVal,
+        defectId: notesVal,
+        testData: dataVal,
+        author: authorVal,
+        runner: runnerVal,
+        criteria: criteriaVal,
+        techType: techTypeVal,
       });
     }
   }

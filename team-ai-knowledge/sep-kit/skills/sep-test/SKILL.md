@@ -27,23 +27,23 @@ Tên change = phần chữ user gõ sau `/sep-test`; bỏ trống = change đang
    Scenario không tự động hoá được → hướng dẫn user test tay và hỏi kết quả.
 4. Kiểm tra đối chiếu (verify change): code có làm đủ mọi REQ? có thay đổi ngoài phạm vi specs? review HIGH đã xử lý hết?
 5. Lưu **test-report.md** bằng `sep_luu_artifact`. Frontmatter `verdict` là bắt buộc.
-   Để đồng bộ chính xác và lấp đầy 100% thông tin lên 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5) mà **không bị cột nào là N/A**, bảng kịch bản phải tuân theo cấu trúc **Unified Test Table** chuẩn BDD 10 cột sau:
+   Để đồng bộ chính xác và lấp đầy 100% thông tin lên 5 file Google Sheets kiểm thử (Report 5.1 -> 5.5) và Master Test Matrix trực tuyến, bảng kịch bản phải tuân theo cấu trúc **Unified Test Table** chuẩn mở rộng đầy đủ các trường nghiệp vụ sau:
 
 ```markdown
 ---
 verdict: PASS
-tested_at: 2026-10-13
+tested_at: 2026-11-05
 tester: '@username'
 ---
 # Test Report: <tên change>
 
-| Test Case ID | Tên kịch bản | Pre-conditions (GIVEN) | Procedure / Steps (WHEN) | Expected Results (THEN) | Role | Priority | Report Type | Kết quả | Ghi chú |
-|---|---|---|---|---|:---:|:---:|:---:|:---:|---|
-| TC-UT-FE01-01 | REQ-01: Kiểm tra tính hợp lệ của SĐT | Môi trường test sẵn sàng | Nhập số điện thoại 10 số hợp lệ và gọi validatePhone() | Hàm trả về true và không sinh lỗi | User | High | 5.1 | PASS | Unit test Vitest |
-| TC-IT-FE01-01 | REQ-02: Đồng bộ giao dịch với Sổ quỹ | Đã đăng nhập Cashier, sổ quỹ mở | Lập phiếu thu tiền mặt và submit | Giao dịch lưu vào DB và cập nhật số dư tức thì | Cashier | High | 5.2 | PASS | API integration |
-| TC-SYS-FE01-01 | REQ-03: Tìm kiếm và lọc danh sách | Dữ liệu khởi tạo có 50 bản ghi | Nhập từ khóa tìm kiếm và chọn bộ lọc VIP | Bảng dữ liệu lọc chính xác trong < 300ms | StoreManager | Medium | 5.3 | PASS | E2E browser |
-| TC-SEC-FE01-01 | REQ-04: Chặn sửa hạn mức nợ trái phép | Đang đăng nhập với vai trò Cashier | Cố tình gọi API cập nhật hạn mức nợ DebtLimit | Hệ thống trả về HTTP 403 Forbidden | Cashier | Critical | 5.4 | PASS | RBAC security |
-| SC-UAT-FE01-01 | REQ-05: Nghiệm thu quy trình thu nợ VietQR | Khách hàng có khoản nợ 500k | Tạo phiếu thu nợ và quét mã VietQR Napas 247 | Giao dịch ghi nhận thành công, giảm trừ nợ | StoreOwner | High | 5.5 | PASS | UAT acceptance |
+| Mã Test Case | Tên kịch bản | Tiêu chí (Cô) | Loại Test | Mức ưu tiên | Pre-conditions (GIVEN) | Procedure / Steps (WHEN) | Dữ liệu test (Test Data) | Expected Results (THEN) | Người viết | Người chạy | Report Type | Kết quả | Ghi chú |
+|---|---|---|---|:---:|---|---|---|---|---|---|:---:|:---:|---|
+| TC-UT-FE01-01 | REQ-01: Kiểm tra tính hợp lệ của SĐT | Số liệu / Công thức | Happy | P1 | Môi trường test sẵn sàng | Gọi validatePhone(phone) | SĐT "0912345678" | Hàm trả về true và không sinh lỗi | Nguyễn Bá Sơn | Đặng Đỗ Minh Đức | 5.1 | PASS | Unit test Vitest |
+| TC-IT-FE01-01 | REQ-02: Đồng bộ giao dịch với Sổ quỹ | Luồng nghiệp vụ | Happy | P1 | Đã đăng nhập Cashier, sổ quỹ mở | Lập phiếu thu nợ và submit | Số tiền 500.000đ, nguồn Till | Giao dịch lưu vào DB và cập nhật số dư | Nguyễn Bá Sơn | Nguyễn Trường An | 5.2 | PASS | API integration |
+| TC-SYS-FE01-01 | REQ-03: Tìm kiếm và lọc danh sách | Giao diện (UI) | Happy | P2 | Dữ liệu khởi tạo có 50 bản ghi | Nhập từ khóa tìm kiếm và chọn bộ lọc VIP | Từ khóa "Vip", tab "Tất cả" | Bảng dữ liệu lọc chính xác trong < 300ms | Nguyễn Bá Sơn | Nguyễn Minh Tâm | 5.3 | PASS | UI/UX E2E |
+| TC-SEC-FE01-01 | REQ-04: Chặn sửa hạn mức nợ trái phép | Security | Security | P0 | Đang đăng nhập với vai trò Cashier | Cố tình gọi API cập nhật hạn mức nợ DebtLimit | DebtLimit = 50.000.000đ | Hệ thống trả về HTTP 403 Forbidden | Nguyễn Bá Sơn | Nguyễn Long Nhật | 5.4 | PASS | RBAC security |
+| TC-E2E-FE01-01 | REQ-05: Nghiệm thu quy trình thu nợ VietQR | Luồng nghiệp vụ | Edge | P1 | Khách hàng có khoản nợ 500k | Tạo phiếu thu nợ và quét mã VietQR Napas 247 | VietQR 500.000đ, STK Vietcombank | Giao dịch ghi nhận thành công, giảm trừ nợ | Nguyễn Bá Sơn | Toàn bộ nhóm | 5.5 | PASS | UAT acceptance |
 
 ## Lệnh đã chạy
 - `npm test`: PASS (x/x tests passed)
@@ -53,6 +53,23 @@ tester: '@username'
 ## Đối chiếu specs ↔ code
 ## Lỗi còn tồn đọng
 ```
+
+### Quy tắc bắt buộc khi viết kịch bản test:
+1. **3 Tiêu chí của Cô + Security:** Phải phân loại rõ trong cột `Tiêu chí (Cô)`:
+   - `Số liệu / Công thức`: Kiểm tra tính toán tiền, nợ, thuế, tỷ lệ chiết khấu, số dư quỹ.
+   - `Luồng nghiệp vụ`: Kiểm tra vòng đời chứng từ, chuyển trạng thái, khóa sổ, đối soát.
+   - `Giao diện (UI)`: Kiểm tra tương tác form, modal, phím tắt, thông báo toast, phân trang.
+   - `Security`: Kiểm tra phân quyền RBAC, Hash Chain `AuditHash`, chống gửi trùng `Idempotency`.
+2. **Nguyên tắc Kiểm thử chéo (Cross-testing):**
+   - Cột `Người viết (Author)`: Thành viên phụ trách phân hệ đó viết kịch bản.
+   - Cột `Người chạy (Runner)`: BẮT BUỘC là thành viên khác trong nhóm (không tự test module mình code).
+3. **Dữ liệu test (Test Data) cụ thể:** Phải có số liệu chính xác (ví dụ: `300.000đ`, `500.001đ`, `KH-001`, `VCB`), không ghi chung chung "nhập dữ liệu hợp lệ".
+4. **Phân loại Report Type:**
+   - `5.1`: Unit Test (tự động ở tầng code .NET / React).
+   - `5.2`: Integration Test (kết nối API, CSDL, liên phân hệ).
+   - `5.3`: System Test FRs (chức năng nghiệp vụ & giao diện người dùng).
+   - `5.4`: System Test NFRs (bảo mật RBAC, hiệu năng tải trang).
+   - `5.5`: Acceptance Test (kịch bản nghiệm thu quy trình kinh doanh trọn vẹn E2E).
 
    `verdict: PASS` chỉ khi **mọi** Scenario pass. Có cái fail → `verdict: FAIL`.
 6. FAIL → báo lỗi, sửa code (quay lại `/sep-apply` nếu cần thêm task), chạy lại test và lưu lại test-report.md đến khi PASS.
