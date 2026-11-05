@@ -11,3 +11,7 @@ User đã duyệt exploration.md, design-brief.md, specs.md cho việc lưu khá
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 09:42
 
 User đã duyệt review/skeptic.md và tasks.md (5 tasks: T1 Backend ThermalPrintService, T2 AddCustomerModal, T3 PosCheckoutPage, T4 PosReceiptModal, T5 Test). Chuyển sang bước Apply.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-05 09:53
+
+User đã duyệt bước Apply: 5/5 tasks hoàn thành (ThermalPrintService, AddCustomerModal, PosCheckoutPage, PosReceiptModal, test build). Chuyển sang bước Test.
