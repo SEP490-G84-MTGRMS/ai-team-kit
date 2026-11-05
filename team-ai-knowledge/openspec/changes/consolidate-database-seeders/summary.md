@@ -11,3 +11,7 @@ User duyệt phương án gộp DatabaseSeeder vào DbInitializer, không đưa 
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-05 17:30
 
 User duyệt bước Verify Spec, cho phép tiến hành Apply code
+
+## Apply — ✅ Approve bởi @Ortus24 · 2026-11-05 18:05
+
+User duyệt bước Apply, hoàn tất gộp code và dọn dẹp DatabaseSeeder.cs
