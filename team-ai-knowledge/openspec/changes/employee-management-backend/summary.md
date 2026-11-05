@@ -11,3 +11,7 @@ User phê duyệt kết quả brainstorm: exploration.md, design-brief.md và sp
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-01 19:47
 
 User duyệt verify-spec và yêu cầu thực hiện Cụm 1: Quản lý Hồ sơ Nhân viên & Cấp tài khoản trước.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-05 09:18
+
+Đặc tả REQ-07 và phân rã tasks Nhóm 2.2 cho BranchAttendancePolicy được duyệt bởi user

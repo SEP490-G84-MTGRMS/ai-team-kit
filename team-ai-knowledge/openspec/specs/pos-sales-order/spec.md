@@ -431,6 +431,236 @@ Hệ thống **MUST** cho phép màn hình POS tải danh mục sản phẩm kin
 
 ---
 
+### Requirement: REQ-POS-09 Branch Product Selling Price Resolution
+Hệ thống **MUST** ưu tiên lấy đơn giá bán lẻ từ cấu hình chi nhánh `BranchProducts.SellingPriceOverride`. Nếu chi nhánh không cấu hình override (giá trị `NULL`), hệ thống **SHALL** tự động kế thừa đơn giá niêm yết từ `Products.SellingPrice`.
+
+#### Scenario: Bán sản phẩm có giá override tại chi nhánh
+**GIVEN** Sản phẩm "Bia Hà Nội Sleek" có `Products.SellingPrice = 14.000 đ`  
+**AND** Chi nhánh Ba Đình cấu hình `BranchProducts.SellingPriceOverride = 13.500 đ`  
+**WHEN** Thu ngân thêm sản phẩm vào đơn hàng tại Chi nhánh Ba Đình với đơn vị cơ bản  
+**THEN** Đơn giá được áp dụng trên dòng đơn hàng là `13.500 đ`  
+
+#### Scenario: Bán sản phẩm không có giá override tại chi nhánh
+**GIVEN** Sản phẩm "Muối chấm Hảo Hảo" có `Products.SellingPrice = 16.000 đ`  
+**AND** Chi nhánh Ba Đình có `BranchProducts.SellingPriceOverride = NULL`  
+**WHEN** Thu ngân thêm sản phẩm vào đơn hàng tại Chi nhánh Ba Đình  
+**THEN** Đơn giá được áp dụng trên dòng đơn hàng là `16.000 đ`  
+
+---
+
+### Requirement: REQ-POS-10 Multi-Unit Pricing and Conversion in POS Order
+Khi khách hàng mua sản phẩm theo đơn vị quy đổi (ví dụ: Lốc, Thùng), hệ thống **MUST** áp dụng đơn giá theo thứ tự ưu tiên:
+1. `BranchProductUnitPrices.SellingPriceOverride` của chi nhánh (nếu có và $> 0$).
+2. `ProductUnits.Price` cấu hình sẵn trên đơn vị tính Master.
+3. `(BranchProduct.SellingPriceOverride ?? Product.SellingPrice) * ProductUnit.ConversionRate`.
+
+#### Scenario: Bán sản phẩm theo đơn vị Thùng có giá override riêng tại chi nhánh
+**GIVEN** Sản phẩm "Bia Hà Nội Sleek" có ĐVT quy đổi là "Thùng" (`ConversionRate = 24`)  
+**AND** Chi nhánh Ba Đình cấu hình `BranchProductUnitPrices.SellingPriceOverride = 320.000 đ` cho đơn vị Thùng  
+**WHEN** Thu ngân chọn đơn vị tính "Thùng" với số lượng `2`  
+**THEN** Đơn giá dòng hàng là `320.000 đ`  
+**AND** Thành tiền trước chiết khấu là `640.000 đ`  
+
+---
+
+### Requirement: REQ-POS-11 FEFO Inventory Deduction with Unit Conversion
+Khi đơn hàng được xác nhận thanh toán thành công, hệ thống **MUST** quy đổi số lượng bán sang đơn vị cơ sở (`BaseQty = Quantity * ConversionRate`) và khấu trừ tồn kho trong bảng `BranchStocks` theo nguyên tắc FEFO (`ExpiryDate ASC`).
+
+#### Scenario: Trừ tồn kho FEFO gối đầu qua nhiều lô khi bán đơn vị Thùng
+**GIVEN** Sản phẩm "Bia Hà Nội Sleek" có 2 lô tại chi nhánh:  
+  - Lô A: HSD 2026-11-20, tồn kho `10` lon  
+  - Lô B: HSD 2026-12-20, tồn kho `50` lon  
+**WHEN** Thu ngân bán `1` Thùng (tương đương `24` lon)  
+**THEN** Hệ thống trừ toàn bộ `10` lon của Lô A (tồn kho Lô A về `0`)  
+**AND** Hệ thống trừ tiếp `14` lon của Lô B (tồn kho Lô B còn `36`)  
+**AND** Thông tin đơn hàng được lưu đầy đủ vào `Orders` và `OrderDetails`  
+
+#### Scenario: Bán vượt quá tổng tồn kho quy đổi của tất cả các lô
+**GIVEN** Sản phẩm "Cà phê G7 3in1" chỉ còn tồn tổng cộng `30` hộp rải rác các lô tại chi nhánh  
+**WHEN** Thu ngân cố gắng bán `2` Thùng (tương đương `48` hộp)  
+**THEN** Hệ thống chặn giao dịch và báo lỗi: "Sản phẩm 'Cà phê hòa tan G7 3in1' không đủ tồn kho tại chi nhánh (Hiện còn: 30, Cần bán: 48)."  
+**AND** Không có bản ghi nào bị thay đổi trong CSDL  
+
+---
+
+### Requirement: REQ-POS-12 POS UI Multi-Unit Selector Dropdown in Cart
+Giao diện giỏ hàng POS (`PosCartTable`) **MUST** cung cấp dropdown chọn đơn vị tính tại cột "ĐVT" cho các sản phẩm có từ 2 đơn vị tính trở lên. Khi người dùng chọn đơn vị mới, hệ thống **SHALL** tự động cập nhật đơn giá `unitPrice`, đơn giá thực tế `actualPrice` và thành tiền `totalAmount` của dòng hàng đó tức thời.
+
+#### Scenario: Thu ngân đổi đơn vị tính trên giỏ hàng POS
+**GIVEN** Sản phẩm "Muối chấm Hảo Hảo" đang có trong giỏ hàng với ĐVT "Hũ" và đơn giá `16.000 đ`  
+**WHEN** Thu ngân bấm vào dropdown ĐVT và chọn "Lốc (x6 hũ)"  
+**THEN** Đơn vị dòng hàng chuyển thành "Lốc"  
+**AND** Đơn giá dòng hàng tự động đổi sang `90.000 đ`  
+**AND** Thành tiền và tổng thanh toán của giỏ hàng tự động tính lại theo đơn giá mới  
+
+---
+
+### Requirement: REQ-POS-13 Seed Data for An Nhien Store with 4 Sample Products
+Hệ thống **MUST** cung cấp script seed dữ liệu hoàn chỉnh cho cửa hàng An Nhiên (`tenant_an_nhien_02`, Chi nhánh Ba Đình `b1000000-0000-0000-0000-000000000001`) bao gồm 4 sản phẩm thực tế:
+1. Cà phê hòa tan G7 3in1 (Barcode: `8935024122310`)
+2. Bánh Orion Choco-Pie truyền thống (Barcode: `8936036020380`)
+3. Muối chấm Hảo Hảo tôm chua cay (Barcode: `8934563065249`)
+4. Bia Hà Nội Sleek (Barcode: `8936000440824`)  
+Mỗi sản phẩm phải có đầy đủ:
+- Bản ghi `Products` chuẩn mã vạch và thông tin quy cách.
+- Bản ghi `ProductUnits` với các đơn vị quy đổi (Hộp, Lốc, Thùng).
+- Bản ghi `BranchProducts` gán vào chi nhánh với giá override.
+- Bản ghi `BranchProductUnitPrices` cho từng đơn vị quy đổi.
+- Bản ghi `BranchStocks` với ít nhất 2 lô hàng có hạn sử dụng khác nhau để kiểm thử FEFO.
+
+---
+
+### Requirement: REQ-POS-DEBT-01 Thanh toán ghi nợ khách hàng (Credit Sale)
+Hệ thống **MUST** cho phép nhân viên bán hàng POS hoàn tất đơn hàng với phương thức thanh toán `CREDIT` (Bán nợ) đối với khách hàng đã được cấu hình cho phép ghi nợ (`AllowDebt = true`) và số tiền nợ còn nằm trong hạn mức (`DebtLimit`).
+Hệ thống **MUST** đồng bộ các thuộc tính công nợ của thực thể `Customer` xuống bảng cơ sở dữ liệu `Customers`, bao gồm cột `LastRepaymentAtUtc`, `Notes` và `RowVersion`. Khi đơn hàng nợ tạo thành công, hệ thống **MUST** cập nhật tăng `TotalDebt` của khách hàng và tự động tạo bản ghi trong bảng `CustomerDebtInvoices` và `CustomerDebtEntries`.
+
+#### Scenario: Thanh toán bán nợ thành công cho khách hàng có hạn mức
+- **GIVEN** Khách hàng Bác Minh (`KH-AN-001`) thuộc tenant `tenant_an_nhien_02` có `AllowDebt = true`, `DebtLimit = 5,000,000 VND`, và dư nợ hiện tại `TotalDebt = 0 VND`.
+- **WHEN** Nhân viên POS tạo đơn hàng tổng trị giá `58,000 VND` và chọn phương thức thanh toán `CREDIT`.
+- **THEN** Hệ thống **MUST** tạo đơn hàng trạng thái `Completed`, không ném lỗi missing column `LastRepaymentAtUtc`.
+- **AND** Hệ thống **MUST** tăng `TotalDebt` của khách hàng lên `58,000 VND`.
+- **AND** Hệ thống **MUST** tạo bản ghi hóa đơn nợ trong `CustomerDebtInvoices` với số tiền nợ bằng `58,000 VND`.
+
+#### Scenario: Từ chối thanh toán bán nợ khi vượt quá hạn mức nợ cho phép
+- **GIVEN** Khách hàng có `AllowDebt = true`, `DebtLimit = 1,000,000 VND`, và dư nợ hiện tại `TotalDebt = 950,000 VND`.
+- **WHEN** Nhân viên POS tạo đơn hàng bán nợ trị giá `100,000 VND`.
+- **THEN** Hệ thống **MUST** từ chối đơn hàng và trả về thông báo lỗi vi phạm hạn mức nợ.
+
+---
+
+### Requirement: REQ-POS-PRINT-02 Độc lập giữa tạo đơn hàng và in hóa đơn (Print Decoupling)
+Hệ thống POS Frontend **MUST** thực hiện lưu đơn hàng thành công trên máy chủ trước khi gửi lệnh in hóa đơn.
+Nếu quá trình in hóa đơn thất bại, máy in ngoại vi mất kết nối, hoặc nhân viên không in bill, hệ thống **MUST** giữ nguyên trạng thái đơn hàng đã hoàn tất thành công trong CSDL, không được hủy hoặc rollback đơn hàng.
+
+#### Scenario: Hoàn tất đơn hàng thành công khi không có máy in hoặc máy in lỗi
+- **GIVEN** Giỏ hàng POS có sản phẩm hợp lệ và khách hàng thanh toán thành công (tiền mặt/chuyển khoản/nợ).
+- **WHEN** Lệnh in hóa đơn `posOrderApi.printDirect` bị lỗi hoặc người dùng đóng trình duyệt trước khi in.
+- **THEN** Đơn hàng tại máy chủ **MUST** vẫn ở trạng thái `Completed`.
+- **AND** Tồn kho và sổ quỹ / công nợ **MUST** được ghi nhận đầy đủ, không bị ảnh hưởng bởi tiến trình in hóa đơn.
+
+---
+
+### Requirement: REQ-POS-FEFO-03 Khấu trừ tồn kho tự động theo hạn dùng FEFO vắt qua nhiều lô (Multi-Lot FEFO)
+Hệ thống **MUST** tự động trừ tồn kho theo nguyên tắc Hạn dùng trước - Xuất trước (First Expired, First Out - FEFO).
+Khi số lượng sản phẩm khách mua lớn hơn số lượng tồn của lô hàng có hạn dùng gần nhất, hệ thống **MUST** khấu trừ hết toàn bộ số lượng của lô gần nhất (về 0), sau đó tiếp tục khấu trừ số lượng còn lại vào lô kế tiếp theo thứ tự hạn dùng tăng dần (`ExpiryDate ASC`).
+
+#### Scenario: Bán 40 sản phẩm cấn trừ liên hoàn qua Lô A (tồn 20) và Lô B (tồn 30)
+- **GIVEN** Sản phẩm X tại chi nhánh có 2 lô hàng còn hạn dùng:
+  - Lô A: hạn dùng `2026-12-01`, số lượng tồn `QuantityOnHand = 20`.
+  - Lô B: hạn dùng `2027-06-01`, số lượng tồn `QuantityOnHand = 30`.
+- **WHEN** Khách hàng mua `40` sản phẩm X tại quầy POS.
+- **THEN** Hệ thống **MUST** khấu trừ `20` sản phẩm từ Lô A, đưa tồn kho Lô A về `0`.
+- **AND** Hệ thống **MUST** khấu trừ tiếp `20` sản phẩm từ Lô B, đưa tồn kho Lô B về `10`.
+- **AND** Hệ thống **MUST** tạo 2 bản ghi giao dịch kho `StockTransaction` tương ứng cho cả 2 lô với tổng số lượng xuất là `40`.
+
+### Requirement: REQ-POS-INVOICE-01 Nhận diện và hiển thị phương thức thanh toán nợ CREDIT trong Quản lý hóa đơn POS
+Hệ thống Frontend tại màn hình Quản lý Hóa Đơn (`/pos/invoices`) **MUST** nhận diện chính xác các hóa đơn có `paymentMethod` là `CREDIT` hoặc `DEBT`.
+Khi hóa đơn là đơn mua nợ chưa tất toán:
+1. Cột `Phương thức TT` **MUST** hiển thị nhãn `Ghi nợ` (màu cam/vàng, icon thẻ tín dụng).
+2. Cột `Khách đã trả` **MUST** hiển thị số tiền khách hàng đã thực trả (mặc định `0 đ` đối với đơn nợ toàn phần).
+3. Cột `Trạng thái` **MUST** hiển thị nhãn trạng thái `Còn nợ [số tiền nợ] đ` (badge cảnh báo màu đỏ/cam).
+4. Dòng theo dõi công nợ chi tiết **MUST** hiển thị chính xác số tiền đã thanh toán và số tiền còn nợ lại.
+5. Bộ lọc phương thức thanh toán `DEBT` **MUST** lọc ra tất cả hóa đơn có `paymentMethod === 'CREDIT'` hoặc `paymentMethod === 'DEBT'`.
+
+#### Scenario: Hiển thị đúng hóa đơn mua nợ CREDIT
+- **GIVEN** Đơn hàng `HD261105073958260` có `PaymentMethod = "CREDIT"`, `TotalAmount = 474,000 VND`, `FinalAmount = 474,000 VND`, `PaymentStatus = "UNPAID"`.
+- **WHEN** Người dùng vào màn hình Quản lý Hóa Đơn Bán Hàng (`/pos/invoices`).
+- **THEN** Dòng hóa đơn **MUST** hiển thị:
+  - Phương thức TT: `Ghi nợ` (badge màu cam `#fffbeb`, viền `#fde68a`, chữ `#b45309`).
+  - Khách đã trả: `0 đ` (hoặc tiền cọc nếu có).
+  - Trạng thái: `Còn nợ 474.000 đ`.
+  - Thanh theo dõi công nợ: `Đã thanh toán: 0 đ • Còn nợ lại: 474.000 đ`.
+- **AND** Hóa đơn **MUST NOT** hiển thị nhãn `Tiền mặt` màu xanh.
+
+#### Scenario: Lọc hóa đơn theo phương thức thanh toán Ghi nợ
+- **GIVEN** Danh sách hóa đơn bao gồm cả đơn tiền mặt `CASH`, chuyển khoản `VIETQR` và bán nợ `CREDIT`.
+- **WHEN** Người dùng chọn bộ lọc "Phương thức: Ghi nợ".
+- **THEN** Hệ thống **MUST** hiển thị tất cả các đơn có `paymentMethod === 'CREDIT'` hoặc `paymentMethod === 'DEBT'`, bao gồm cả `HD261105073958260`.
+
+---
+
+### Requirement: REQ-POS-INVOICE-02 Bố cục bảng quản lý hóa đơn cân đối và thẩm mỹ
+Hệ thống **MUST** phân bổ độ rộng các cột bảng hóa đơn (`pos-shift-table`) cân đối, tránh tràn vỡ chữ:
+1. Cột `Mã hóa đơn` **MUST** có độ rộng tối thiểu `180px` để chứa trọn vẹn mã đơn 17 ký tự và nhãn tên chi nhánh.
+2. Cột `Thao tác` **MUST** có độ rộng tối thiểu `210px` để chứa đủ các nút hành động mà không bị bẻ dòng.
+3. Các cột tiền (`Tổng tiền hàng`, `Giảm giá`, `Khách đã trả`) **MUST** có min-width từ `95px` đến `110px`, căn phải chuẩn xác.
+4. Thông tin thu ngân chi tiết **MUST NOT** hiển thị cặp dấu ngoặc đơn rỗng `()` khi không có `cashierId`.
+
+#### Scenario: Hiển thị bảng hóa đơn cân xứng không bị co kéo
+- **GIVEN** Người dùng mở màn hình Quản lý Hóa Đơn Bán Hàng trên trình duyệt desktop.
+- **WHEN** Danh sách hóa đơn được nạp và người dùng bấm mở rộng chi tiết một hóa đơn.
+- **THEN** Cột mã hóa đơn không bị tràn, nút thao tác hiển thị ngay ngắn trên một hàng, và dòng thông tin thu ngân hiển thị `Thu ngân: Thu ngân quầy` (không có dấu ngoặc rỗng `()`).
+
+### Requirement: REQ-POS-CUST-01 Lưu khách hàng mới vào CSDL tại quầy POS
+Khi người dùng bấm "Lưu khách hàng" trong `AddCustomerModal`, hệ thống MUST gửi yêu cầu tạo khách hàng tới API backend `POST /api/customers` và lưu trữ thực tế vào CSDL PostgreSQL với đầy đủ mã khách hàng, tên, số điện thoại, địa chỉ, hạn mức nợ và gắn với `TenantId` của phiên làm việc.
+
+#### Scenario: Tạo mới khách hàng thành công tại quầy POS
+**GIVEN** Thu ngân đang ở màn hình bán hàng POS và mở modal `AddCustomerModal`  
+**WHEN** Thu ngân nhập tên "Phạm Minh Đức", số điện thoại "0987654321", địa chỉ "Số 10 Cầu Giấy, Hà Nội" và bấm "Lưu khách hàng"  
+**THEN** Hệ thống hiển thị trạng thái chờ `isSubmitting`, gọi `customerApi.createCustomer(...)`  
+**AND** Backend lưu thành công vào PostgreSQL, sinh mã khách hàng `KH...` và trả về `CustomerResponse` với GUID ID thật  
+**AND** Frontend tự động chọn khách hàng này vào đơn hàng hiện tại của tab đang mở, cập nhật vào danh sách `customers` và hiển thị toast thông báo thành công  
+**AND** Modal tự động đóng lại.
+
+#### Scenario: Bỏ chọn và tìm lại khách hàng vừa tạo
+**GIVEN** Khách hàng "Phạm Minh Đức" (SĐT: "0987654321") vừa được tạo thành công tại quầy POS  
+**WHEN** Thu ngân bấm biểu tượng `✕` trên thanh POS để bỏ chọn khách hàng (chuyển về "Khách lẻ")  
+**AND** Thu ngân gõ "0987654321" hoặc "Minh Đức" vào ô tìm kiếm khách hàng  
+**THEN** Hệ thống hiển thị ngay khách hàng "Phạm Minh Đức" trong danh sách kết quả tìm kiếm với đầy đủ SĐT, địa chỉ và điểm thưởng.
+
+#### Scenario: Bắt lỗi khi số điện thoại đã tồn tại
+**GIVEN** Khách hàng với số điện thoại "0976543210" đã tồn tại trong CSDL của Tenant hiện tại  
+**WHEN** Thu ngân mở `AddCustomerModal` và nhập lại số điện thoại "0976543210" rồi bấm "Lưu khách hàng"  
+**THEN** Backend trả về mã lỗi `PHONE_EXISTS`  
+**AND** Hệ thống hiển thị thông báo lỗi rõ ràng "Số điện thoại này đã được sử dụng cho một khách hàng khác!", không đóng modal và cho phép thu ngân sửa đổi số điện thoại.
+
+---
+
+### Requirement: REQ-POS-RECEIPT-LAYOUT-01 Bố cục hóa đơn in nhiệt và xem trước chuẩn siêu thị bán lẻ
+Giao diện xem trước hóa đơn (`PosReceiptModal.tsx`) và bản in nhiệt ESC/POS (`ThermalPrintService.cs`) MUST tuân thủ định dạng chuẩn của siêu thị thực tế:
+1. Header: Tên cửa hàng/chuỗi in đậm, địa chỉ chi nhánh, số hotline, tiêu đề "HÓA ĐƠN BÁN LẺ", Số HĐ, Ngày bán, Tên thu ngân.
+2. Bảng mặt hàng: Liệt kê rõ ràng STT, Tên hàng hóa, Số lượng, Đơn giá, Thành tiền. Có dòng tổng số lượng mặt hàng.
+3. Khối tổng tiền: Tổng tiền hàng, Chiết khấu (nếu có), Tổng phải trả, Khách trả (Tiền mặt/VietQR/Ghi nợ), Tiền thừa / Còn nợ.
+4. Khối Thông tin khách hàng ở chân bill: Tên khách hàng, Địa chỉ, Số điện thoại, Tổng điểm tích lũy.
+5. Footer: Lời cảm ơn và quy định đổi trả hàng.
+
+#### Scenario: Hiển thị đầy đủ thông tin khách hàng ở chân hóa đơn
+**GIVEN** Đơn hàng bán cho khách hàng "Chị Thu Hà", SĐT "0976543210", địa chỉ "120 Hoàng Hoa Thám, Hà Nội", có 150 điểm tích lũy  
+**WHEN** Đơn hàng được thanh toán và mở modal xem trước hóa đơn hoặc in ra máy in nhiệt  
+**THEN** Ở phần chân hóa đơn (trước lời cảm ơn) hiển thị khối "THÔNG TIN KHÁCH HÀNG" gồm:  
+- Tên khách hàng: Chị Thu Hà  
+- Địa chỉ: 120 Hoàng Hoa Thám, Hà Nội  
+- Số điện thoại: 0976543210  
+- Tổng điểm tích lũy: 150 điểm.
+
+---
+
+### Requirement: REQ-POS-VAT-01 Loại bỏ hoàn toàn dòng VAT khỏi hóa đơn bán lẻ POS
+Hệ thống MUST NOT tính toán hay hiển thị bất kỳ dòng nào liên quan đến thuế VAT ("Tổng tiền chưa VAT", "Tiền VAT", "Thuế GTGT (VAT 1%)") trên hóa đơn bán lẻ POS, modal xem trước và bản in nhiệt máy in POS-58. `finalAmount` của hóa đơn MUST bằng chính xác tổng tiền hàng trừ đi chiết khấu và điểm tích lũy.
+
+#### Scenario: Hóa đơn bán lẻ không xuất hiện dòng VAT
+**GIVEN** Đơn hàng có tổng tiền hàng là 474.000 đ, không có chiết khấu  
+**WHEN** Thu ngân xem trước hóa đơn hoặc in nhiệt POS-58  
+**THEN** Hóa đơn hiển thị "Tổng tiền hàng: 474.000 đ" và "TỔNG THANH TOÁN: 474.000 đ"  
+**AND** Tuyệt đối không xuất hiện dòng "Tổng tiền chưa VAT" hay "Tiền VAT"  
+**AND** Dữ liệu `vatAmount` trong phiếu in có giá trị bằng 0.
+
+---
+
+### Requirement: REQ-POS-DYNAMIC-STORE-01 Hiển thị động thông tin Tenant & Chi nhánh trên hóa đơn
+Hóa đơn bán lẻ MUST hiển thị tên cửa hàng/chuỗi, địa chỉ chi nhánh và số hotline được lấy động từ thông tin Tenant và Chi nhánh của tài khoản đang đăng nhập, thay vì hardcode tên "MT-GROCERY" hoặc địa chỉ mặc định "123 Xuân Thủy".
+
+#### Scenario: In hóa đơn với tài khoản cửa hàng An Nhiên Mart
+**GIVEN** Thu ngân đăng nhập tài khoản thuộc Tenant "An Nhiên Mart" với chi nhánh "An Nhiên Mart - Chi nhánh Ba Đình" (Địa chỉ: "120 Hoàng Hoa Thám, Tây Hồ, Hà Nội", Hotline/Phone: "024 3822 9988" / "0918889999")  
+**WHEN** Thu ngân in hóa đơn bán hàng  
+**THEN** Header hóa đơn in ra:  
+- Tên đơn vị: "CỬA HÀNG THỰC PHẨM SẠCH AN NHIÊN" hoặc "AN NHIÊN MART - CHI NHÁNH BA ĐÌNH"  
+- Địa chỉ: "120 Hoàng Hoa Thám, Tây Hồ, Hà Nội"  
+- Hotline: "024 3822 9988" (hoặc "0918889999")  
+**AND** Không còn dòng chữ hardcode "MT-GROCERY" hay "123 Xuân Thủy".
+
+---
+
 ## Lịch sử
 - 2026-11-01 · `pos-sales-order-backend` · +4 ~0 -0
 - 2026-11-01 · `pos-order-management-debt-refinement` · +1 ~2 -0
@@ -441,3 +671,7 @@ Hệ thống **MUST** cho phép màn hình POS tải danh mục sản phẩm kin
 - 2026-11-02 · `pos-sepay-ui-and-nav-refinement` · +3 ~0 -0
 - 2026-11-02 · `store-settings-dropdown-nav` · +3 ~0 -0
 - 2026-11-04 · `branch-products-pos-integration` · +1 ~0 -0
+- 2026-11-04 · `pos-branch-pricing-and-fefo` · +5 ~0 -0
+- 2026-11-05 · `pos-debt-checkout-and-multi-lot-fefo` · +0 ~3 -0
+- 2026-11-05 · `pos-invoice-layout-and-debt-payment-method` · +0 ~2 -0
+- 2026-11-05 · `pos-customer-persistence-and-receipt-redesign` · +2 ~2 -0
