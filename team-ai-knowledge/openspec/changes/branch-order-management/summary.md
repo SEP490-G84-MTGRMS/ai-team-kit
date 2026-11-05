@@ -15,3 +15,7 @@ Bản phản biện review/skeptic.md đạt kết luận Chấp nhận (không 
 ## Apply — ✅ Approve bởi @minhduc118a · 2026-10-21 14:17
 
 Đã hoàn thành 14/14 tasks: Xây dựng mới hoàn chỉnh Backend Entity Branch, EF Core Migration, IBranchService, BranchesController; Tái cấu trúc toàn diện màn hình BranchOrderListPage theo chuẩn SupplierListPage (Filter bar tách biệt, Table sticky header, Scroll body độc lập và Footer paging tích hợp).
+
+## Test — ✅ Approve bởi @minhduc118a · 2026-11-05 16:58
+
+Duyệt Test Report: PASS kiểm thử quản lý đơn hàng chi nhánh.
