@@ -1,76 +1,55 @@
-# EXP-2026-11-02-FE-EMP-INTEGRATION: Khảo sát Tích hợp Backend API vào Frontend Phân hệ Quản lý Nhân viên
+# EXP-2026-11-02-FE-EMP-INTEGRATION: Khảo sát Tích hợp Backend API vào Frontend Phân hệ Quản lý Nhân viên & Cấu hình Ca
 
 ## 1. Problem Statement
-Trang Quản lý Nhân viên (`EmployeeListPage.tsx`) và các component modal liên quan (`EmployeeFormModal`, `EmployeeDetailModal`, `CreateUserModal`) hiện đang khởi tạo dữ liệu mẫu tĩnh từ `MOCK_EMPLOYEES` (`src/features/employee/services/mockData.ts`). Mọi thay đổi dữ liệu (tạo mới, sửa, xóa, đổi trạng thái) chỉ tác động lên React local state, dẫn đến dữ liệu bị mất hoàn toàn khi người dùng reload trang (F5).
-Tầng Backend C# .NET 8 đã xây dựng hoàn thiện `EmployeesController` với đầy đủ các RESTful endpoints:
-- `GET /api/v1/employees`: Danh sách phân trang, tìm kiếm keyword, lọc `branchId`, `status`.
-- `GET /api/v1/employees/{id}`: Chi tiết hồ sơ nhân viên.
-- `POST /api/v1/employees`: Tạo mới, tự sinh mã tuần tự `NVxxxx`, kiểm tra trùng CCCD/SĐT.
-- `PUT /api/v1/employees/{id}`: Cập nhật thông tin và mức lương.
-- `PATCH /api/v1/employees/{id}/status`: Đổi trạng thái `active` / `inactive`.
-- `DELETE /api/v1/employees/{id}`: Soft-delete nhân viên.
-- `POST /api/v1/employees/{id}/identity-account`: Cấp tài khoản đăng nhập Identity.
+Trang Quản lý Nhân viên (`EmployeeListPage.tsx`) và Cấu hình Ca làm việc (`ShiftConfigPage.tsx`, `ShiftFormModal.tsx`) cùng các component modal liên quan trước đây khởi tạo dữ liệu mẫu tĩnh từ mock state. Mọi thay đổi dữ liệu (tạo mới, sửa, xóa, đổi trạng thái) chỉ tác động lên React local state, dẫn đến dữ liệu bị mất hoàn toàn khi người dùng reload trang (F5).
+Tầng Backend C# .NET 8 đã xây dựng hoàn thiện `EmployeesController` và `ShiftConfigsController` với đầy đủ các RESTful endpoints:
+- `EmployeesController`: Phân trang, tìm kiếm keyword, lọc `branchId`, `status`, CRUD nhân viên, kiểm tra trùng CCCD/SĐT, `SyncAllowances` an toàn, chặn xóa có điều kiện `BR-EMP-03`, cấp tài khoản Identity.
+- `ShiftConfigsController`: CRUD danh mục ca làm việc mẫu theo chi nhánh, hỗ trợ ca qua đêm (`isCheckInNextDay`), ca áp dụng nhiều chi nhánh (`BranchIds`), tính toán giờ công chuẩn.
 
-Frontend cần được tích hợp kết nối trực tiếp với các API này để người dùng có thể thao tác với dữ liệu thật từ cơ sở dữ liệu.
+Frontend cần được tích hợp kết nối trực tiếp với cả 2 nhóm API này để người dùng có thể thao tác với dữ liệu thật từ cơ sở dữ liệu.
 
 ## 2. Context & Background
 - **Frontend**: React 19 + TypeScript, Vite, Tailwind CSS v4, Lucide React, Axios (`httpClient` tại `src/api/httpClient.ts`).
 - **Thư mục liên quan**: `src/features/employee/`
-  - `pages/EmployeeListPage.tsx`: Màn hình danh sách chính.
-  - `components/EmployeeFormModal.tsx`: Form thêm mới / chỉnh sửa hồ sơ.
-  - `components/EmployeeDetailModal.tsx`: Xem chi tiết hồ sơ nhân viên.
+  - `pages/EmployeeListPage.tsx`: Màn hình danh sách nhân viên.
+  - `pages/ShiftConfigPage.tsx`: Màn hình cấu hình danh mục ca chuẩn.
+  - `components/EmployeeFormModal.tsx`: Form thêm mới / chỉnh sửa hồ sơ nhân viên.
+  - `components/EmployeeDetailModal.tsx`: Xem chi tiết hồ sơ 360 độ.
+  - `components/ShiftConfigModal.tsx` / `ShiftFormModal.tsx`: Form cấu hình ca làm việc.
+  - `components/ShiftInfoModal.tsx`: Chi tiết ca làm việc.
   - `components/CreateUserModal.tsx`: Modal cấp tài khoản đăng nhập.
-  - `components/EmployeeFilterSidebar.tsx`: Bộ lọc trạng thái và chi nhánh.
-  - `types/index.ts`: Định nghĩa kiểu dữ liệu `Employee`, `SalaryConfig`, `Branch`...
-- **Backend**: `MT_GRMS.Api/Controllers/EmployeesController.cs` (Route: `/api/v1/employees` và `/api/employees`).
+  - `src/components/common/ConfirmModal.tsx`: Modal xác nhận nguy hiểm (Xóa nhân viên, Xóa ca).
+  - `src/components/common/NotificationModal.tsx`: Popup thông báo phản hồi kết quả (Thành công, Lỗi BR-EMP-03).
+- **Backend**:
+  - `MT_GRMS.Api/Controllers/EmployeesController.cs` (`/api/v1/employees`).
+  - `MT_GRMS.Api/Controllers/ShiftConfigsController.cs` (`/api/v1/hr/shift-configs` và `/api/v1/shift-configs`).
 
 ## 3. Constraints
-- Sử dụng `httpClient` từ `src/api/httpClient.ts` để tận dụng tự động gắn `Authorization: Bearer <token>` và `X-Tenant-Id`.
-- Phải có hàm mapping tương thích giữa `EmployeeSummaryDto` / `EmployeeResponse` từ Backend với interface `Employee` phong phú của Frontend UI.
-- Xử lý mượt mà các trạng thái: Loading (spinner/skeleton), Empty State, và hiển thị thông báo lỗi rõ ràng khi gặp mã 400 hoặc 409 (trùng CCCD, SĐT hoặc Username).
+- Sử dụng `httpClient` từ `src/api/httpClient.ts` để tự động gắn `Authorization: Bearer <token>` và `X-Tenant-Id`.
+- Phải có hàm mapping tương thích giữa DTOs từ Backend với interface model của Frontend UI.
+- Xử lý mượt mà các trạng thái: Loading (spinner/skeleton), Empty State, và hiển thị thông báo lỗi rõ ràng khi gặp mã 400 hoặc 409 (trùng CCCD, SĐT, Username hoặc trùng Mã ca).
+- Bảo toàn ID phụ cấp (kiểm tra Regex UUID) để Backend thực hiện đồng bộ 3 chiều (Sync & Diffing) an toàn, tránh lỗi `DbUpdateConcurrencyException`.
+- Xử lý mã lỗi `EMPLOYEE_HAS_WORK_HISTORY` khi xóa nhân viên vi phạm quy tắc `BR-EMP-03`.
 
 ## 4. Assumptions
-- **[ASSUMPTION-01]**: Backend API chạy tại endpoint tương đối `/api/v1/employees` (được proxy qua Vite hoặc biến môi trường `VITE_API_BASE_URL`).
+- **[ASSUMPTION-01]**: Backend API chạy tại endpoint tương đối `/api/v1/employees` và `/api/v1/hr/shift-configs` (proxy qua Vite hoặc cấu hình base URL).
 - **[ASSUMPTION-02]**: Người dùng đăng nhập có token JWT hợp lệ và quyền hạn tương ứng (`STORE_OWNER` hoặc `BRANCH_MANAGER`).
-- **[ASSUMPTION-03]**: Danh sách chi nhánh (`branches`) có thể lấy từ API chi nhánh `/api/v1/branches` hoặc fallback về danh sách chi nhánh người dùng quản lý.
+- **[ASSUMPTION-03]**: Danh sách chi nhánh (`branches`) có thể lấy từ API chi nhánh `/api/v1/branches`.
 
 ## 5. Scope & Non-Goals
 ### In Scope
 - Xây dựng module `src/features/employee/api/employeeApi.ts` đóng gói toàn bộ lời gọi API đến `/api/v1/employees`.
-- Viết mapper dữ liệu hai chiều: Backend DTOs $\longleftrightarrow$ Frontend `Employee`.
-- Chuyển đổi `EmployeeListPage.tsx` từ mock state sang load dữ liệu từ API: phân trang, tìm kiếm, lọc chi nhánh, toggle status, delete.
-- Kết nối `EmployeeFormModal.tsx` để submit `POST` (thêm mới) hoặc `PUT` (cập nhật); hiển thị lỗi validation hoặc trùng lặp (409 Conflict).
-- Kết nối `CreateUserModal.tsx` để cấp tài khoản người dùng qua API `POST /api/v1/employees/{id}/identity-account`.
-- Viết Unit Tests cho `employeeApi`.
+- Xây dựng module `src/features/employee/api/shiftConfigApi.ts` đóng gói toàn bộ lời gọi API đến `/api/v1/hr/shift-configs`.
+- Viết mapper dữ liệu hai chiều: Backend DTOs $\longleftrightarrow$ Frontend Model kèm lọc ID phụ cấp tạm.
+- Chuyển đổi `EmployeeListPage.tsx` và `ShiftConfigPage.tsx` sang tải dữ liệu từ API Backend thực tế.
+- Tích hợp bộ Modal dùng chung `ConfirmModal` và `NotificationModal` cho các luồng thao tác.
+- Upload ảnh đại diện Cloudinary qua `POST /api/v1/media/upload`.
 
 ### Out of Scope (Non-Goals)
-- Không đụng đến các trang Ca làm việc (`WorkSchedulePage`), Chấm công (`AttendancePage`) và Tính lương (`PayslipManagementPage`) trong change này.
+- Không đụng đến các trang Phân ca tuần chi tiết (`WorkSchedulePage`), Chấm công số (`AttendancePage`) và Tính lương (`PayslipManagementPage`) trong change này; các trang này sẽ được kết nối ở các change tiếp theo khi backend hoàn thiện Cụm 3, 4, 5.
 
 ## 6. Đánh giá Phương án Kiến trúc (Architecture Options)
-
-### Phương án 1: Gọi Axios rải rác trực tiếp trong components
-Gọi `httpClient.get(...)`, `httpClient.post(...)` trực tiếp trong từng file component (`EmployeeListPage.tsx`, `EmployeeFormModal.tsx`, `CreateUserModal.tsx`).
-- **Ưu điểm**: Viết nhanh tại chỗ.
-- **Nhược điểm**: Phân tán logic, khó tái sử dụng, khó bảo trì, không nhất quán với các feature khác (`features/product`, `features/purchase-order`), cực kỳ khó viết test kiểm thử.
-
-### Phương án 2: Xây dựng tầng API Client tập trung (`src/features/employee/api/employeeApi.ts`) kèm Mapper (Được chọn)
-Tập trung toàn bộ các hàm gọi API trong `employeeApi.ts`, định nghĩa DTOs rõ ràng, kèm các hàm chuyển đổi:
-- `mapSummaryToEmployee(dto)`
-- `mapDetailToEmployee(dto)`
-- `mapEmployeeToCreatePayload(emp)`
-- `mapEmployeeToUpdatePayload(emp)`
-Component chỉ việc gọi `employeeApi.getEmployeesPaged(...)`, `employeeApi.createEmployee(...)`.
-- **Ưu điểm**:
-  + Tuân thủ cấu trúc feature-driven của dự án.
-  + Tách biệt hoàn toàn tầng giao diện (UI) và tầng mạng (Network).
-  + Giao diện không bị xáo trộn hay gãy giao diện do mapper bảo vệ tính toàn vẹn của interface `Employee`.
-  + Dễ dàng viết Unit Tests độc lập với mock axios.
-- **Nhược điểm**: Cần thêm 1 file mapper và 1 file api, nhưng lợi ích về kiến trúc và độ tin cậy vượt trội.
-
-## 7. Rủi ro & Giải pháp Giảm thiểu (Risks & Mitigations)
-1. **Lệch cấu trúc dữ liệu giữa Backend và Frontend**:
-   - *Rủi ro*: Backend trả về `BaseRate`, `EmployeeCode`, `BranchName` phẳng, trong khi Frontend UI yêu cầu lồng `salaryConfig.baseSalary`, mảng `workingBranchNames`, avatar, v.v.
-   - *Giải pháp*: Hàm mapper `mapSummaryToEmployee` và `mapDetailToEmployee` chuyển đổi chuẩn xác, cung cấp giá trị mặc định cho các thuộc tính bổ sung để UI hiển thị đầy đủ và không bị lỗi undefined.
-2. **Xử lý lỗi trùng lặp khi thêm mới**:
-   - *Rủi ro*: Backend trả về 409 Conflict với thông báo lỗi ("Số CCCD đã tồn tại...", "Số điện thoại đã tồn tại..."), nếu frontend không bắt khéo sẽ hiển thị generic error gây bối rối cho người dùng.
-   - *Giải pháp*: Trong `try/catch` của form modal và trang danh sách, đọc `error.response?.data?.message` hoặc `error.response?.data?.errorCode` để hiển thị alert thông báo lỗi chi tiết, chính xác tới người dùng.
+Tập trung toàn bộ các hàm gọi API trong 2 client chuyên biệt:
+1. `src/features/employee/api/employeeApi.ts`: Xử lý phân hệ hồ sơ nhân sự, nợ lương, trạng thái và tài khoản.
+2. `src/features/employee/api/shiftConfigApi.ts`: Xử lý phân hệ danh mục ca làm việc chuẩn, ca qua đêm, multi-branch.
+Kết hợp bộ Modal dùng chung hệ thống trong `src/components/common/` (`ConfirmModal`, `NotificationModal`) để chuẩn hóa trải nghiệm người dùng trên toàn hệ thống MT-GRMS.
