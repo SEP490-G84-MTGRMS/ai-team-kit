@@ -11,3 +11,7 @@ Khép kín chuỗi tiền két giữa các ca bằng PrevShiftId và OpeningFloa
 ## Verify Spec · 2026-11-06 07:01
 
 Phản biện D1-D5 đạt 5/5, lập kế hoạch 7 tasks chi tiết bao quát từ Domain, DbContext, Service đến Controller và Unit Test Suite.
+
+## Apply · 2026-11-06 07:23
+
+Áp dụng CustomSchemaIds cho Swashbuckle SwaggerGen để tránh xung đột tên DTO giữa các namespace khác nhau.
