@@ -19,6 +19,7 @@
 | PATCH | `/api/v1/hr/shift-configs/{id}/status` | `{ isActive: boolean }` | `ApiResponse<ShiftConfigDto>` | 400, 404 |
 | DELETE | `/api/v1/hr/shift-configs/{id}` | Path param: `id` | `ApiResponse<object>` | 400, 404 |
 | POST | `/api/v1/schedules/recurring` | `CreateRecurringSchedulePayload` | `ApiResponse<ScheduleResponse[]>` | 400 (xung đột ca > 12h, ngày kết thúc không hợp lệ) |
+| POST | `/api/v1/schedules/{id}/attendance` | `ManualAttendancePayload` | `ApiResponse<ScheduleResponse>` | 400 (ca không hợp lệ), 404 |
 
 ---
 
@@ -30,11 +31,6 @@ Mapper **MUST** giữ nguyên ID của các khoản phụ cấp khi chuyển đ�
 - Các phụ cấp cũ có ID dạng UUID chuẩn $\rightarrow$ giữ nguyên `id` để Backend thực hiện `UPDATE` hoặc `DELETE`.
 - Các phụ cấp mới tạo từ UI mang ID tạm (VD: `al_1730784...`) $\rightarrow$ gán `id = undefined` để Backend nhận biết thực hiện `INSERT` với `EntityState.Added`, ngăn chặn triệt để lỗi `DbUpdateConcurrencyException`.
 - Các phụ cấp bị bỏ chọn (`enabled = false`) hoặc có số tiền $\le 0$ $\rightarrow$ bị loại khỏi payload gửi lên để Backend dọn dẹp khỏi cơ sở dữ liệu.
-
-#### Scenario: Chuyển đổi dữ liệu và đồng bộ phụ cấp an toàn
-- **GIVEN** Nhân viên đang có 2 phụ cấp trong DB: Phụ cấp Xăng xe (`id = "01a1aa16-1a0f-77dd-b92e-26c84ea398e6"`) và Phụ cấp Ăn trưa (`id = "01a1aa27-7de3-7656-b507-effecc5160b3"`).
-- **WHEN** Người dùng sửa Phụ cấp Xăng xe thành 60.000đ, bấm "+ Thêm khoản phụ cấp" tạo Phụ cấp Trách nhiệm (ID tạm `al_179385...`, 500.000đ), và xóa Phụ cấp Ăn trưa.
-- **THEN** Hàm `mapFormToCreatePayload` xuất ra mảng `allowances` gồm 2 phần tử: 1 phần tử có `id` UUID và 1 phần tử có `id: undefined`. Request `PUT /api/v1/employees/{id}` gửi thành công, Backend cập nhật chính xác mà không gặp lỗi ngắt liên kết hay lỗi số dòng bị ảnh hưởng = 0.
 
 ---
 
@@ -54,7 +50,6 @@ Hệ thống **MUST** hỗ trợ tải ảnh đại diện nhân viên lên dị
 ### Requirement: REQ-FE-EMP-04 Xem Chi tiết Hồ sơ 360 & Tải Thông tin Thực tế từ Backend
 Modal `EmployeeDetailModal` **MUST** tự động gọi API `GET /api/v1/employees/{id}` khi mở để nạp dữ liệu thực tế và chính xác nhất từ cơ sở dữ liệu.
 Hệ thống **MUST** áp dụng cơ chế hiển thị lạc quan (Optimistic Pre-fill) từ dữ liệu tóm tắt của bảng danh sách để tránh tình trạng chớp màn hình trắng, đồng thời hiển thị trạng thái `Đang đồng bộ từ hệ thống...` ở thanh tiêu đề.
-Các trường dữ liệu như Ngày sinh, Ngày bắt đầu làm việc **MUST** được định dạng theo chuẩn Việt Nam `DD/MM/YYYY`. Nút **"Sửa thông tin"** trong modal chi tiết **MUST** truyền trực tiếp đối tượng đã được làm giàu sang form chỉnh sửa.
 
 ---
 
@@ -66,59 +61,36 @@ Header và Footer của modal **MUST** được cố định tại đỉnh và �
 
 ### Requirement: REQ-FE-EMP-06 Xóa Nhân viên, Xử lý Business Rule BR-EMP-03 & Đổi Trạng thái Hoạt động
 Giao diện **MUST** hỗ trợ chuyển đổi trạng thái hoạt động (`active` / `inactive`) thông qua API `PATCH /api/v1/employees/{id}/status` và hiển thị `NotificationModal` phản hồi kết quả tức thì.
-Khi thực hiện xóa nhân viên:
-1. Giao diện **MUST** mở `ConfirmModal` (`src/components/common/ConfirmModal.tsx`) với cảnh báo hành động không thể hoàn tác, yêu cầu người dùng xác nhận rõ ràng trước khi phát lệnh `DELETE`.
-2. Nếu nhân viên **chưa có ca làm việc hoặc phiếu lương** $\rightarrow$ API xóa thành công, giao diện hiển thị `NotificationModal` loại `success` ("Xóa nhân viên thành công") và tự động làm mới danh sách.
-3. Nếu nhân viên **đã phát sinh lịch ca (`EmployeeSchedule`) hoặc phiếu lương (`Payslip`)** $\rightarrow$ Backend trả về mã lỗi 400 kèm code `EMPLOYEE_HAS_WORK_HISTORY`. Giao diện **MUST** bắt lỗi này và hiển thị `NotificationModal` loại `error` với thông điệp giải thích rõ ràng và hướng dẫn người dùng chuyển trạng thái nhân viên sang "Ngừng làm việc" thay vì xóa, bảo toàn lịch sử chấm công và tính toàn vẹn dữ liệu.
-
-#### Scenario: Bắt lỗi BR-EMP-03 khi cố gắng xóa nhân viên đã có dữ liệu làm việc
-- **GIVEN** Người dùng chọn xóa một nhân viên đã từng tham gia ca làm việc hoặc có phiếu lương.
-- **WHEN** Xác nhận trên `ConfirmModal` và Backend trả về HTTP 400 với `errorCode: "EMPLOYEE_HAS_WORK_HISTORY"`.
-- **THEN** Giao diện kích hoạt `NotificationModal` tiêu đề "Không thể xóa nhân viên", nội dung nêu rõ nhân viên đã có lịch ca hoặc phiếu lương và gợi ý chuyển trạng thái sang "Ngừng làm việc".
+Nếu nhân viên đã phát sinh lịch ca hoặc phiếu lương, hệ thống **MUST** bắt lỗi `EMPLOYEE_HAS_WORK_HISTORY` và hiển thị hướng dẫn người dùng chuyển trạng thái sang "Ngừng làm việc".
 
 ---
 
 ### Requirement: REQ-FE-EMP-07 Popup Thông báo & Xác nhận Dùng chung Toàn hệ thống (Common Modals)
 Hệ thống **MUST** cung cấp 2 component modal dùng chung trong `src/components/common/`:
-- `ConfirmModal.tsx`: Hỗ trợ xác nhận các hành động nguy hiểm (Xóa, Hủy, Đổi trạng thái quan trọng) với các biến thể màu `danger` (đỏ), `warning` (cam), `primary` (xanh), nút Xác nhận và Hủy có trạng thái loading spinner.
-- `NotificationModal.tsx`: Hỗ trợ hiển thị kết quả thao tác (`success`, `error`, `warning`, `info`) với icon trực quan, tự động đóng hoặc bấm nút "Đã hiểu".
-Hai modal này được thiết kế theo chuẩn giao diện của phân hệ `product`, tái sử dụng toàn diện trên các trang Employee, Product và các phân hệ khác của MT-GRMS.
+- `ConfirmModal.tsx`: Hỗ trợ xác nhận các hành động nguy hiểm.
+- `NotificationModal.tsx`: Hỗ trợ hiển thị kết quả thao tác.
 
 ---
 
 ### Requirement: REQ-FE-EMP-08 Cấu hình Ca làm việc Đa chi nhánh Frontend (`ShiftConfig`)
-Frontend **MUST** tích hợp module `shiftConfigApi.ts` tương thích với API Backend (`/api/v1/hr/shift-configs` và `/api/v1/shift-configs`), hỗ trợ:
-- Tải danh sách cấu hình ca theo chi nhánh qua `getShiftConfigsByBranch`.
-- Thêm mới (`CreateShiftConfigModal`), chỉnh sửa (`ShiftFormModal`) với khung giờ `startTime`/`endTime`, ca qua đêm `isCheckInNextDay` và chọn nhiều chi nhánh áp dụng `branchIds`.
-- Cập nhật trạng thái bật/tắt ca qua `updateShiftConfigStatus` và xóa ca qua `deleteShiftConfig`.
+Frontend **MUST** tích hợp module `shiftConfigApi.ts` tương thích với API Backend (`/api/v1/hr/shift-configs` và `/api/v1/shift-configs`).
 
 ---
 
 ### Requirement: REQ-FE-EMP-09 Lập lịch Làm việc Định kỳ & Tích hợp AddScheduleModal
-Frontend **MUST** tích hợp modal lập lịch làm việc `AddScheduleModal.tsx` và API `scheduleApi.createRecurringSchedule`:
-1. **Lọc ca làm việc theo chi nhánh:** Chỉ hiển thị các cấu hình ca khả dụng thuộc chi nhánh mà nhân viên hiện tại đang công tác (`branchId` và danh sách `branchIds`).
-2. **Gợi ý nhân viên cùng chi nhánh:** Mục "Thêm lịch tương tự cho nhân viên khác" chỉ hiển thị các nhân viên làm việc cùng chi nhánh với nhân viên đang được xếp ca.
-3. **Quy tắc ngày kết thúc:**
-   - Khi không tích chọn "Có ngày kết thúc": Hệ thống gửi `hasEndDate: false, endDate: null`, giao diện hiển thị thông báo rõ ràng thời gian tạo lịch đến hết tháng hiện tại và tháng sau (`đến ngày DD/MM/YYYY`).
-   - Khi tích chọn "Có ngày kết thúc": Hiển thị input date cho phép chọn ngày đến (không giới hạn 31 ngày), hiển thị thông báo tạo lịch đến ngày được chọn.
-   - Giao diện **MUST NOT** hiển thị nhãn/text liên quan đến tự động gia hạn (đã loại bỏ).
-4. **Chuẩn hóa mã ca:** `WorkShiftDefinition` bổ sung trường `code?: string` lấy từ `c.shiftCode`. Khi submit, modal gửi đúng `shiftCode` thay vì truyền Guid ID, tránh lỗi database `character varying(30)`.
-
-#### Scenario: Xếp ca lặp không ngày kết thúc hiển thị đúng ngày hết tháng sau
-- **GIVEN** Người dùng mở modal `AddScheduleModal` cho nhân viên chi nhánh Trung tâm vào tháng 11/2026.
-- **WHEN** Chọn ca sáng, lặp Thứ 2 đến Thứ 6 và bỏ chọn "Có ngày kết thúc".
-- **THEN** Giao diện hiển thị ghi chú: "Không kết thúc: Hệ thống sẽ tự động tạo lịch đến hết tháng hiện tại và tháng sau (đến ngày 31/12/2026)". Bấm lưu thành công, danh sách ca làm việc được nạp lại trên bảng lịch.
+Frontend **MUST** tích hợp modal lập lịch làm việc `AddScheduleModal.tsx` và API `scheduleApi.createRecurringSchedule`.
 
 ---
 
-## Acceptance Checklist
-- [x] REQ-FE-EMP-01: Module `employeeApi.ts` và `employeeMapper.ts` hoàn chỉnh, kiểm tra regex UUID để bảo toàn ID phụ cấp cho backend sync an toàn.
-- [x] REQ-FE-EMP-02: `EmployeeListPage.tsx` nạp dữ liệu từ Backend API và tích hợp thanh `TablePagination` chung.
-- [x] REQ-FE-EMP-03: `EmployeeFormModal.tsx` hỗ trợ chọn 1 chi nhánh làm việc, upload ảnh Cloudinary mượt mà, validate lỗi và hiển thị NotificationModal.
-- [x] REQ-FE-EMP-04: `EmployeeDetailModal.tsx` gọi API nạp dữ liệu chi tiết thực tế, format ngày `DD/MM/YYYY`, optimistic pre-fill.
-- [x] REQ-FE-EMP-05: Toàn bộ 16 modal trong phân hệ nhân viên được cố định kích thước đồng nhất `900px × 85vh`.
-- [x] REQ-FE-EMP-06: Xóa nhân viên qua `ConfirmModal`, bắt lỗi `EMPLOYEE_HAS_WORK_HISTORY` (BR-EMP-03) hiển thị `NotificationModal` cảnh báo, toggle trạng thái `active/inactive` có popup phản hồi.
-- [x] REQ-FE-EMP-07: Bộ modal dùng chung `ConfirmModal` và `NotificationModal` trong `src/components/common/` hoạt động ổn định trên toàn hệ thống.
-- [x] REQ-FE-EMP-08: Quản lý danh mục ca `ShiftConfig` tích hợp `shiftConfigApi` hỗ trợ ca qua đêm và multi-branch.
-- [x] REQ-FE-EMP-09: `AddScheduleModal.tsx` và `scheduleApi.ts` tích hợp API lịch lặp, lọc theo chi nhánh nhân viên, xử lý không ngày kết thúc đến hết tháng sau, bỏ giới hạn 31 ngày và map đúng `shiftCode`.
-- [x] Kiểm thử: Build sạch 0 lỗi (`npm run build`) và unit test frontend pass 100% (106/106 tests).
+### Requirement: REQ-FE-EMP-10 Chấm công Thủ công (Manual Attendance Recording) & Quy tắc Giờ vào/ra theo Chính sách Chi nhánh
+Hệ thống **MUST** hỗ trợ chủ cửa hàng/quản lý thực hiện chấm công thủ công cho nhân viên theo từng ca làm việc (`EmployeeSchedule`) qua `AttendanceDetailModal.tsx` và API `POST /api/v1/schedules/{id}/attendance`:
+1. **Ba tiêu chí chấm công**:
+   - `working` (Đi làm): Cho phép ghi nhận giờ vào (`CheckInTime`) và giờ ra (`CheckOutTime`). Nếu không ghi nhận giờ vào hoặc giờ ra, hệ thống **MUST** tự động lấy mặc định giờ vào/ra khớp với ca làm ban đầu (`PlannedStartTime` và `PlannedEndTime`).
+   - `paid_leave` (Nghỉ phép có lương): Hệ thống ghi nhận trạng thái hoàn thành (`Completed`), loại phê duyệt `PAID_LEAVE`, giờ công thực tế tính đủ theo ca (`DurationHours`), giờ vào/ra đặt về `null`.
+   - `unpaid_leave` (Nghỉ phép không lương): Hệ thống ghi nhận trạng thái hủy/vắng (`Cancelled`), loại phê duyệt `UNPAID_LEAVE`, giờ công thực tế tính là `0.00`, giờ vào/ra đặt về `null`.
+2. **Áp dụng Chính sách Chấm công Chi nhánh (`BranchAttendancePolicy`)**:
+   - Khi chấm công đi làm (`working`), Backend **MUST** tra cứu chính sách của chi nhánh tương ứng qua `BranchAttendancePoliciesController` / `IBranchAttendancePolicyRepository`.
+   - Tính toán dung sai đi muộn (`LateMinutes`) nếu `EnableLateThreshold = true` và thời gian vào trễ hơn `LateThresholdMinutes`.
+   - Tính toán dung sai về sớm (`EarlyLeaveMinutes`) nếu `EnableEarlyLeaveThreshold = true` và thời gian ra sớm hơn `EarlyLeaveThresholdMinutes`.
+   - Tính toán làm thêm giờ (`OvertimeMinutes`) trước ca và sau ca theo các ngưỡng `OtBeforeShiftMinutes` và `OtAfterShiftMinutes`.
+   - Tính toán tổng giờ làm thực tế `ActualWorkHours` làm tròn 2 chữ số thập phân.
