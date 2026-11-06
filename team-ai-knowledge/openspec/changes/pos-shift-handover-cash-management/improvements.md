@@ -3,3 +3,7 @@
 ## Spec · 2026-11-06 06:55
 
 Khép kín chuỗi tiền két giữa các ca bằng PrevShiftId và OpeningFloatExpected, tạo bảng con ShiftCashMovement lưu chi tiết thu chi lẻ, gán ShiftId vào Order.
+
+## Brainstorm · 2026-11-06 07:00
+
+Đã xây dựng mô hình dữ liệu chi tiết cho ShiftZReport mở rộng, ShiftCashMovement, Order.ShiftId và 5 scenarios Gherkin chuẩn xác.
