@@ -23,7 +23,9 @@
 - [x] T7 — Xây dựng thanh công cụ `GrnDetailActionBar.tsx` và modal thông báo kết quả duyệt `GrnDetailSuccessModal.tsx` kèm nút Hủy phiếu DRAFT (REQ-05)
 - [x] T8 — Xây dựng container page `GoodsReceiptDetailPage.tsx`: tích hợp các sub-components, kết nối luồng duyệt và xem chi tiết theo trạng thái phiếu (`DRAFT` vs `COMPLETED` vs `CANCELLED`) (REQ-01 đến REQ-05)
 - [x] T9 — Cập nhật routing trong `src/app/router.tsx` và liên kết điều hướng từ `GoodsReceiptListPage.tsx` và `GoodsReceiptFormPage.tsx` sang `GoodsReceiptDetailPage.tsx` (REQ-06)
+- [ ] T12 — Refactor giao diện `GoodsReceiptDetailPage.tsx` khi ở chế độ `:id/confirm`: Đồng bộ bảng kiểm đếm sản phẩm thống nhất theo UI của trang Create (`GrnProductEntryTable`), hiển thị đầy đủ 4 trạng thái số lượng, quản lý lô/HSD, lý do từ chối và cảnh báo lệch (REQ-07)
+- [ ] T13 — Xóa nút "Nhập kho từ PO" rỗng tự do tại `GoodsReceiptListPage.tsx`, chuyển hướng người dùng sang làm việc trực tiếp từ Đơn mua hàng PO (REQ-08)
+- [ ] T14 — Bổ sung nút hành động "Nhận hàng" (Receive Goods) tại bảng đơn PO `PoListTable.tsx` và Drawer `PoDetailDrawer.tsx` để kích hoạt luồng nhận hàng trực tiếp từ PO (REQ-08)
 
 ## Test & Verification
-- [x] T10 — Kiểm thử build Vite/TypeScript, xác minh toàn bộ các scenarios trong specs.md (REQ-01 đến REQ-06)
-- [x] T11 — Chạy dotnet test MT_GRMS.UnitTests đạt 100% PASS (64/64 tests)
+- [ ] T15 — Kiểm thử build Vite/TypeScript, xác minh màn hình `:id/confirm` hiển thị chuẩn format của Create và luồng nhận hàng trực tiếp từ đơn PO (100% build pass)
