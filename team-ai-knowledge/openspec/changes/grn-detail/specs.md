@@ -110,6 +110,32 @@ Hệ thống MUST hỗ trợ:
 
 ---
 
+### Requirement: REQ-07 Refactor UI Màn hình Xác nhận (:id/confirm) theo Format Chuẩn Trang Create
+Hệ thống MUST đồng bộ giao diện xác nhận nhập kho (`goods-receipts/:id/confirm`) theo format của trang Create:
+- Bảng hiển thị đối soát hàng hóa tập trung (Unified Product Entry & Reconciliation Table): Hiển thị đầy đủ các cột STT, Mã SKU, Tên SP, ĐVT, SL Đặt (PO Qty), SL Thực nhận, SL Chấp nhận, SL Từ chối, Lý do từ chối, Lệch PO, Mã Lô (Batch), Hạn dùng (EXP) kèm cảnh báo cận hạn, Đơn giá và Thành tiền.
+- Cho phép người duyệt / thủ kho trực tiếp kiểm tra và hiệu chỉnh số lượng chấp nhận, số lượng từ chối, và thông tin Lô/HSD ngay trên màn hình xác nhận nếu có phát sinh kiểm đếm bổ sung.
+- Bố cục thẻ thông tin chung Header và Thẻ tổng hợp chi phí Landed Cost, Chiết khấu, VAT, Tổng công nợ AP đồng bộ với thiết kế của `GoodsReceiptFormPage`.
+
+#### Scenario: Truy cập URL :id/confirm hiển thị giao diện đối soát đồng bộ
+- GIVEN người dùng truy cập `http://localhost:5173/store-owner/goods-receipts/:id/confirm`
+- WHEN trang tải xong
+- THEN hệ thống nhận diện đúng chế độ Confirmation Mode
+- AND hiển thị bảng đối soát đầy đủ các cột như trang Create, cho phép kiểm tra chi tiết từng dòng hàng trước khi bấm Duyệt hoàn tất.
+
+---
+
+### Requirement: REQ-08 Chuyển luồng Nhập kho: Loại bỏ nút Create tự do, Chỉ nhập trực tiếp từ Đơn PO
+Hệ thống MUST đảm bảo mọi luồng nhập kho đều xuất phát trực tiếp từ Đơn đặt hàng PO:
+- Tại `GoodsReceiptListPage`: Loại bỏ nút tạo rỗng `/goods-receipts/create` tự do; chỉ giữ nút chuyển hướng đến Danh sách PO.
+- Tại `PoListTable` & `PoDetailDrawer`: Bổ sung nút hành động "Nhận hàng" (Receive Goods) cho các đơn PO có trạng thái sẵn sàng giao (`CONFIRMED`, `APPROVED`, `PARTIALLY_RECEIVED`), điều hướng trực tiếp sang quy trình nhận hàng với mã PO nguồn được nạp sẵn.
+
+#### Scenario: Nhân viên cửa hàng nhận hàng trực tiếp từ Đơn PO
+- GIVEN nhà cung cấp giao hàng tới cửa hàng
+- WHEN nhân viên mở danh sách đơn PO và bấm "Nhận hàng" tại đơn PO tương ứng
+- THEN hệ thống mở form nhập kho với toàn bộ thông tin nhà cung cấp, chi nhánh và danh sách sản phẩm từ PO đã được điền sẵn 100%, sẵn sàng cho việc kiểm đếm thực tế.
+
+---
+
 ## Acceptance checklist
 - [ ] REQ-01: Hiển thị đầy đủ Thông tin chung phiếu nhập, chi nhánh, NCC, PO, và Tổng công nợ AP.
 - [ ] REQ-02: Bảng Tồn kho & Quản lý lô FEFO chỉ cộng tồn kho theo `AcceptedQty`, tính đúng Phí VC/ĐVT, Giá vốn mới và Margin %.
@@ -117,4 +143,5 @@ Hệ thống MUST hỗ trợ:
 - [ ] REQ-04: Các tùy chọn tạo nợ AP, in tem dán kệ và xem file đính kèm hiển thị trực quan.
 - [ ] REQ-05: Chức năng Hoàn tất nhập kho (`COMPLETED`) và Hủy phiếu DRAFT (`CANCELLED` giải phóng PO) hoạt động trơn tru với backend API.
 - [ ] REQ-06: Routing, phân quyền vai trò và liên kết từ `grn-list` hoạt động liền mạch.
-
+- [ ] REQ-07: Refactor giao diện `:id/confirm` đồng bộ theo format bảng kiểm đếm của trang Create (REQ-07).
+- [ ] REQ-08: Loại bỏ nút Create tự do trên GRN List; thêm nút "Nhận hàng" trực tiếp từ Đơn PO (REQ-08).
