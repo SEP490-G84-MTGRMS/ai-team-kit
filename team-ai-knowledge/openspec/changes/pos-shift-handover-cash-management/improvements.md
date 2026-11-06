@@ -15,3 +15,7 @@ Phản biện D1-D5 đạt 5/5, lập kế hoạch 7 tasks chi tiết bao quát 
 ## Apply · 2026-11-06 07:23
 
 Áp dụng CustomSchemaIds cho Swashbuckle SwaggerGen để tránh xung đột tên DTO giữa các namespace khác nhau.
+
+## Test · 2026-11-06 07:27
+
+Bổ sung thêm các kịch bản test kiểm tra timeout / phân quyền khi mở ca trong tương lai nếu có nhiều ca kíp phức tạp hơn.
