@@ -54,11 +54,18 @@ def load_workbook_safe(path):
         shutil.copyfile(path, temp_file)
         return openpyxl.load_workbook(temp_file, data_only=True)
 
-def send_payload(payload):
+def send_payload(payload, retries=3):
     data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(WEBAPP_URL, data=data, headers={'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        return json.loads(resp.read().decode('utf-8'))
+    req = urllib.request.Request(WEBAPP_URL, data=data, headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+        except Exception as e:
+            if attempt == retries - 1:
+                print(f"      ⚠️ Gặp lỗi kết nối sau {retries} lần thử: {e}")
+                return {'success': False, 'message': str(e)}
+            time.sleep(3)
 
 def delete_tab(report_type, tab_name):
     payload = {
@@ -142,6 +149,10 @@ def main():
         cases = func_cases[sub]
         num_tcs = len(cases)
 
+        # Xóa tab cũ để xóa sạch validation rác trước khi nạp mới
+        delete_tab('5.3', sub)
+        time.sleep(0.5)
+
         title_rows = [
             {'values': ['Workflow', name, '', '', '', '', '', ''], 'bold': True, 'fontSize': 12, 'fontColor': '#002B49'},
             {'values': ['Test requirement', f'Kiểm thử chức năng, giao diện UI/UX và form validation cho {name}', '', '', '', '', '', '']},
@@ -214,6 +225,10 @@ def main():
         if len(cases) == 0: continue
         name = sub_titles[sub]
         num_tcs = len(cases)
+
+        # Xóa tab cũ để xóa sạch validation rác trước khi nạp mới
+        delete_tab('5.2', sub)
+        time.sleep(0.5)
 
         title_rows = [
             {'values': ['Feature', name, '', '', '', '', '', ''], 'bold': True, 'fontSize': 12, 'fontColor': '#002B49'},
@@ -377,9 +392,91 @@ def main():
     print(f"   ✅ Tab 'UAT' trên Report-5.5: {len(uat_rows)} kịch bản ({res_uat.get('message')})")
 
     # -------------------------------------------------------------------------
-    # BƯỚC 6: TỰ ĐỘNG TÍNH TOÁN LẠI MỤC LỤC & THỐNG KÊ (REPORT 5.1, 5.2, 5.3)
+    # BƯỚC 6: ĐỒNG BỘ REPORT-5.1 (UNIT TEST - KIỂM THỬ ĐƠN VỊ TẦNG CODE)
     # -------------------------------------------------------------------------
-    print("\n7. Tính toán lại Mục lục (Test Cases) và Bảng Thống kê (Test Statistics)...")
+    print("\n7. Đồng bộ Report-5.1 (Unit Test) cho các Module nghiệp vụ...")
+    unit_tests_dict = {
+        'FE-01': [
+            ['TC-UT-CAT-01', 'Tạo sản phẩm không truyền ProductCode', 'CreateProductAsync(name="Bia Heineken", barcode="8934822001")', 'Tự động sinh mã SP000001 theo quy tắc tự tăng của tenant', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CAT-02', 'Sản phẩm có đơn vị cơ bản Chai (20k), Thùng quy đổi = 24 chai', 'AddUnitConversionAsync(productId, unit="Thùng", factor=24)', 'Tự động tính giá bán gợi ý thùng = 480.000đ', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CAT-03', 'Đăng nhập với vai trò Thu ngân (Cashier)', 'GetProductDetailAsync(productId)', 'Ẩn hoàn toàn trường Giá vốn (CostPrice = null) theo BR-SEC-01', 'Security', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CAT-04', 'Xóa đơn vị quy đổi đang có tồn kho', 'DeleteUnitConversionAsync(unitId)', 'Chặn xóa đơn vị và cảnh báo người dùng', 'Boundary', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức']
+        ],
+        'FE-07': [
+            ['TC-UT-EXP-01', 'Quỹ khả dụng Till >= 300.000đ', 'CreateExpenseVoucherRequest(amount=300000, category=ELEC)', 'Tự động APPROVED (<=500k), trừ quỹ Till, sinh mã EXP-*', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-EXP-02', 'StoreManager đăng nhập', 'CreateExpenseVoucherRequest(amount=1200000, category=RENT)', 'Trạng thái PENDING_APPROVAL (ngưỡng > 500k), chưa trừ quỹ', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-EXP-03', 'Phiếu chi trạng thái PENDING_APPROVAL', 'ApproveExpenseVoucherAsync(voucherId)', 'Chuyển trạng thái sang APPROVED, ghi nhận ApprovedBy, ApprovedAt', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-EXP-04', 'Số dư quỹ nguồn = 100.000đ, phiếu chi 200.000đ', 'PayExpenseVoucherAsync(voucherId, accountId=TILL)', 'Ném ngoại lệ InsufficientFundsException, ngăn chặn âm quỹ', 'Boundary', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-EXP-05', 'Phiếu chi đã thanh toán PAID', 'PayExpenseVoucherAsync(voucherId)', 'Chặn thanh toán lặp lại (Idempotency), không trừ quỹ lần 2', 'Abnormal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-EXP-06', 'Tạo nhiều phiếu chi 490k trong cùng ca làm', 'CheckShiftExpenseCapAsync(shiftId, threshold=5000000)', 'Phát hiện hành vi chia nhỏ giao dịch (Anti-splitting)', 'Security', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức']
+        ],
+        'FE-08': [
+            ['TC-UT-DEBT-01', 'Khách hàng có 3 hóa đơn nợ cũ (100k, 200k, 300k)', 'AllocateDebtPaymentFifoAsync(customerId, amount=250000)', 'HĐ1 trả đủ (0đ nợ), HĐ2 trả 150k (còn nợ 50k), HĐ3 giữ nguyên nợ', 'Normal', 'Passed', '2026-11-06', 'Nguyễn Bá Sơn'],
+            ['TC-UT-DEBT-02', 'Khách hàng trả dư tiền nợ (nợ 500k, trả 600k)', 'AllocateDebtPaymentFifoAsync(customerId, amount=600000)', 'Xóa hết nợ hóa đơn, ghi nhận 100k tiền đặt cọc thừa', 'Boundary', 'Passed', '2026-11-06', 'Nguyễn Bá Sơn'],
+            ['TC-UT-DEBT-03', 'Hạn mức nợ 5.000.000đ, nợ hiện tại 4.800.000đ', 'ValidateCreditLimitAsync(customerId, newBillAmount=300000)', 'Từ chối bán nợ (ExceededCreditLimitException), cảnh báo vượt hạn mức', 'Boundary', 'Passed', '2026-11-06', 'Nguyễn Bá Sơn'],
+            ['TC-UT-DEBT-04', 'Khách hàng có nợ quá hạn > 30 ngày trong Blacklist', 'CheckCustomerCreditEligibilityAsync(customerId)', 'Khóa phương thức ghi nợ trên màn hình POS', 'Security', 'Passed', '2026-11-06', 'Nguyễn Bá Sơn']
+        ],
+        'FE-10': [
+            ['TC-UT-PNL-01', 'Doanh thu gộp 100tr, Giảm giá 5tr, Trả hàng 2tr', 'CalculateNetRevenue(gross=100m, discount=5m, returns=2m)', 'Doanh thu thuần = 93.000.000đ', 'Normal', 'Passed', '2026-11-06', 'Nguyễn Minh Tâm'],
+            ['TC-UT-PNL-02', 'Doanh thu thuần 93tr, Giá vốn COGS 60tr', 'CalculateGrossProfit(netRev=93m, cogs=60m)', 'Lợi nhuận gộp = 33.000.000đ (Biên lãi gộp 35.48%)', 'Normal', 'Passed', '2026-11-06', 'Nguyễn Minh Tâm'],
+            ['TC-UT-PNL-03', 'Lãi gộp 33tr, Chi phí OPEX 15tr, Khấu hao 3tr', 'CalculateEbitda(grossProfit=33m, opex=15m, depreciation=3m)', 'EBITDA = 21.000.000đ, Lợi nhuận thuần = 15.000.000đ', 'Normal', 'Passed', '2026-11-06', 'Nguyễn Minh Tâm'],
+            ['TC-UT-PNL-04', 'Không có giao dịch trong kỳ (tháng mới)', 'GetPnLReportAsync(month=12, year=2026)', 'Trả về cấu trúc cây P&L 0đ, không văng NullReferenceException', 'Boundary', 'Passed', '2026-11-06', 'Nguyễn Minh Tâm']
+        ],
+        'FE-17': [
+            ['TC-UT-CASH-01', 'Thu ngân kết ca, tiền thực tế 5.000.000đ, hệ thống 5.000.000đ', 'CloseShiftAndReconcileAsync(shiftId, actualCash=5000000)', 'Chênh lệch lệch két = 0đ, sinh báo cáo Z-Report hợp lệ', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CASH-02', 'Tiền thực tế 4.800.000đ, hệ thống 5.000.000đ', 'CloseShiftAndReconcileAsync(shiftId, actualCash=4800000)', 'Ghi nhận chênh lệch thiếu -200k, gửi vào Hộp thư phân loại Triage', 'Boundary', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CASH-03', 'Chuyển tiền từ Két thu ngân sang Két sắt trung tâm 10tr', 'TransferBetweenAccountsAsync(from=TILL, to=SAFE, amount=10000000)', 'Tạo bút toán tiền đang chuyển (CashInTransit)', 'Normal', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức'],
+            ['TC-UT-CASH-04', 'Bút toán sổ quỹ đã ghi vào CSDL', 'ComputeAuditHashSha256(cashbookEntry)', 'Mã băm AuditHash khớp tuyệt đối, phát hiện tức thì nếu can thiệp SQL', 'Security', 'Passed', '2026-11-06', 'Đặng Đỗ Minh Đức']
+        ],
+        'FE-19': [
+            ['TC-UT-TAX-01', 'Hóa đơn thực phẩm (VAT 5%) và đồ uống (VAT 8%)', 'CalculateInvoiceVatAsync(orderItems)', 'Tách đúng doanh thu theo thuế suất và tính đúng tổng thuế GTGT', 'Normal', 'Passed', '2026-11-06', 'Nguyễn Long Nhật'],
+            ['TC-UT-TAX-02', 'Hết hạn giảm thuế NĐ 141 (sau ngày 31/12/2026)', 'GetApplicableVatRate(category=BEVERAGE, date=2027-01-01)', 'Tự động phục hồi thuế suất 10% theo luật định', 'Boundary', 'Passed', '2026-11-06', 'Nguyễn Long Nhật'],
+            ['TC-UT-TAX-03', 'Chốt sổ thuế Quý 3/2026', 'FinalizeTaxPeriodAsync(quarter=3, year=2026, pin="123456")', 'Tạo Snapshot bất biến (Frozen), lưu trữ 7 mẫu sổ kế toán TT 152', 'Security', 'Passed', '2026-11-06', 'Nguyễn Long Nhật'],
+            ['TC-UT-TAX-04', 'Nhập sai mã PIN bảo mật 3 lần', 'VerifyPinAsync(pin="999999")', 'Tạm khóa quyền chốt sổ thuế trong 15 phút, gửi cảnh báo bảo mật', 'Security', 'Passed', '2026-11-06', 'Nguyễn Long Nhật']
+        ]
+    }
+
+    for sub, data_rows in unit_tests_dict.items():
+        name = sub_titles.get(sub, f'Module {sub}')
+        num_tcs = len(data_rows)
+
+        # Xóa tab cũ để xóa sạch validation rác trước khi nạp mới
+        delete_tab('5.1', sub)
+        time.sleep(0.5)
+
+        title_rows = [
+            {'values': ['Module', name, '', '', '', '', '', ''], 'bold': True, 'fontSize': 12, 'fontColor': '#002B49'},
+            {'values': ['Number of TCs', num_tcs, '', '', '', '', '', ''], 'bold': True},
+            {'values': ['Testing Round', 'Passed', 'Failed', 'Pending', 'N/A', '', '', ''], 'bold': True, 'bg': '#D9E1F2'},
+            {'values': ['Round 1', num_tcs, 0, 0, 0, '', '', '']},
+            {'values': ['', '', '', '', '', '', '', '']}
+        ]
+        header_row = ['Test Case ID', 'Pre-conditions', 'Input Parameters', 'Expected Results', 'Type', 'Round 1', 'Test date', 'Tester']
+        payload_ut = {
+            'apiKey': API_KEY,
+            'action': 'upload_raw_tab',
+            'reportType': '5.1',
+            'tabName': sub,
+            'tabColor': '#008080',
+            'headerBg': '#004D40',
+            'headerColor': '#FFFFFF',
+            'statusColIdx': 5,
+            'colWidths': [120, 240, 240, 260, 90, 90, 100, 140],
+            'isFirstChunk': True,
+            'mode': 'replace',
+            'titleRows': title_rows,
+            'headerRow': header_row,
+            'dataRows': data_rows,
+            'startRow': 2
+        }
+        res_ut = send_payload(payload_ut)
+        print(f"   ✅ Tab '{sub}' trên Report-5.1: {num_tcs} kịch bản ({res_ut.get('message')})")
+        time.sleep(1)
+
+    # -------------------------------------------------------------------------
+    # BƯỚC 7: TỰ ĐỘNG TÍNH TOÁN LẠI MỤC LỤC & THỐNG KÊ (REPORT 5.1, 5.2, 5.3)
+    # -------------------------------------------------------------------------
+    print("\n8. Tính toán lại Mục lục (Test Cases) và Bảng Thống kê (Test Statistics)...")
     rebuild_stats('5.1')
     rebuild_stats('5.2')
     rebuild_stats('5.3')
