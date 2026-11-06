@@ -11,4 +11,8 @@
 - [x] T8 — Xây dựng trang chính `StoreProductManagementPage.tsx` tích hợp tất cả các thành phần
 - [x] T9 — Cấu hình routes `/store-owner/products` và `/store-owner/stores/products` trong `router.tsx` và liên kết trong `AppTopNav.tsx`
 - [x] T10 — Kiểm tra build `npm run build` và kiểm thử trực quan trên trình duyệt
+- [x] T11 — Refactor `StoreProductTable.tsx`: Tách cột SKU (bỏ barcode), Tên SP riêng, ĐVT riêng, Giá vốn riêng, Giá bán riêng, Cửa hàng (bỏ vị trí), thêm cột MOQ, bỏ cột Tồn/Định mức
+- [x] T12 — Refactor các nút thao tác (Sửa, Tạm ngừng/Kích hoạt, Gỡ) theo style phẳng hiện đại
+- [x] T13 — Refactor `StoreProductFilterBar.tsx` sang mô hình chip/token đa giá trị (SKU, Tên SP, Cửa hàng, Ngành hàng) kèm suggestion dropdown chỉ hiển thị giá trị chính (không text phụ)
+- [x] T14 — Cập nhật types, API service và modal chỉnh sửa sản phẩm đồng bộ chỉ số MOQ
 

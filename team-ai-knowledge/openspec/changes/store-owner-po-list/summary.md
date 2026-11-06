@@ -11,3 +11,11 @@ User đã yêu cầu /sep-verify-spec, đồng ý với kết quả brainstorm (
 ## Verify Spec — ✅ Approve bởi @minhduc118a · 2026-10-14 16:09
 
 User đã duyệt Verify Spec và yêu cầu /sep-apply để tiến hành code UI màn hình danh sách đơn mua hàng PO
+
+## Apply — ✅ Approve bởi @minhduc118a · 2026-11-05 16:56
+
+Duyệt Apply: Đã hoàn thiện màn hình Danh sách PO, 5 trạng thái badge, Slide-over Drawer xem chi tiết và PurchaseOrderRevision history.
+
+## Test — ✅ Approve bởi @minhduc118a · 2026-11-05 16:56
+
+Duyệt Test Report: PASS 6/6 test cases cho màn hình PO List và PurchaseOrderRevision history.

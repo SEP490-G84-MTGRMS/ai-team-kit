@@ -4,10 +4,11 @@
 
 | Method / Interface | Route / Component | Request / Props | Response / Output | Lỗi / Cảnh báo |
 |---|---|---|---|---|
-| `SupplierOrderDispatchHubPage` | `/store-owner/purchase-orders/dispatch-hub` | State nội bộ | Render Trung tâm Chốt Đơn & Tách PO theo NCC | Empty state nếu không có đơn nháp |
-| `handleQuickDispatchToday` | Handler | N/A | Chốt toàn bộ các NCC có cutoff trong hôm nay | Cảnh báo nếu có đơn chưa đạt MOV |
-| `handleDispatchSupplier` | Handler | `supplierId: string` | Mở modal xác nhận phát hành PO độc lập | Cảnh báo nếu đơn rỗng hoặc vi phạm MOV |
-| `handleUpdateItemQty` | Handler | `supplierId, itemId, newQty` | Cập nhật số lượng SKU inline và tính lại tổng tiền | Reset về 0 nếu nhập số âm |
+| `GET` | `/api/purchase-orders/dispatch-hub` | `branchId?: string, supplierId?: string` | `List<DispatchSupplierDto>` gom matrix cells FinalQty > 0 trong 14 ngày | 401 Unauthorized, 403 Forbidden |
+| `POST` | `/api/purchase-orders/matrix/split/preview` | `PreviewSplitMatrixRequestDto { SupplierId, Scope (NEAREST/WEEK), ReferenceDate, BranchIds, Note }` | `SplitPreviewResultDto { Groups, SkippedGroups, TotalEstimatedPOs, TotalBranches, TotalSkus, TotalEstimatedAmount, HasMissingPrice }` | 400 Bad Request nếu thiếu SupplierId hoặc Scope không hợp lệ |
+| `POST` | `/api/purchase-orders/matrix/split` | `SplitMatrixPoBatchRequestDto { SupplierId, Scope (NEAREST/WEEK), ReferenceDate, BranchIds, Note }` | `SplitMatrixBatchResultDto { Summary, Results: List<SplitGroupResultDto> }` | Partial success: từng group trả về SUCCESS, FAILED, hoặc SKIPPED |
+| Component | `SupplierOrderDispatchHubPage` | `/store-owner/purchase-orders/dispatch-hub` | Giao diện điều phối chốt đơn toàn bộ chi nhánh theo NCC | Empty state nếu không có đơn nháp |
+| Component | `DispatchConfirmModal` | Props: `isOpen, supplier, scope, onClose, onConfirm` | Popup xác nhận chốt đơn tinh gọn căn giữa màn hình, preview 4 metrics cards, bảng 6 cột | Cảnh báo thiếu giá hoặc quá giờ cutoff |
 
 ---
 
@@ -28,7 +29,7 @@ Hệ thống MUST hiển thị thanh chỉ số tổng quan ở đầu màn hìn
 #### Scenario: Bấm nút Chốt nhanh các đơn hết hạn hôm nay
 - **GIVEN** Có 2 NCC có trạng thái sắp hết hạn trong hôm nay và đều đạt điều kiện MOV.
 - **WHEN** Người dùng bấm nút "Chốt nhanh các đơn hết hạn hôm nay".
-- **THEN** Hệ thống mở modal xác nhận chốt gộp 2 NCC này thành 2 PO độc lập tương ứng.
+- **THEN** Hệ thống mở modal xác nhận chốt gộp 2 NCC này thành các PO độc lập tương ứng.
 
 ---
 
@@ -47,22 +48,22 @@ Hệ thống MUST cung cấp thanh lọc phân loại (Filter Tabs/Pills) gồm:
 
 ---
 
-### Requirement: REQ-03 Two-Tier Supplier Order Accordion Cards with Inline Edit
-Mỗi Nhà cung cấp MUST được hiển thị dưới dạng một thẻ (Card) 2 tầng thông tin:
-- **Tầng 1 (Summary Card)**: Tên & mã NCC, tag nhóm hàng, Cutoff Time kèm Countdown timer đếm ngược, Ngày giao dự kiến, Số SKU, Tổng SL, Tổng tiền tạm tính, trạng thái MOV, và nút [Xem chi tiết SKU], [Chốt & Tạo PO].
-- **Tầng 2 (Expanded Grid)**: Bảng chi tiết từng SKU (Tên, ĐVT, Đơn giá, SL, Thành tiền, Tình trạng Cutoff) với khả năng chỉnh sửa trực tiếp (inline) số lượng đặt hàng, cùng ô nhập ghi chú giao hàng cho NCC.
+### Requirement: REQ-03 Two-Tier Supplier Order Accordion Cards with Deep-Link
+Mỗi Nhà cung cấp MUST được hiển thị dưới dạng một thẻ (Card) tổng hợp:
+- **Tầng 1 (Summary Card)**: Tên & mã NCC, tag nhóm hàng, Cutoff Time kèm Countdown timer đếm ngược, Ngày giao dự kiến, Số SKU, Tổng SL, Tổng tiền tạm tính, trạng thái MOV, và nút [Xem chi tiết], [Chốt & Tạo PO].
+- **Deep-Link sang Matrix**: Khi cần xem chi tiết ma trận đặt hàng hoặc chỉnh sửa số lượng trước khi chốt, người dùng SHALL có thể bấm liên kết trực tiếp sang trang Order Matrix với bộ lọc `?supplierId={id}&orderedOnly=true`.
 
-#### Scenario: Mở rộng chi tiết SKU và chỉnh sửa số lượng tại chỗ
-- **GIVEN** Thẻ NCC "Công ty Thực phẩm Tươi Sống Hương Quê" đang ở trạng thái thu gọn.
-- **WHEN** Người dùng bấm nút "Xem chi tiết 6 mặt hàng".
-- **THEN** Bảng chi tiết SKU mở rộng bên dưới; người dùng thay đổi số lượng "Thịt ba chỉ bò Úc" từ 10 thành 15; tổng tiền của mặt hàng và tổng tiền của NCC được tự động tính toán lại ngay lập tức.
+#### Scenario: Xem thẻ NCC và chuyển sang Order Matrix để chỉnh sửa
+- **GIVEN** Thẻ NCC "Công ty Thực phẩm Tươi Sống Hương Quê" đang ở trạng thái nháp.
+- **WHEN** Người dùng muốn điều chỉnh số lượng của từng mặt hàng cho từng chi nhánh.
+- **THEN** Người dùng nhấp vào link "Xem chi tiết ma trận đặt hàng", hệ thống điều hướng sang trang Order Matrix với đúng chi nhánh và NCC đã chọn.
 
 ---
 
 ### Requirement: REQ-04 Min Order Value (MOV) & Overdue Cutoff Validation
 Hệ thống MUST kiểm tra điều kiện Giá trị đơn hàng tối thiểu (MOV) của từng NCC:
 - Nếu tổng tiền < MOV: Hiển thị cảnh báo màu vàng/đỏ và vô hiệu hóa nút chốt đơn trực tiếp (hoặc yêu cầu xác nhận kèm nhắc nhở đặt thêm).
-- Nếu đã quá giờ Cutoff (Overdue): Hiển thị cảnh báo đỏ và thông báo đơn hàng sẽ tự động dời lịch giao sang ngày kế tiếp.
+- Nếu đã quá giờ Cutoff (Overdue): Hiển thị cảnh báo đỏ và thông báo đơn hàng sẽ tự động dời lịch giao sang ngày kế tiếp hoặc bị bỏ qua nếu chốt theo kỳ hiện tại.
 
 #### Scenario: Cảnh báo chưa đạt giá trị đơn tối thiểu (MOV)
 - **GIVEN** NCC "Bao bì Việt Tiến" yêu cầu đơn hàng tối thiểu là 1.000.000 đ.
@@ -72,29 +73,118 @@ Hệ thống MUST kiểm tra điều kiện Giá trị đơn hàng tối thiểu
 #### Scenario: Cảnh báo đơn quá giờ Cutoff
 - **GIVEN** Giờ cutoff của NCC là 15:00 và thời gian hệ thống đã là 15:10.
 - **WHEN** Người dùng xem thẻ NCC này.
-- **THEN** Hệ thống hiển thị badge "ĐÃ QUÁ GIỜ CUTOFF" và cảnh báo lịch giao sẽ dời sang ngày tiếp theo nếu chốt đơn.
+- **THEN** Hệ thống hiển thị badge "ĐÃ QUÁ GIỜ CUTOFF" và cảnh báo lịch giao không thể chốt cho ngày hiện tại.
 
 ---
 
-### Requirement: REQ-05 Single & Batch PO Dispatch Confirmation Modal
-Khi người dùng bấm "Chốt & Tạo PO" hoặc "Chốt nhanh hôm nay", hệ thống MUST hiển thị Modal xác nhận tóm tắt:
-- Danh sách NCC nhận đơn
-- Ngày giao hàng dự kiến
-- Phương thức gửi (Email / Zalo / Hệ thống B2B)
-- Tổng giá trị đơn hàng  
-Sau khi người dùng bấm "Xác nhận & Phát hành PO", hệ thống MUST tạo mã Purchase Order độc lập (VD: `PO-20261014-SUP001`), cập nhật trạng thái thẻ NCC sang "Đã chốt / Đã phát hành PO" và hiển thị thông báo toast thành công.
+### Requirement: REQ-05 Single-Center Purchase Order Dispatch Confirmation Modal
+Hệ thống MUST cung cấp popup xác nhận chốt đơn NCC tập trung (`DispatchConfirmModal`):
+- Vị trí cố định giữa màn hình (`fixed`, căn giữa, `z-index: 99999`) với backdrop mờ tối.
+- Tiêu đề hiển thị rõ tên và mã NCC được chọn.
+- Segmented control lựa chọn phạm vi: "Ngày giao gần nhất" và "Cả tuần (T2–CN)".
+- 4 Card Metrics tóm tắt:
+  1. Tổng số PO dự kiến tạo
+  2. Số chi nhánh có đơn
+  3. Tổng số SKU
+  4. Tổng giá trị dự kiến (hiển thị thông báo nếu thiếu giá)
+- Bảng Preview Table tinh gọn 6 cột: `Chi nhánh`, `Ngày giao`, `Số SKU`, `SL đặt`, `Giá trị dự kiến`, `Trạng thái`. **KHÔNG CÓ dropdown mũi tên mở rộng sản phẩm** để tránh rối loạn giao diện khi chốt hàng chục chi nhánh.
+- Khối cảnh báo danh sách nhóm bị bỏ qua (Skipped Groups) và lý do chi tiết.
+- Textarea ghi chú đính kèm gửi NCC (chỉ áp dụng cho các PO được tạo thành công).
+- Sticky footer với nút Hủy và nút Submit hành động ("Chốt ngày giao gần nhất" hoặc "Chốt đơn cả tuần"), có loading spinner, disable khi không có group hợp lệ và chống bấm đúp (double-click).
 
-#### Scenario: Xác nhận và phát hành PO độc lập
-- **GIVEN** Đơn hàng của NCC Hương Quê đã đạt điều kiện MOV.
-- **WHEN** Người dùng bấm nút "Chốt & Tạo PO", kiểm tra thông tin trên Modal và bấm "Xác nhận & Phát hành Purchase Order".
-- **THEN** Hệ thống đóng modal, chuyển trạng thái thẻ NCC sang "Đã gửi PO" với badge màu xanh lá, hiển thị mã PO vừa sinh và hiện toast thành công.
+#### Scenario: Hiển thị modal xác nhận và kiểm tra thông tin tóm tắt
+- **GIVEN** Người dùng chọn bấm "Chốt đơn" trên thẻ NCC "Hương Quê".
+- **WHEN** Modal xác nhận mở ra.
+- **THEN** Hệ thống gọi API Preview để lấy danh sách PO dự kiến; modal hiển thị căn giữa màn hình với 4 thẻ metrics và bảng 6 cột tinh gọn rõ ràng.
+
+---
+
+### Requirement: REQ-06 Phạm vi Chốt Đơn (Scope): NEAREST và WEEK
+Hệ thống MUST hỗ trợ 2 phạm vi chốt đơn:
+1. **NEAREST**:
+   - Chọn ngày giao gần nhất trong tương lai **có số lượng đặt hàng (`FinalQty > 0`)** và còn đủ điều kiện chốt (thời điểm hiện tại chưa vượt quá Cutoff time).
+   - Bỏ qua các ngày đã quá hạn Cutoff, ngày NCC không hoạt động (`SUPPLIER_OFF`), hoặc ngày không có mặt hàng nào được đặt.
+2. **WEEK**:
+   - Chọn tất cả các ngày giao hợp lệ từ **Thứ Hai đến Chủ nhật** của tuần hiện tại (hoặc tuần được chọn) theo múi giờ `Asia/Ho_Chi_Minh`.
+   - Mỗi ngày giao có số lượng đặt hàng (`FinalQty > 0`) và chưa quá cutoff sẽ được tạo thành PO riêng biệt.
+
+#### Scenario: Chốt theo phạm vi NEAREST
+- **GIVEN** NCC có dữ liệu đặt hàng vào Thứ Tư (04/11) và Thứ Sáu (06/11). Thời điểm hiện tại Thứ Tư chưa quá cutoff.
+- **WHEN** Người dùng chọn scope "Ngày giao gần nhất" và bấm Chốt.
+- **THEN** Hệ thống chỉ tạo PO cho ngày Thứ Tư (04/11). Ngày Thứ Sáu vẫn giữ nguyên ở trạng thái nháp.
+
+#### Scenario: Chốt theo phạm vi WEEK
+- **GIVEN** Chi nhánh có lịch đặt Thứ Tư và Thứ Sáu cùng tuần với FinalQty > 0.
+- **WHEN** Người dùng chọn scope "Cả tuần (T2–CN)" và xác nhận chốt.
+- **THEN** Hệ thống tạo 2 Purchase Order riêng biệt cho Thứ Tư và Thứ Sáu của tuần đó.
+
+---
+
+### Requirement: REQ-07 Nguyên tắc Bất biến 1 PO = 1 Branch + 1 Supplier + 1 DeliveryDate
+Hệ thống SHALL bảo đảm nguyên tắc phân rã bất biến:
+- Mỗi Purchase Order chỉ tương ứng với đúng **1 Chi nhánh + 1 Nhà cung cấp + 1 Ngày giao hàng cụ thể**.
+- TUYỆT ĐỐI KHÔNG gộp nhiều ngày giao vào cùng 1 PO.
+- TUYỆT ĐỐI KHÔNG gộp nhiều chi nhánh vào cùng 1 PO.
+- Đảm bảo tính duy nhất nghiệp vụ: Trong cùng 1 Tenant, không thể tạo 2 Purchase Order ở trạng thái cam kết (COMMITTED/APPROVED) cho cùng một bộ `(BranchId, SupplierId, DeliveryDate)`.
+
+#### Scenario: Tách thành nhiều PO độc lập khi chốt nhiều chi nhánh và ngày giao
+- **GIVEN** Có 2 chi nhánh (Q1 và Q2) cùng đặt hàng của NCC A vào 2 ngày (T4 và T6).
+- **WHEN** Store Owner thực hiện chốt đơn cả tuần.
+- **THEN** Hệ thống tạo đúng 4 Purchase Order độc lập: (Q1, A, T4), (Q1, A, T6), (Q2, A, T4), (Q2, A, T6).
+
+---
+
+### Requirement: REQ-08 Nguồn Dữ liệu Chốt 100% từ Database Matrix Draft
+Hệ thống MUST lấy số lượng chốt trực tiếp từ cơ sở dữ liệu Draft Matrix (`PurchaseOrderDetails` có trạng thái DRAFT):
+- Công thức tính: `FinalQty = detail.StoreQty ?? detail.EmployeeQty ?? 0`.
+- Client (Frontend) KHÔNG ĐƯỢC PHÉP gửi danh sách số lượng tự tính lên khi chốt để ngăn chặn tình trạng stale data hoặc gian lận số lượng.
+- Frontend chỉ gửi `SupplierId`, `Scope`, `ReferenceDate`, `BranchIds` (tùy chọn) và `Note`. Backend sẽ truy vấn và tính toán lại 100%.
+
+#### Scenario: Tính toán số lượng chốt từ DB Draft
+- **GIVEN** Chi nhánh có một mặt hàng với `EmployeeQty = 10`, sau đó Store Owner chỉnh sửa `StoreQty = 15` trên Matrix.
+- **WHEN** Thực hiện Preview hoặc Chốt đơn.
+- **THEN** Backend tự động lấy `FinalQty = 15` từ DB, tính thành tiền theo đơn giá hiện hành và tạo chi tiết PO với số lượng 15.
+
+---
+
+### Requirement: REQ-09 Xử lý Chốt Đơn Hàng Loạt Hỗ trợ Partial Success
+Hệ thống MUST xử lý từng nhóm PO độc lập trong một phiên chốt hàng loạt (Batch Execution):
+- Mỗi group `(BranchId, DeliveryDate)` được kiểm tra điều kiện riêng biệt.
+- Nếu 1 group bị lỗi (ví dụ: đã quá giờ cutoff hoặc đã chốt trước đó), hệ thống KHÔNG ĐƯỢC rollback toàn bộ các group khác.
+- Kết quả trả về danh sách chi tiết:
+  - `SUCCESS`: Tạo PO thành công kèm `PurchaseOrderId` và `PurchaseOrderCode`.
+  - `SKIPPED`: Bỏ qua kèm lý do chuẩn hóa (`CUTOFF_EXPIRED`, `ALREADY_FINALIZED`, `NO_QUANTITY`, `SUPPLIER_OFF`).
+  - `FAILED`: Thất bại kèm thông điệp lỗi nghiệp vụ cụ thể (`MIN_ORDER_VALUE_NOT_MET`, `PRODUCT_INACTIVE`).
+
+#### Scenario: Xử lý partial success khi một chi nhánh quá giờ cutoff
+- **GIVEN** Chi nhánh A đã quá giờ cutoff 14:00, chi nhánh B có giờ cutoff 16:00 (vẫn còn hạn).
+- **WHEN** Store Owner bấm chốt đơn cho cả 2 chi nhánh.
+- **THEN** Chi nhánh B tạo PO thành công (Status: SUCCESS). Chi nhánh A bị bỏ qua với lý do "Đã quá thời gian cutoff" (Status: SKIPPED). Hệ thống trả về kết quả rõ ràng cho người dùng.
+
+---
+
+### Requirement: REQ-10 Dry Run Preview API Endpoint
+Hệ thống MUST cung cấp API `POST /api/purchase-orders/matrix/split/preview`:
+- Thực hiện toàn bộ logic phân rã, kiểm tra cutoff, gom nhóm và tính tiền giả lập trong bộ nhớ mà KHÔNG ghi dữ liệu vào cơ sở dữ liệu.
+- Trả về danh sách PO dự kiến tạo, danh sách group bị bỏ qua, tổng số PO, tổng chi nhánh, tổng SKU, tổng giá trị ước tính và cờ `HasMissingPrice`.
+- Giúp Frontend render bảng xác nhận chính xác tuyệt đối với Backend trước khi người dùng ra quyết định chốt.
+
+#### Scenario: Gọi Preview trước khi mở modal
+- **GIVEN** Store Owner nhấp vào nút "Chốt đơn" của NCC Hương Quê.
+- **WHEN** Modal mở ra.
+- **THEN** Frontend gọi ngay API Preview; backend tính toán và trả về chính xác số PO sẽ tạo và số tiền, không xảy ra sai lệch số liệu giữa FE và BE.
 
 ---
 
 ## Acceptance checklist
-- [ ] REQ-01: Top Urgency Bar hiển thị đầy đủ tổng quan số NCC, tổng tiền, deadline badges và nút Chốt nhanh.
-- [ ] REQ-02: Bộ lọc Tab pills và ô tìm kiếm hoạt động realtime mượt mà.
-- [ ] REQ-03: Thẻ NCC 2 tầng hiển thị đẹp mắt; Accordion mở rộng xem chi tiết và cho phép sửa inline số lượng, tự động cập nhật tổng tiền.
-- [ ] REQ-04: Cảnh báo MOV và cảnh báo quá giờ cutoff hiển thị trực quan và chính xác.
-- [ ] REQ-05: Modal xác nhận hiển thị đầy đủ thông tin tóm tắt và phát hành PO độc lập thành công.
-- [ ] Giao diện tuân thủ `RULE_UI_DESIGN_SYSTEM.md`, build không lỗi.
+- [x] REQ-01: Top Urgency Bar hiển thị đầy đủ tổng quan số NCC, tổng tiền, deadline badges và nút Chốt nhanh.
+- [x] REQ-02: Bộ lọc Tab pills và ô tìm kiếm hoạt động realtime mượt mà.
+- [x] REQ-03: Thẻ NCC tổng hợp hiển thị rõ ràng thông tin deadline và hỗ trợ link sang Matrix khi cần chỉnh sửa.
+- [x] REQ-04: Cảnh báo MOV và cảnh báo quá giờ cutoff hiển thị trực quan và chính xác.
+- [x] REQ-05: Modal xác nhận hiển thị căn giữa, bảng 6 cột tinh gọn (không có dropdown mũi tên sản phẩm), 4 metrics cards, chống double-click.
+- [x] REQ-06: Hỗ trợ 2 phạm vi chốt đơn NEAREST và WEEK chính xác theo múi giờ `Asia/Ho_Chi_Minh`.
+- [x] REQ-07: Đảm bảo nguyên tắc 1 PO = 1 Branch + 1 Supplier + 1 DeliveryDate (không gộp ngày).
+- [x] REQ-08: Nguồn dữ liệu số lượng chốt 100% từ Database Matrix Draft (`FinalQty = StoreQty ?? EmployeeQty`).
+- [x] REQ-09: Batch Split hỗ trợ Partial Success độc lập từng group, phân biệt rõ SUCCESS / FAILED / SKIPPED.
+- [x] REQ-10: Dry Run Preview API hoạt động chuẩn xác, không side-effect.
+- [x] Giao diện tuân thủ UI Design System, build FE và BE 100% không lỗi.

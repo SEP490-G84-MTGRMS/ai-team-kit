@@ -21,7 +21,8 @@
 | POST | `/api/v1/attendance-policies/copy` | `CopyAttendancePolicyRequest` | 200 OK `CopyAttendancePolicyResultDto` | 400, 401, 403, 404 |
 | GET | `/api/v1/schedules` | Query: `branchId`, `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401, 403 |
 | GET | `/api/v1/schedules/my-schedule` | Query: `fromDate`, `toDate` | `List<EmployeeScheduleDto>` | 401 |
-| POST | `/api/v1/schedules/batch` | `BatchAssignScheduleRequest` | 200 OK `List<EmployeeScheduleDto>` | 400 (xung đột ca), 404 |
+| POST | `/api/v1/schedules/batch` | `BatchAssignScheduleRequest` | 200 OK `List<EmployeeScheduleDto>` | 400 (xung đột ca > 12h), 404 |
+| POST | `/api/v1/schedules/recurring` | `CreateRecurringScheduleRequest` | 201 Created `List<ScheduleResponse>` | 400 (xung đột ca > 12h, ngày kết thúc không hợp lệ), 404 |
 | POST | `/api/v1/schedules/publish` | `PublishScheduleRequest` | 200 OK | 400, 404 |
 | POST | `/api/v1/attendance/check-in` | `CheckInRequest` | 200 OK `AttendanceResultDto` | 400, 404 |
 | POST | `/api/v1/attendance/check-out` | `CheckOutRequest` | 200 OK `AttendanceResultDto` | 400, 404 |
@@ -136,25 +137,34 @@ Hệ thống **MUST** hỗ trợ quản lý Chính sách Chấm công độc l�
 - **WHEN** Quản lý gửi request `POST /api/v1/attendance-policies/copy` với `SourceBranchId = A` và `TargetBranchIds = [B, C]`.
 - **THEN** Hệ thống sao chép toàn bộ tham số của chi nhánh A sang chi nhánh B và C (thực hiện Upsert), trả về HTTP 200 OK với số lượng chi nhánh đã cập nhật thành công (2 chi nhánh).
 
-#### Scenario: Từ chối sao chép khi chi nhánh đích không thuộc Tenant
-- **GIVEN** Quản lý chỉ định `TargetBranchIds` chứa một ID chi nhánh không tồn tại hoặc thuộc quyền sở hữu của Tenant khác.
-- **WHEN** Gửi request `POST /api/v1/attendance-policies/copy`.
-- **THEN** Hệ thống từ chối thực hiện, trả về HTTP 400 Bad Request hoặc 404 Not Found, không thay đổi dữ liệu chi nhánh ngoại lai.
-
 ---
 
-### Requirement: REQ-03 Lập lịch & Ban hành Ca làm việc
-Hệ thống **MUST** cho phép lập lịch làm việc theo tuần/tháng cho nhân viên chi nhánh và **MUST** kiểm tra ngăn chặn xung đột thời gian ca của cùng một nhân viên trong ngày.
+### Requirement: REQ-03 Lập lịch Làm việc, Phân ca Định kỳ & Kiểm soát Xung đột Ca
+Hệ thống **MUST** hỗ trợ lập lịch làm việc theo tuần/tháng, phân ca hàng loạt (`BatchCreate`) và phân ca lặp định kỳ (`CreateRecurringSchedule`) cho nhân viên theo các ngày trong tuần:
+1. **Hỗ trợ Đa ca trong ngày & Kiểm soát Xung đột (Max Overlap $\le 12$h):**
+   - Hệ thống cho phép một nhân viên làm nhiều ca trong cùng một ngày.
+   - Nếu các ca làm việc bị trùng lặp thời gian thì tổng thời gian giao thoa **MUST NOT** vượt quá 12 giờ. Nếu vượt quá 12 giờ, hệ thống **MUST** bắn mã lỗi `SCHEDULE_OVERLAP_EXCEEDED`.
+2. **Quy tắc Tính toán Ngày kết thúc (End Date Calculation):**
+   - **Khi không có ngày kết thúc (`HasEndDate = false` hoặc `EndDate = null`):** Hệ thống **MUST** tự động tính toán phạm vi tạo lịch từ `StartDate` cho đến **hết ngày cuối cùng của tháng kế tiếp** (tháng sau), đảm bảo nhân viên luôn có lịch làm việc trong tháng hiện tại và trọn vẹn tháng tiếp theo.
+   - **Khi có ngày kết thúc (`HasEndDate = true` và `EndDate != null`):** Hệ thống **MUST** sinh lịch chính xác từ `StartDate` đến đúng `EndDate` được chỉ định (yêu cầu `EndDate >= StartDate`), không bị giới hạn cứng 31 ngày.
+   - Hệ thống **MUST NOT** kích hoạt cơ chế tự động gia hạn lặp (đã loại bỏ auto-extend logic).
+3. **Bảo toàn và Chuẩn hóa Mã ca làm việc (`ShiftCode`):**
+   - Trường `ShiftCode` trong bảng `EmployeeSchedules` có kiểu `VARCHAR(30)`. Hệ thống **MUST** ưu tiên lấy `ShiftCode` từ `ShiftConfig` tương ứng trong DB. Nếu giá trị truyền vào dài hơn 30 ký tự, hệ thống **MUST** tự động cắt chuỗi tối đa 30 ký tự (`code[..30]`), ngăn chặn triệt để lỗi cơ sở dữ liệu `22001: value too long for type character varying(30)`.
 
-#### Scenario: Phân ca hàng loạt theo tuần thành công
-- **GIVEN** Danh sách phân ca cho các nhân viên trong tuần từ thứ 2 đến Chủ nhật tại chi nhánh A không bị trùng thời gian.
-- **WHEN** Gửi request `POST /api/v1/schedules/batch`.
-- **THEN** Hệ thống lưu danh sách `EmployeeSchedules` với trạng thái `draft` và trả về danh sách ca đã tạo.
+#### Scenario: Đăng ký ca làm việc lặp lại không ngày kết thúc đến hết tháng sau
+- **GIVEN** Ngày bắt đầu là `05/11/2026`. Quản lý không chọn ngày kết thúc (`HasEndDate = false`).
+- **WHEN** Gửi request `POST /api/v1/schedules/recurring`.
+- **THEN** Hệ thống tự động tính ngày kết thúc là `31/12/2026` (ngày cuối tháng 12), tạo tất cả các ca lặp theo các ngày đã chọn từ `05/11/2026` đến `31/12/2026` và trả về HTTP 201 Created.
 
-#### Scenario: Ngăn chặn xung đột lịch ca của nhân viên
-- **GIVEN** Nhân viên A đã được phân ca Sáng (06:00 - 14:00) ngày 05/11/2026.
-- **WHEN** Người quản lý gửi request phân thêm ca Giao thoa (12:00 - 18:00) cho nhân viên A cùng ngày đó.
-- **THEN** Hệ thống MUST trả về mã lỗi 400 Bad Request chỉ rõ nhân viên A đang bị trùng lặp thời gian làm việc.
+#### Scenario: Đăng ký ca làm việc lặp lại có ngày kết thúc chỉ định
+- **GIVEN** Quản lý chọn lặp vào Thứ 2 và Thứ 4, ngày bắt đầu `10/11/2026`, ngày kết thúc `20/01/2027` (`HasEndDate = true`).
+- **WHEN** Gửi request `POST /api/v1/schedules/recurring`.
+- **THEN** Hệ thống tạo chính xác toàn bộ ca làm việc đến ngày `20/01/2027`, không bị chặn bởi giới hạn 31 ngày.
+
+#### Scenario: Từ chối phân ca khi thời gian trùng lặp trong ngày vượt quá 12 giờ
+- **GIVEN** Nhân viên đã có ca từ 06:00 đến 19:00 (13 tiếng).
+- **WHEN** Quản lý phân tiếp ca từ 06:00 đến 19:00 cùng ngày cho nhân viên đó.
+- **THEN** Hệ thống MUST trả về HTTP 400 Bad Request với mã lỗi `SCHEDULE_OVERLAP_EXCEEDED` và giải thích thời gian trùng lặp vượt quá 12 giờ.
 
 ---
 
@@ -180,10 +190,10 @@ Hệ thống **MUST** cung cấp động cơ tính lương tự động quét ng
 ---
 
 ## Acceptance Checklist
-- [ ] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD, đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn và chặn xóa nhân viên đã có ca làm việc hoặc phiếu lương (BR-EMP-03, xóa sạch phụ cấp khi xóa nhân viên hợp lệ).
-- [ ] REQ-02: Quản lý danh mục ca làm việc `ShiftConfigs`, hỗ trợ multi-branch và ca chấm công qua đêm.
-- [ ] REQ-07: Quản lý chính sách chấm công chi nhánh `BranchAttendancePolicy`, quy đổi giờ thành ngày công, dung sai đi muộn/về sớm, làm thêm giờ (OT) và API sao chép cấu hình đa chi nhánh.
-- [ ] REQ-03: Phân ca hàng loạt theo tuần/tháng, ban hành ca và kiểm tra ngăn chặn trùng lặp khung giờ ca.
+- [x] REQ-01: CRUD hồ sơ nhân viên, sinh mã `NVxxxx` tuần tự, cấp tài khoản `Users`, validate trùng SĐT/CCCD, đồng bộ phụ cấp bằng thuật toán Sync & Diffing an toàn và chặn xóa nhân viên đã có ca làm việc hoặc phiếu lương (BR-EMP-03, xóa sạch phụ cấp khi xóa nhân viên hợp lệ).
+- [x] REQ-02: Quản lý danh mục ca làm việc `ShiftConfigs`, hỗ trợ multi-branch và ca chấm công qua đêm.
+- [x] REQ-07: Quản lý chính sách chấm công chi nhánh `BranchAttendancePolicy`, quy đổi giờ thành ngày công, dung sai đi muộn/về sớm, làm thêm giờ (OT) và API sao chép cấu hình đa chi nhánh.
+- [x] REQ-03: Phân ca hàng loạt theo tuần/tháng, đăng ký ca lặp định kỳ (`POST /schedules/recurring`), tự động tính ngày kết thúc đến hết tháng sau khi bỏ trống, cho phép nhiều ca trong ngày trùng tối đa $\le 12$h, và bảo vệ độ dài `ShiftCode` chống tràn cột `VARCHAR(30)`.
 - [ ] REQ-04: Chấm công GPS Geofencing theo công thức Haversine bán kính chi nhánh, áp dụng chính sách chi nhánh tính đúng `LateMinutes` và giờ công.
 - [ ] REQ-05: Mở/đóng ca POS với khai báo 9 mệnh giá, đối soát chênh lệch `GBR-POS-04`, khóa Z-Report và tự động sinh Phiếu thu Sổ quỹ (`INCOME`) khi chủ duyệt.
 - [ ] REQ-06: Payroll Engine tổng hợp ngày công tháng tự động, tính đúng NetSalary, chi trả VietQR/Tiền mặt và tự động sinh Phiếu chi Sổ quỹ (`EXPENSE`).
