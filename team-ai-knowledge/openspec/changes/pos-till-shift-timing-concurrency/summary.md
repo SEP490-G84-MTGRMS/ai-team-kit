@@ -7,3 +7,7 @@ Phê duyệt proposal thiết kế ca dùng chung theo chi nhánh (nhiều quầ
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 15:09
 
 Phê duyệt thiết kế Brainstorm: 1 chi nhánh 1 ca 1 két chung, cơ chế khóa bán hàng Closing, Pessimistic row-locking FEFO chống race condition tồn kho, và phân quyền chủ/thu ngân.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 15:10
+
+Phê duyệt đánh giá Verify Spec và danh sách 11 tasks triển khai ca dùng chung theo chi nhánh, khóa bán khi closing, và pessimistic row-locking FEFO chống race condition tồn kho.
