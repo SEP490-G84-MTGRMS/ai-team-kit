@@ -11,3 +11,7 @@ Duyệt proposal.md: Tích hợp fetch API bảng lương cho PayslipManagementP
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-11-07 16:10
 
 User duyệt bước Brainstorm: Hoàn thành exploration.md, design-brief.md và specs.md (6 REQs delta). Mở khóa bước verify-spec.
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-07 16:12
+
+User phê duyệt bước verify-spec với review skeptic 5/5 và 6 nhiệm vụ T1-T6 trong tasks.md. Chuyển sang /sep-apply để triển khai frontend.
