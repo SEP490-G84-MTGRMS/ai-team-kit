@@ -7,3 +7,7 @@ User phê duyệt proposal: Khuyến mãi (% đơn, theo SP, Buy X Get Y), Vouch
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 10:53
 
 User phê duyệt thiết kế kỹ thuật: LoyaltySettings DB, API Promotions/Vouchers/Loyalty và tích hợp POS
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 11:18
+
+User duyệt báo cáo phản biện Skeptic và danh sách 12 tasks chi tiết
