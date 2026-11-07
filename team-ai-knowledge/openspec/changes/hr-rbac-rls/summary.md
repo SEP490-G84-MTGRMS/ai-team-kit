@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @minhtamhtyb · 2026-11-07 18:21
 
 Hoàn tất exploration.md, design-brief.md và specs.md (delta) cho hr-rbac-rls
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-07 18:26
+
+Đã hoàn thành review skeptic và lập tasks.md cho hr-rbac-rls

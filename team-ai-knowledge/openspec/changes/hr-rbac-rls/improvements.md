@@ -7,3 +7,7 @@ Tập trung vào 2 vai trò STORE_OWNER và EMPLOYEE cùng SYSTEM_ADMIN theo Mat
 ## Brainstorm · 2026-11-07 18:21
 
 Đã xác định 5 REQ cho RBAC và RLS kèm Gherkin scenarios đầy đủ
+
+## Verify Spec · 2026-11-07 18:26
+
+Tasks gồm 6 mục chi tiết phân định rõ ràng giữa Backend, Frontend và Test
