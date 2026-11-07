@@ -1,79 +1,99 @@
-# Proposal: Quầy POS, Thời gian ca & Concurrency tồn kho
+# Proposal: Ca Dùng Chung Theo Chi Nhánh (Nhiều Quầy, Một Két), Khóa Bán Khi Chốt Ca & Concurrency Tồn Kho
 
 ## 1. Vấn đề
 
-Hiện tại hệ thống POS của MT-GRMS có các lỗ hổng nghiệp vụ:
+Hệ thống quản lý ca và bán hàng tại chi nhánh của MT-GRMS đang gặp các bất cập thực tế:
 
-### 1.1 Không có khái niệm Quầy (PosTill)
-- `TillId` trên `ShiftZReport` là GUID hardcode cứng (`01a19664-...`), không có entity tương ứng.
-- `Order` không có `TillId` nên không truy vết được đơn hàng thuộc quầy nào.
-- Frontend `OpenShiftModal` hardcode `tillId` mặc định, không cho nhân viên chọn quầy.
-- **Hệ quả**: Cửa hàng có 2+ quầy không thể phân tách ca, két tiền, chênh lệch theo từng quầy.
+### 1.1 Quản lý ca không khớp thực tế cửa hàng tạp hóa (Nhiều máy, 1 két tiền)
+- Cửa hàng tạp hóa / siêu thị mini có thể có 2-3 nhân viên hoặc 2 màn hình bán hàng, nhưng **thực tế chỉ dùng chung 1 két tiền mặt duy nhất**.
+- Hiện tại logic ca gắn cứng với `CashierUserId` hoặc giả định mỗi máy 1 ca riêng, dẫn đến:
+  - Khi nhân viên A đã mở ca, nhân viên B đăng nhập máy bên cạnh thì bị chặn hoặc hiện popup bắt mở ca riêng, gây xung đột két tiền.
+  - Khi nhân viên A về trước lúc 12h, nhân viên B tiếp tục ca chiều thì không biết chuyển giao thế nào nếu không đóng ca đếm tiền giữa chừng.
+  - Chủ cửa hàng đứng bán phụ giờ cao điểm không biết đơn gắn vào ca nào.
 
-### 1.2 Không phát hiện đóng ca sớm/muộn
-- `ShiftZReport` không có các trường `CloseTiming`, `ScheduledEndUtc`, `IsOverdue`, `CloseMode`.
-- Nhân viên đóng ca lúc nào cũng được, hệ thống không phân biệt sớm hay muộn.
-- Chủ cửa hàng không nhận thông tin khi nhân viên về sớm hoặc quên đóng ca.
-- Không có cơ chế đóng cưỡng bức khi nhân viên quên.
+### 1.2 Không có cơ chế khóa bán khi đếm tiền (`Closing`)
+- Khi một nhân viên bắt đầu kiểm đếm tiền mặt trong két để chốt ca, các máy khác vẫn tạo đơn thu tiền bán hàng.
+- Hệ quả: Số tiền thực đếm $H$ bị lệch ngay lập tức so với số tiền hệ thống tính $G$, gây chênh lệch ảo $I = H - G$ và khó đối soát.
 
-### 1.3 Race condition trừ tồn kho (Critical)
-- `OrderService.CreateOrderAsync` đọc tồn kho → tính toán trong bộ nhớ → trừ → SaveChanges **không có locking**.
-- 2 nhân viên bán cùng sản phẩm cùng lúc → cả hai đọc tồn kho = 5 → cả hai trừ 3 → tồn kho thành 2 thay vì -1 → **bán quá tồn kho thật**.
-- Đây là lỗi dữ liệu nghiêm trọng, đặc biệt khi có nhiều quầy bán song song.
+### 1.3 Race condition khi 2 thu ngân bán cùng lúc (Critical)
+- Khi 2 nhân viên ở 2 máy cùng quét bán 1 sản phẩm có tồn kho thấp cùng một thời điểm:
+- Cả 2 luồng đọc tồn kho từ DB cùng lúc (không có locking) → tính trừ tồn kho in-memory → cùng ghi xuống DB → **bán âm/bán quá tồn kho thực tế**.
 
-### 1.4 CreatedBy trên Order chưa xác minh
-- `Order` kế thừa `CreatedBy` từ `BaseTenantEntity` nhưng cần xác minh pipeline middleware đang gán đúng userId của người đăng nhập khi tạo đơn.
+---
 
-## 2. Mục tiêu
+## 2. Mục tiêu & Quyết định cốt lõi [ĐÃ CHỐT]
 
-1. **Tạo entity `PosTill`** để quản lý quầy theo chi nhánh, hỗ trợ cửa hàng nhiều quầy.
-2. **Nhân viên chọn quầy khi mở ca** trên giao diện web (cửa hàng 1 quầy thì auto-chọn, ẩn bước này).
-3. **Thêm TillId vào Order** — server tự gán từ ca đang mở, không tin client gửi.
-4. **Phát hiện đóng sớm/muộn** (CloseTiming) và **đóng cưỡng bức** (ForceClose) bởi chủ.
-5. **Chống race condition** trừ tồn kho bằng row-level locking hoặc optimistic concurrency.
-6. **Xác minh CreatedBy** trên Order đang gán đúng userId.
+1. **Một chi nhánh – Một ca – Một két tiền (S1, S2)**:
+   - Tại một thời điểm, mỗi chi nhánh chỉ có **duy nhất 1 ca ở trạng thái `Open` hoặc `Closing`**.
+   - Mọi máy POS và mọi nhân viên trong chi nhánh đó cùng bán hàng trong ca này.
+2. **Tự động vào ca đang mở (S4)**:
+   - Nhân viên đăng nhập nếu chi nhánh đã có ca mở thì **vào thẳng màn hình bán hàng**, không hiện popup mở ca.
+   - Chỉ hiện popup mở ca khi chi nhánh chưa có ca nào đang chạy.
+   - Ghi nhận người tham gia ca (`ShiftParticipants`) khi nhân viên phát sinh đơn hàng hoặc giao dịch.
+3. **Quy trình chốt ca chung an toàn (S5, S6, S7)**:
+   - Bấm **"Bắt đầu chốt ca"** (`start-closing`): Ca chuyển trạng thái `Closing`. **Tất cả các máy bị khóa bán** (chỉ cho xem).
+   - Một người nhập số tiền đếm $H$. Máy khác hiển thị số đếm và có thể bấm **Xác nhận** (`confirm-close`).
+   - Có nút **"Hủy chốt ca"** (`cancel-closing`) để chuyển ca trở lại `Open` nếu cần bán tiếp.
+   - Chặn đóng ca nếu còn phiếu chi tiền mặt `PendingApproval` chưa duyệt/hủy.
+4. **Nhân viên về sớm / Chủ bán hàng (S11, S12)**:
+   - Người mở ca (`OpenedByUserId`) về trước thì ca **vẫn tiếp tục**, các nhân viên khác tiếp tục bán bình thường.
+   - Đơn do Chủ cửa hàng tạo tự động gắn vào ca đang mở của chi nhánh (nếu có ca mở).
+   - Chủ cửa hàng có quyền **Đóng ca cưỡng bức** (`force-close`) từ xa nếu nhân viên về hết mà quên đóng ca.
+5. **Chống race condition trừ tồn kho**:
+   - Áp dụng cơ chế khóa mức hàng (Row-level locking hoặc Concurrency Check) trong `OrderService` khi trừ `BranchStocks` theo FEFO để đảm bảo tính toàn vẹn dữ liệu khi bán đồng thời.
+
+---
 
 ## 3. Phạm vi
 
-### In scope
-- Entity `PosTill` (Code, Name, BranchId, IsActive, DefaultFloat) + migration + API CRUD.
-- Auto-seed "Quầy 1" cho mỗi chi nhánh hiện tại.
-- Frontend: chọn quầy khi mở ca (ẩn nếu chỉ 1 quầy).
-- Thêm `TillId` vào `Order`; server gán tự động từ ShiftZReport.TillId.
-- Bổ sung ShiftZReport: `ScheduledEndUtc`, `CloseTiming`, `CloseTimingMinutes`, `CloseTimingReason`, `IsOverdue`, `CloseMode`, `ClosedByUserId`, `VarianceStatus`, `VarianceReviewedByUserId`, `VarianceReviewedAtUtc`, `VarianceReviewNote`.
-- API force-close (`POST /api/pos/shifts/{id}/force-close`) chỉ Owner.
-- API review-variance (`POST /api/pos/shifts/{id}/review-variance`) chỉ Owner.
-- Ràng buộc: 1 quầy chỉ 1 ca Open, 1 NV chỉ 1 ca Open.
-- Concurrency control: row-level lock (`SELECT ... FOR UPDATE` hoặc EF Core `ExecuteSqlRawAsync`) khi trừ BranchStocks.
-- Verify và sửa pipeline gán `CreatedBy` trên Order.
+### In Scope:
+- **Backend (.NET 8 Clean Architecture)**:
+  - Cập nhật `ShiftZReport` (hoặc `Shift`): thêm trạng thái `Closing`, `ClosingStartedByUserId`, `ClosingStartedAt`, `CountedCash`, `ClosedByUserId`, `ForceCloseReason`.
+  - Bảng mới `ShiftParticipant`: lưu `ShiftId`, `UserId`, `JoinedAt`, `LastActiveAt`.
+  - Bảng mới `ShiftCloseConfirmation`: lưu `ShiftId`, `UserId`, `ConfirmedCountedCash`, `ConfirmedAt`.
+  - Unique Index trên DB: Chỉ cho phép tối đa 1 ca `Open`/`Closing` trên mỗi `(TenantId, BranchId)`.
+  - API chốt ca chung:
+    - `POST /api/pos/shifts/{id}/start-closing`
+    - `POST /api/pos/shifts/{id}/cancel-closing`
+    - `PUT /api/pos/shifts/{id}/counted-cash`
+    - `POST /api/pos/shifts/{id}/confirm-close`
+    - `POST /api/pos/shifts/{id}/force-close` (chỉ Owner)
+  - Khóa API bán hàng & thu/chi: Trả về lỗi rõ ràng (400/409) khi ca đang ở trạng thái `Closing` hoặc `Closed`.
+  - Concurrency Lock trong `OrderService.CreateOrderAsync`: bảo vệ trừ tồn kho `BranchStocks` khi 2 máy gọi đồng thời.
+  - Tự động gán đơn của Chủ vào ca `Open` hiện tại của chi nhánh.
+  - Z-Report phân bổ doanh thu theo từng nhân viên (`CreatedBy`) và danh sách người tham gia ca.
+- **Frontend (React 19 / Vite / TS)**:
+  - `PosCheckoutPage`: Khi vào trang, nếu chi nhánh đã có ca mở thì tự động tham gia, không popup.
+  - Khi ca ở trạng thái `Closing`: Hiển thị banner/overlay **"Ca đang được chốt bởi [Tên NV]. Máy tạm thời khóa bán hàng."**
+  - Màn hình chốt ca (`CloseShiftModal`): Tách biệt luồng nhập số đếm, hiển thị chênh lệch, nút xác nhận và nút hủy chốt.
 
-### Out of scope
-- PosDevice / Device binding / Trusted device (giai đoạn 2).
-- SharedDrawer mode (để sau).
-- Thông báo realtime (push notification, SignalR) — chỉ lưu cờ, chưa gửi realtime.
-- Gọi vào sớm / Báo về sớm.
-- EmployeeSchedule / lịch làm việc.
-- Offline mode.
+### Out of Scope:
+- Phân chia két tiền riêng biệt cho từng quầy trong cùng chi nhánh (để sau nếu mở rộng mô hình).
+- Đồng bộ WebSocket realtime (dùng cơ chế polling/fetch status khi thao tác).
+- Chế độ bán offline khi mất mạng hoàn toàn.
+
+---
 
 ## 4. Người dùng liên quan
 
 | Role | Tương tác |
 |---|---|
-| **Nhân viên thu ngân (EMPLOYEE)** | Chọn quầy khi mở ca, bán hàng, đóng ca (có/không sớm muộn) |
-| **Chủ cửa hàng (STORE_OWNER)** | Quản lý quầy (CRUD), xem ca quá hạn, đóng cưỡng bức, review chênh lệch |
+| **Thu ngân 1 (EMPLOYEE)** | Mở ca đầu tiên, bán hàng, bắt đầu chốt ca hoặc xác nhận số đếm |
+| **Thu ngân 2 (EMPLOYEE)** | Đăng nhập tự vào ca, bán hàng song song, xem trạng thái closing và xác nhận |
+| **Chủ cửa hàng (STORE_OWNER)** | Bán hàng (đơn vào ca chung), xem báo cáo Z-Report theo nhân viên, đóng ca cưỡng bức khi cần |
+
+---
 
 ## 5. Tiêu chí thành công
 
 | # | Tiêu chí | Đo bằng |
 |---|---|---|
-| 1 | PosTill entity tồn tại, CRUD hoạt động, auto-seed Quầy 1 | Migration + API test |
-| 2 | Mở ca chọn quầy trống; quầy bận hiển thị mờ kèm tên NV giữ | Frontend manual test |
-| 3 | Order có TillId, server tự gán từ ca đang mở | Unit test: TillId != null sau tạo đơn |
-| 4 | 1 quầy = max 1 ca Open, 1 NV = max 1 ca Open | Unit test: mở trùng → 409 |
-| 5 | Đóng ca sớm > 30 phút → bắt buộc lý do, gắn cờ Early | Unit test |
-| 6 | Ca quá hạn > 120 phút → gắn IsOverdue | Unit test |
-| 7 | Owner force-close thành công | API test |
-| 8 | 2 request trừ cùng sản phẩm đồng thời → tồn kho chính xác | Concurrency test (multi-thread) |
-| 9 | Order.CreatedBy = userId của người đăng nhập | Integration test |
-| 10 | Backend build 0 lỗi, tất cả tests pass | dotnet build + dotnet test |
-| 11 | Frontend build 0 lỗi | npm run build |
+| 1 | Mỗi chi nhánh chỉ mở được đúng 1 ca đồng thời (mở lần 2 báo 409) | Unit & Integration Test |
+| 2 | Nhân viên thứ 2 đăng nhập tự động dùng chung ca, không bị chặn mở ca | Kiểm thử luồng Frontend/API |
+| 3 | Khi 1 máy bấm `start-closing`, các máy khác bị khóa bán hàng (API từ chối tạo đơn) | Integration Test + UI test |
+| 4 | Có thể hủy chốt ca (`cancel-closing`) để mở lại trạng thái `Open` và tiếp tục bán | API test |
+| 5 | Đóng ca bị chặn nếu còn phiếu chi `PendingApproval` | Unit Test |
+| 6 | 2 máy gửi đơn cùng mua 1 sản phẩm tồn kho thấp đồng thời: không xảy ra bán âm (Concurrency safe) | Multi-threaded test |
+| 7 | Chủ cửa hàng có thể đóng ca thay qua API `force-close` kèm lý do | API test |
+| 8 | Z-Report hiển thị đầy đủ tổng két, chênh lệch và doanh thu phân bổ theo từng nhân viên | Test Z-Report |
+| 9 | Toàn bộ backend tests pass (`dotnet test`) và frontend build 0 lỗi (`npm run build`) | CI/Build verification |
