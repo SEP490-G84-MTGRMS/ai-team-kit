@@ -61,7 +61,12 @@ Hệ thống MUST xoá mềm.
 console.log(`\n🧪 SEP workflow (KB tạm: ${tmp})\n`);
 
 await test('tạo change feature → gate bật, chọn làm change đang làm', async () => {
-  const out = await sep.handleTaoChange({ moTa: 'Quản lý nhà cung cấp', tenChange: 'supplier-crud', capability: 'supplier' });
+  const out = await sep.handleTaoChange({
+    moTa: 'Quản lý nhà cung cấp',
+    tenChange: 'supplier-crud',
+    capability: 'supplier',
+    taoCapabilityMoi: true,
+  });
   assert.match(out, /Đã tạo change/);
   assert.equal(active, 'supplier-crud');
   assert.match(read(`${C}/.session.md`), /gate: true/);
@@ -162,7 +167,12 @@ Hệ thống MUST tạo nhà cung cấp và kiểm tra trùng mã số thuế.
 await test('archived → không sửa artifact', () => rejects(save('specs.md', '# x', 'supplier-crud'), /đã archive/));
 
 await test('schema bug-fix: không cần + không nhận design-brief', async () => {
-  await sep.handleTaoChange({ moTa: 'Lỗi tính thuế', tenChange: 'tax-bug', schema: 'bug-fix' });
+  await sep.handleTaoChange({
+    moTa: 'Lỗi tính thuế',
+    tenChange: 'tax-bug',
+    schema: 'bug-fix',
+    capability: 'supplier',
+  });
   await save('proposal.md', '# P');
   await approve('spec');
   await rejects(save('design-brief.md', '# D'), /không dùng design-brief/);
@@ -196,7 +206,11 @@ await test('sep_chon_change đổi change đang làm', async () => {
 
 await test('sep_lui_buoc lùi về bước trước và reset cổng duyệt', async () => {
   // Tạo change thử nghiệm rollback
-  await sep.handleTaoChange({ moTa: 'Test rollback feature', tenChange: 'rollback-demo' });
+  await sep.handleTaoChange({
+    moTa: 'Test rollback feature',
+    tenChange: 'rollback-demo',
+    capability: 'supplier',
+  });
   await save('proposal.md', '# Proposal', 'rollback-demo');
   await sep.handleDuyetBuoc({ tenChange: 'rollback-demo', buoc: 'spec', quyetDinh: 'approve', tomTat: 'Duyệt spec' });
 
@@ -225,6 +239,34 @@ await test('sep_lui_buoc lùi về bước trước và reset cổng duyệt', a
     sep.handleLuiBuoc({ tenChange: 'rollback-demo', buocMoi: 'brainstorm' }),
     /không nằm trước bước hiện tại/
   );
+});
+
+await test('sep_tao_change thiếu capability bị chặn', () =>
+  rejects(sep.handleTaoChange({ moTa: 'không có cap', tenChange: 'no-cap' }), /Thiếu `capability`/));
+
+await test('sep_tim_capability tìm supplier theo query', async () => {
+  const out = await sep.handleTimCapability({ query: 'nha cung cap tao' });
+  assert.match(out, /`supplier`/);
+  assert.match(out, /openspec\/specs\/supplier\/spec\.md/);
+});
+
+await test('sep_tim_capability 0 match', async () => {
+  const out = await sep.handleTimCapability({ query: 'xyzzy-khong-co-capability-nao' });
+  assert.match(out, /Không tìm thấy/);
+});
+
+await test('sep_cap_nhat_capability merge delta', async () => {
+  const out = await sep.handleCapNhatCapability({
+    capability: 'supplier',
+    tomTat: 'bo REQ demo',
+    reqsDaChot: ['REQ-01 Tạo nhà cung cấp'],
+    delta: `## MODIFIED Requirements
+### Requirement: REQ-01 Tạo nhà cung cấp
+Hệ thống MUST tạo nhà cung cấp (đã refactor).
+`,
+  });
+  assert.match(out, /Đã cập nhật spec gốc/);
+  assert.match(read('openspec/specs/supplier/spec.md'), /đã refactor/);
 });
 
 fs.rmSync(tmp, { recursive: true, force: true });

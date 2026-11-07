@@ -33,4 +33,4 @@ Lệnh `/sep-back` cho phép bạn lùi lại một hoặc nhiều bước trong
 2. **Bảo toàn dữ liệu**: Toàn bộ file artifact cũ (`proposal.md`, `specs.md`, `tasks.md`...) **được giữ nguyên 100%**. Bạn chỉ cần mở ra chỉnh sửa phần cần đổi thay vì phải viết lại từ đầu.
 3. **Mở lại cổng duyệt (Reset Gate)**: Trạng thái duyệt `Approve` của bước được lùi về sẽ được reset để bạn duyệt lại sau khi đã sửa xong.
 4. Ghi nhận nhật ký lùi bước và lý do vào `.session.md`.
-5. Tiếp tục luồng làm việc bằng lệnh `/sep-pilot` hoặc lệnh của bước tương ứng.
+5. Tiếp tục luồng bằng lệnh của bước tương ứng (`/sep-brainstorm`, `/sep-verify-spec`, …) hoặc `/sep-status`.

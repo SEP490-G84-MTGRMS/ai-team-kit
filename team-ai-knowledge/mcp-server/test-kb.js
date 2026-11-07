@@ -202,10 +202,10 @@ await test('HTTP auth: token → user, sai token/thiếu token bị từ chối'
   assert.equal(authenticate(undefined, anon), null);
 });
 
-await test('prompts: 9 skill /sep-* từ sep-kit, chèn đầu vào của user', async () => {
+await test('prompts: skill /sep-* từ sep-kit, chèn đầu vào của user', async () => {
   const prompts = await loadSepPrompts(new LocalProvider(KB));
   const names = prompts.map(p => p.name).sort();
-  assert.deepEqual(names, ['sep-apply', 'sep-archive', 'sep-back', 'sep-brainstorm', 'sep-pilot', 'sep-spec', 'sep-status', 'sep-test', 'sep-verify-spec']);
+  assert.deepEqual(names, ['sep-apply', 'sep-archive', 'sep-back', 'sep-brainstorm', 'sep-refactor', 'sep-spec', 'sep-status', 'sep-test', 'sep-verify-spec']);
   const spec = prompts.find(p => p.name === 'sep-spec');
   assert.ok(spec.description.length > 10);
   assert.match(renderPrompt(spec, 'quản lý kho'), /Đầu vào của user: quản lý kho$/);

@@ -42,8 +42,9 @@ try {
     } catch {
       // not installed through `sep install`
     }
-    // /sep-spec takes a free-text description, the other commands take a change name
-    const change = match[1] !== 'sep-spec' && match[2] && /^[a-z0-9-]+$/.test(match[2]) ? match[2] : undefined;
+    // /sep-spec và /sep-refactor nhận mô tả tự do; lệnh khác có thể kèm tên change
+    const freeText = match[1] === 'sep-spec' || match[1] === 'sep-refactor';
+    const change = !freeText && match[2] && /^[a-z0-9-]+$/.test(match[2]) ? match[2] : undefined;
     const event = {
       ts: new Date().toISOString(),
       source: ide,

@@ -24,13 +24,13 @@ Mô tả chức năng = phần chữ user gõ sau `/sep-spec`.
    - `refactor`: cải tổ code, không đổi hành vi — không cần design-brief.
    Không chắc → hỏi user một câu.
 3. Hỏi nhanh (tối đa 3 câu, chỉ khi thật sự mơ hồ): ai dùng, mục tiêu chính, phạm vi.
-4. Gọi `sep_tao_change`:
-   - `moTa`: mô tả chức năng (kèm ý đã làm rõ) · `schema` · `tenChange`: kebab-case tiếng Anh, VD `supplier-management`.
-   - `capability`: nhóm chức năng lớn trong spec gốc (VD `supplier`), để nhiều change cộng dồn vào `openspec/specs/<capability>/spec.md`. Không rõ → bỏ trống.
+4. Gọi `sep_liet_ke_capability` (và/hoặc `sep_tim_capability`) → **hỏi user chọn capability** đã có. Chỉ dùng `taoCapabilityMoi: true` khi user xác nhận capability mới.
+5. Gọi `sep_tao_change` (**chỉ skill này được gọi tool này**):
+   - `moTa` · `schema` · `tenChange` (kebab-case) · **`capability` bắt buộc**.
    - Báo thiếu assignee → hỏi GitHub username, gọi lại với `assignee`.
-   - Báo change đã tồn tại → dừng, cho user xem bảng trạng thái và việc tiếp theo.
-5. Tra KB: `tim_kiem_kien_thuc` với từ khoá chức năng, `xem_ngu_canh_du_an` (MT-GRMS); đọc nhanh code liên quan nếu có.
-6. Viết `proposal.md` theo hướng dẫn của schema trong kết quả tool, lưu bằng `sep_luu_artifact` (file `proposal.md`):
+   - Báo change đã tồn tại / capability sai → dừng, hướng dẫn tiếp.
+6. Tra KB: `tim_kiem_kien_thuc` với từ khoá chức năng, `xem_ngu_canh_du_an` (MT-GRMS); đọc nhanh code liên quan nếu có.
+7. Viết `proposal.md` theo hướng dẫn của schema trong kết quả tool, lưu bằng `sep_luu_artifact` (file `proposal.md`):
 
 ```markdown
 # Proposal: <tên change>
@@ -45,7 +45,7 @@ Mô tả chức năng = phần chữ user gõ sau `/sep-spec`.
 - [ ] ... (đo được)
 ```
 
-7. **Gate**: tóm tắt proposal (3–5 dòng) và hỏi "Approve hay Reject?".
+8. **Gate**: tóm tắt proposal (3–5 dòng) và hỏi "Approve hay Reject?".
    - Reject → sửa theo góp ý, lưu lại, gọi `sep_duyet_buoc` (`quyetDinh: "reject"`, `tomTat`: lý do), hỏi lại.
    - Approve → `sep_duyet_buoc` (`buoc: "spec"`, `quyetDinh: "approve"`, `tomTat`, `caiTien` nếu có).
 

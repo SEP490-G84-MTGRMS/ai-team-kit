@@ -17,15 +17,19 @@ export interface SepPrompt {
 
 export async function loadSepPrompts(provider: DataProvider): Promise<SepPrompt[]> {
   const files = (await provider.listFiles(SKILLS_DIR, 'SKILL.md'))
-    .filter(f => /^sep-kit\/skills\/[^/]+\/SKILL\.md$/.test(f))
+    .filter(f => /^sep-kit\/skills\/sep-[^/]+\/SKILL\.md$/.test(f))
     .sort();
   const prompts: SepPrompt[] = [];
   for (const file of files) {
     const raw = await provider.readFile(file);
     if (!raw) continue;
-    const { data, content } = matter(raw);
-    const name = String(data.name ?? file.split('/')[2]);
-    prompts.push({ name, description: String(data.description ?? name), body: content.trim() });
+    try {
+      const { data, content } = matter(raw);
+      const name = String(data.name ?? file.split('/')[2]);
+      prompts.push({ name, description: String(data.description ?? name), body: content.trim() });
+    } catch (err: any) {
+      throw new Error(`Không parse được ${file}: ${err.message}`);
+    }
   }
   return prompts;
 }

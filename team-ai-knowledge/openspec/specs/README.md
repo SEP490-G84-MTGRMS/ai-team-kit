@@ -2,10 +2,11 @@
 
 Mỗi capability có một file `openspec/specs/<capability>/spec.md`, là "sự thật hiện tại" của hệ thống.
 
-- **Không sửa tay.** Spec gốc chỉ thay đổi khi một change chạy `/sep-archive`: MCP tool `sep_chuyen_trang_thai archived`
-  merge `openspec/changes/<change>/specs.md` (định dạng delta) vào đây và commit cùng lúc.
-- Capability của change được chọn lúc `/sep-spec` (tham số `capability`, mặc định = tên change).
-  Nhiều change cùng capability (VD: `supplier-management`, `supplier-import-excel`) sẽ cộng dồn vào cùng một spec.
+- **Không sửa tay.** Spec gốc chỉ đổi qua:
+  1. `/sep-archive` — merge delta từ `openspec/changes/<change>/specs.md`
+  2. `/sep-refactor` — tìm đúng capability + REQ rồi merge delta trực tiếp (`sep_cap_nhat_capability`)
+- Capability của change **bắt buộc** lúc `/sep-spec` (`capability` phải có sẵn trong thư mục này, trừ khi `taoCapabilityMoi: true`).
+  Nhiều change cùng capability cộng dồn vào cùng một `spec.md`.
 
 ## Định dạng delta trong specs.md của change
 

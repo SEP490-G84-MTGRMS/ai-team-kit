@@ -1,15 +1,15 @@
 ---
-description: Quy trình SEP 6 bước (/sep-spec → /sep-archive) bắt buộc khi làm chức năng, sửa lỗi hoặc refactor trong dự án MT-GRMS.
+description: Quy trình SEP 6 bước (/sep-spec → /sep-archive) + /sep-refactor cập nhật spec gốc. Chỉ /sep-spec được tạo change.
 apply: always
 ---
 
 # Quy trình SEP — bắt buộc
 
-Mọi chức năng mới, sửa lỗi hoặc refactor đáng kể đi qua 6 bước, mỗi bước là một lệnh:
+## Pipeline 6 bước (chức năng / bug-fix / refactor code cần change)
 
 | # | Lệnh | Kết quả bắt buộc |
 |---|---|---|
-| 1 | `/sep-spec <mô tả>` | chọn schema (feature / bug-fix / refactor), `proposal.md` |
+| 1 | `/sep-spec <mô tả>` | chọn schema (feature / bug-fix / refactor), **tạo change**, `proposal.md` |
 | 2 | `/sep-brainstorm` | `exploration.md`, `design-brief.md` (chỉ feature), `specs.md` dạng delta |
 | 3 | `/sep-verify-spec` | review persona (`review/skeptic.md` bắt buộc), `tasks.md` |
 | 4 | `/sep-apply` | code + tick hết `tasks.md` |
@@ -17,15 +17,28 @@ Mọi chức năng mới, sửa lỗi hoặc refactor đáng kể đi qua 6 bư�
 | 6 | `/sep-archive` | archive + merge specs vào `openspec/specs/` |
 
 `/sep-status` xem tiến độ và chọn change đang làm.
-`/sep-pilot` điều phối tự động toàn bộ quy trình và phỏng vấn tương tác (grill-me mode) qua từng bước.
 `/sep-back` quay lại bước trước (rollback) an toàn khi cần sửa lại spec/task mà không mất file.
 
-## Luật
-- User yêu cầu code một chức năng / sửa lỗi mà **chưa có change** → đề nghị bắt đầu bằng `/sep-spec` trước khi code.
-  Chỉnh sửa rất nhỏ (typo, đổi text, format) thì không cần.
+## Cập nhật spec gốc (không tạo change)
+
+| Lệnh | Việc |
+|---|---|
+| `/sep-refactor <mô tả>` | Tìm **đúng** capability + requirement trong `openspec/specs/`, confirm user, merge delta. **Không** gọi `sep_tao_change`. |
+
+## Luật tạo change (cứng)
+
+- **Chỉ** khi user gõ `/sep-spec` mới được gọi MCP `sep_tao_change`.
+- Chat thường, `/sep-brainstorm`, `/sep-apply`, `/sep-refactor`, … **cấm** tạo change.
+- User yêu cầu chức năng mới mà chưa có change → **đề nghị** `/sep-spec`, dừng chờ (không tự tạo).
+- User muốn sửa requirement / bỏ field trên capability đã có → đề nghị `/sep-refactor` (không `/sep-spec` trừ khi user cố ý cần change mới).
+- Chỉnh sửa rất nhỏ (typo UI, đổi text) → không cần SEP.
+
+## Luật khác
+
 - Chỉ ghi file trong `openspec/` bằng tool MCP `sep_*` của server "sep". Không tạo/sửa tay, không sửa `.status`.
-- Không bỏ qua bước. Tool trả lỗi ⛔ → dừng, báo user bước còn thiếu và lệnh cần chạy.
-- **Gate duyệt**: kết thúc mỗi bước (1–5), tóm tắt và hỏi user Approve / Reject. Chỉ gọi `sep_duyet_buoc` sau khi user trả lời rõ — không bao giờ tự duyệt.
+- Không bỏ qua bước pipeline. Tool trả lỗi ⛔ → dừng, báo user bước còn thiếu và lệnh cần chạy.
+- **Gate duyệt**: kết thúc mỗi bước (1–5) và trước merge `/sep-refactor`, tóm tắt và hỏi user Approve / Reject. Chỉ gọi `sep_duyet_buoc` / `sep_cap_nhat_capability` sau khi user trả lời rõ — không bao giờ tự duyệt.
 - Bỏ trống tên change = change đang làm (📌). Đổi change: `sep_chon_change`.
+- `sep_tao_change` bắt buộc `capability` (đã có trong `openspec/specs/` trừ khi `taoCapabilityMoi: true`).
 - Không thấy tool `sep_*` → bảo user chạy `npm run sep -- install` trong `team-ai-knowledge` rồi khởi động lại IDE.
 - Tool báo "chưa push" → nhắc `git push` trong `team-ai-knowledge` để TeamSpec thấy tiến độ.

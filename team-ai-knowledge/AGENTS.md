@@ -49,10 +49,11 @@ Bước 2: Gọi danh_sach_phien_gan_day()
 
 Cài đặt: `npm run sep -- install --user=<github>` (Cursor / Claude Code / Antigravity — xem `sep-kit/README.md`).
 
-`/sep-pilot` (Auto-Pilot & Grill-Me) | `/sep-spec` → `/sep-brainstorm` → `/sep-verify-spec` → `/sep-apply` → `/sep-test` → `/sep-archive` (lùi bước: `/sep-back`, tiến độ: `/sep-status`)
+`/sep-spec` → `/sep-brainstorm` → `/sep-verify-spec` → `/sep-apply` → `/sep-test` → `/sep-archive` (lùi: `/sep-back`, tiến độ: `/sep-status`)
 
-- Khuyên dùng: Dùng `/sep-pilot <mô tả>` để tự động điều phối, phỏng vấn chốt giải pháp qua từng bước.
-- Khi user yêu cầu làm **chức năng mới** mà chưa có change: đề nghị dùng `/sep-pilot` hoặc `/sep-spec <mô tả>` thay vì code ngay.
+- **Chỉ `/sep-spec` được tạo change** (`sep_tao_change`). Chat thường không tự tạo.
+- Sửa requirement trên capability đã có: `/sep-refactor <mô tả>` (tìm đúng spec rồi update — không tạo change).
+- Khi user yêu cầu **chức năng mới** mà chưa có change: đề nghị `/sep-spec <mô tả>`, dừng chờ — không code/tạo change ngay.
 - Muốn sửa lại phương án / bước trước: Dùng `/sep-back [bước]`.
 - Change nằm ở `openspec/changes/<tên>/`. **Chỉ ghi artifact qua tool `sep_*`** — không sửa file tay.
 - **Schema** (`sep_tao_change` tham số `schema`): `feature` (mặc định), `bug-fix`, `refactor` — hai loại sau không cần `design-brief.md`. Bối cảnh dự án: `openspec/config.yaml`.

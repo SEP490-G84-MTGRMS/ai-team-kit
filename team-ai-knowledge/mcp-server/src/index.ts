@@ -307,6 +307,7 @@ const TOOL_KIND: Record<string, 'read' | 'write' | 'destructive'> = {
   sep_chuyen_trang_thai: 'destructive',
   sep_lui_buoc: 'write',
   sep_dong_bo_test_sheet: 'write',
+  sep_cap_nhat_capability: 'write',
 };
 const IDEMPOTENT = new Set(['sep_luu_artifact', 'sep_chon_change']);
 
@@ -550,9 +551,28 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         case 'sep_tao_change': {
           const p = args as {
             moTa: string; tenChange?: string; assignee?: string; mode?: SepMode;
-            schema?: SchemaKey; capability?: string; project?: string;
+            schema?: SchemaKey; capability?: string; taoCapabilityMoi?: boolean; project?: string;
           };
           return { content: [{ type: 'text' as const, text: await sep.handleTaoChange(p) }] };
+        }
+
+        case 'sep_liet_ke_capability': {
+          return { content: [{ type: 'text' as const, text: await sep.handleLietKeCapability() }] };
+        }
+
+        case 'sep_tim_capability': {
+          const p = args as { query: string; limit?: number };
+          return { content: [{ type: 'text' as const, text: await sep.handleTimCapability(p) }] };
+        }
+
+        case 'sep_tim_requirement': {
+          const p = args as { capability: string; query: string };
+          return { content: [{ type: 'text' as const, text: await sep.handleTimRequirement(p) }] };
+        }
+
+        case 'sep_cap_nhat_capability': {
+          const p = args as { capability: string; delta: string; tomTat: string; reqsDaChot?: string[] };
+          return { content: [{ type: 'text' as const, text: await sep.handleCapNhatCapability(p) }] };
         }
 
         case 'sep_luu_artifact': {

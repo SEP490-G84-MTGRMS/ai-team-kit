@@ -12,7 +12,14 @@ Cuối mỗi bước, agent dừng lại hỏi **Approve / Reject** — chỉ kh
 | 5 | `/sep-test` | Test | `test-report.md` | `verdict: PASS` + Approve |
 | 6 | `/sep-archive` | Archive | merge `specs.md` → `openspec/specs/<capability>/spec.md` | `.status = archived` |
 
-`/sep-status` — xem change đang làm, bước hiện tại, việc tiếp theo. Không cần gõ tên change: MCP nhớ change đang làm (`sep_chon_change` để đổi).
+Lệnh ngoài pipeline:
+
+| Lệnh | Việc |
+|---|---|
+| `/sep-refactor <mô tả>` | Tìm đúng capability + REQ trong `openspec/specs/`, confirm, merge delta. **Không tạo change.** |
+| `/sep-status` | Change đang làm, bước hiện tại, việc tiếp theo (`sep_chon_change` để đổi). |
+
+**Chỉ `/sep-spec` được gọi `sep_tao_change`.** Chat thường không tự tạo change.
 
 ¹ Schema `bug-fix` và `refactor` không cần `design-brief.md`. Schema chọn ở `/sep-spec` (xem `openspec/schemas/`).
 
@@ -95,7 +102,7 @@ npm run sep -- init ../sep490-backend --remove
 
 ```
 sep-kit/
-├── skills/<sep-*>/SKILL.md   ← 7 skill (6 bước + status)
+├── skills/<sep-*>/SKILL.md   ← skills 6 bước + status + back + refactor
 ├── agents/*.md               ← persona: skeptic, guardian, advocate, codebase (readonly)
 ├── rules/*.md                ← apply: always | auto | glob — render ra từng IDE
 └── hooks/sep-hook.js         ← ghi telemetry khi gõ /sep-* (fail-open)
