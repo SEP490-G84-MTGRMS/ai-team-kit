@@ -11,3 +11,7 @@ Chuyển sang bước 3 (Verify Spec) để phản biện độc lập bằng Sk
 ## Verify Spec · 2026-11-07 11:18
 
 Chuyển sang bước 4 (Apply) để bắt đầu thực thi code theo tasks.md (T1 -> T12)
+
+## Apply · 2026-11-07 11:47
+
+Chuyển sang bước 5 (Test) để lập báo cáo kiểm thử nghiệm thu test-report.md

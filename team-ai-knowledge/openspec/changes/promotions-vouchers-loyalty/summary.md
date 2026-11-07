@@ -11,3 +11,7 @@ User phê duyệt thiết kế kỹ thuật: LoyaltySettings DB, API Promotions/
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 11:18
 
 User duyệt báo cáo phản biện Skeptic và danh sách 12 tasks chi tiết
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-07 11:47
+
+User duyệt 12/12 tasks hoàn thành: LoyaltySettings DB, API Promotions/Vouchers/Loyalty, giao diện quản lý và tích hợp POS
