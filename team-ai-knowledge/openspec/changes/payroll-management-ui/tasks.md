@@ -1,7 +1,7 @@
 # Tasks: payroll-management-ui
 
 ## Frontend
-- [ ] **T1 — Tạo module API Client `src/features/employee/api/payslipApi.ts`** (REQ-FE-PAY-01)
+- [x] **T1 — Tạo module API Client `src/features/employee/api/payslipApi.ts`** (REQ-FE-PAY-01)
   - Khai báo các interface TypeScript: `PayslipSummaryDto`, `PayslipResponse`, `PayslipQueryFilter`, `GeneratePayrollBatchRequest`, `PayPayslipRequest`, `BatchPayPayslipsRequest`, `BatchPayResultDto`, `PayslipAllowanceItemDto`.
   - Cài đặt 5 phương thức gọi API REST thông qua `httpClient`:
     - `getPayslipsPaged(filter: PayslipQueryFilter)`
