@@ -11,3 +11,7 @@
 ## Verify Spec · 2026-11-07 16:12
 
 Tuân thủ đúng tasks.md và thiết kế delta specs, xử lý chặt chẽ ProblemDetails và format tiền tệ VNĐ.
+
+## Apply · 2026-11-07 16:25
+
+Đã kết nối hoàn chỉnh 5 API Payslips, xử lý lỗi ProblemDetails, tích hợp bộ lọc chi nhánh thực tế và đồng bộ trạng thái thanh toán đơn lẻ/hàng loạt.
