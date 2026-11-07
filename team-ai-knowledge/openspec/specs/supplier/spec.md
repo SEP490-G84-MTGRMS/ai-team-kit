@@ -284,7 +284,7 @@ Store Owner chuyển Active/Inactive. Inactive MUST NOT chọn cho PO mới. MUS
 ---
 
 ### Requirement: REQ-DEL01 Delivery Schedule (BR-S12) — config only
-Store Owner cấu hình DeliveryDays, LeadTimeDays>=0, CutoffDayOffset>=0, OrderCutoffTime HH:mm. Tính theo `Asia/Ho_Chi_Minh`. Change này MUST lưu và trả config; MAY trả `EarliestDeliveryDate` tham khảo. **Không** chặn tạo PO trong change này (FE-05).
+Store Owner cấu hình DeliveryDays, CutoffDayOffset>=0, CutoffTime HH:mm (OrderCutoffTime đồng bộ cùng giá trị), MinOrderQuantity, AllowUrgent, UrgentLeadTimeHours, UrgentFeePercent. Cấu hình này được lưu trực tiếp trên bảng `Suppliers` (đã gộp entity `SupplierDeliveryConfigs` vào `Suppliers` theo quan hệ 1–1). Tính theo `Asia/Ho_Chi_Minh`. Change này MUST lưu và trả config; MAY trả `EarliestDeliveryDate` tham khảo. **Không** chặn tạo PO trong change này (FE-05).
 
 #### Scenario: Ví dụ T4
 - **GIVEN** giao Wed, offset=1, cutoff 17:00.
@@ -297,14 +297,28 @@ Store Owner cấu hình DeliveryDays, LeadTimeDays>=0, CutoffDayOffset>=0, Order
 ---
 
 ### Requirement: REQ-DEL02 Blackout Dates (BR-S13)
-Store Owner CRUD blackout + lý do. Đơn mới (FE-05) loại ngày này — change này lưu danh sách. MUST NOT tự đổi PO confirmed. Employee không CRUD blackout (403).
+Store Owner CRUD blackout + lý do. Bảng `SupplierBlackoutDates` là bảng độc lập quan hệ 1–N với `Suppliers`, chỉ liên kết qua khóa ngoại `SupplierId` (đã drop `SupplierDeliveryConfigId`). Đơn mới (FE-05) loại ngày này — change này lưu danh sách. MUST NOT tự đổi PO confirmed. Employee không CRUD blackout (403).
 
 #### Scenario: Thêm blackout
-- **THEN** 200 lưu ngày + lý do.
+- **THEN** 200 lưu ngày + lý do trực tiếp theo SupplierId.
 
 #### Scenario: Employee 403 blackout write
 - **WHEN** Employee PUT delivery-config kèm blackout mới.
 - **THEN** 403.
+
+---
+
+### Requirement: REQ-DEL03 Consolidation of Delivery Config into Supplier Entity (Architecture Refactor)
+Hệ thống MUST gộp hoàn toàn thực thể và bảng `SupplierDeliveryConfigs` vào bảng `Suppliers`:
+1. **Domain Model**: Bảng `Suppliers` chứa trực tiếp các thuộc tính cấu hình giao hàng: `CutoffTime`, `CutoffDayOffset`, `DeliveryWeekdaysMask`, `DeliveryDaysJson`, `MinOrderQuantity`, `AllowUrgent`, `UrgentLeadTimeHours`, `UrgentFeePercent`.
+2. **Loại bỏ thực thể riêng**: Xóa bỏ hoàn toàn `SupplierDeliveryConfig` và cấu hình EF `SupplierDeliveryConfigConfiguration`.
+3. **Blackout Dates**: Giữ bảng riêng `SupplierBlackoutDates`, chỉ liên kết qua `SupplierId`.
+4. **Backward Compatibility**: Các API `GET/PUT /api/v1/suppliers/{id}/delivery-config` và màn hình `OrderMatrix` tiếp tục hoạt động bình thường, giữ nguyên cấu trúc DTO cho Frontend.
+
+#### Scenario: Truy vấn và cập nhật cấu hình giao hàng trực tiếp trên Supplier
+- **GIVEN** Supplier đã tồn tại trong CSDL.
+- **WHEN** Người dùng gọi `GET /api/v1/suppliers/{id}/delivery-config` hoặc `PUT /api/v1/suppliers/{id}/delivery-config`.
+- **THEN** Hệ thống đọc/ghi trực tiếp trên bản ghi `Supplier`, trả về `SupplierDeliveryConfigDto` đầy đủ các trường cấu hình và danh sách ngày nghỉ blackout mà không cần join bảng `SupplierDeliveryConfigs`.
 
 ---
 
@@ -373,3 +387,4 @@ Hệ thống MUST chuyển đổi luồng phân bổ trên popup từ "Chọn 1 
 - 2026-10-19 · `supplier-product-management` · +6 ~0 -0
 - 2026-10-31 · `master-supplier-management` · +9 ~4 -0
 - 2026-10-31 · `supplier-store-assignment` · +2 ~1 -0
+- 2026-11-07 · `supplier-delivery-config-consolidation` · Gộp SupplierDeliveryConfigs vào Suppliers (1-1), giữ SupplierBlackoutDates riêng
