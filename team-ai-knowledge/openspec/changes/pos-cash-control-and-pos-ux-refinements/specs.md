@@ -103,3 +103,15 @@ Tại [`StorePosCashControlPage.tsx`](file:///d:/FPT/FPT_Ky9/SEP490/PhanMen/Code
 - **GIVEN** Chủ cửa hàng mở trang "Hạn Mức & Duyệt Chi Két POS".
 - **WHEN** Cuộn xem nội dung trang.
 - **THEN** Trang chỉ gồm: Thẻ thống kê phiếu chi, Bảng cấu hình hạn mức chi tự động theo chi nhánh, và Bảng danh sách phiếu chi két chờ phê duyệt; không còn khối hiển thị ca bàn giao trùng lặp.
+
+---
+
+### Requirement: REQ-POS-DEBT-COLLECTION-SHIFT-10 — Thu nợ tiền mặt tự động gắn vào ca của thu ngân đang trực
+Tại [`CollectDebtModal.tsx`](file:///d:/FPT/FPT_Ky9/SEP490/PhanMen/Code/MT_GRMS_FRONTEND/src/features/pos/components/modals/CollectDebtModal.tsx) và [`InvoiceManagementPage.tsx`](file:///d:/FPT/FPT_Ky9/SEP490/PhanMen/Code/MT_GRMS_FRONTEND/src/features/pos/pages/InvoiceManagementPage.tsx):
+1. `cashierName` trong modal thu nợ MUST lấy từ thông tin người dùng đang đăng nhập (`user?.fullName`), không hardcode tên cũ.
+2. Khi thu nợ bằng tiền mặt (`method == 'CASH'`), hệ thống MUST ghi nhận số tiền thu nợ này vào ca làm việc đang mở của thu ngân đang trực quầy (`ShiftCashMovement` loại `IN`, danh mục `DEBT_COLLECTION` hoặc tăng `activeShift.TotalCashIn`, `activeShift.ExpectedCash`), đảm bảo tiền kiểm đếm thực tế của ca khớp 100% khi chốt ca mà không ảnh hưởng tới người lập đơn ban đầu.
+
+#### Scenario: Thu ngân ca sau thu nợ tiền mặt của đơn hàng do thu ngân ca trước tạo
+- **GIVEN** Hóa đơn HD001 được tạo bởi "Thu ngân A" với số tiền nợ 500.000 đ. Nay "Thu ngân B" đang trực ca mở.
+- **WHEN** Thu ngân B thực hiện thu nợ 500.000 đ tiền mặt cho hóa đơn HD001.
+- **THEN** Sổ nợ của khách được trừ 500.000 đ; Hóa đơn lưu bản ghi thu nợ với người thu là "Thu ngân B"; ca mở của Thu ngân B được ghi nhận phiếu thu tiền mặt 500.000 đ; hóa đơn gốc vẫn giữ nguyên người tạo là "Thu ngân A".
