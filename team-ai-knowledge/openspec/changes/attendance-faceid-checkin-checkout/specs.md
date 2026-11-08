@@ -67,7 +67,7 @@ Hệ thống MUST cung cấp giao diện cho phép Chủ cửa hàng (Store Owne
    - Cho phép điều chỉnh giờ vào/ra thực tế.
    - **Quy tắc giờ mặc định:** Nếu Chủ cửa hàng để trống giờ vào và ra, hệ thống MUST tự động gán mặc định khớp chính xác với giờ kế hoạch của ca ban đầu (`CheckInTime = PlannedStartTime`, `CheckOutTime = PlannedEndTime`).
    - Nếu ca qua đêm (`IsCheckInNextDay = true` hoặc giờ ra nhỏ hơn giờ vào), hệ thống tự động cộng thêm 1 ngày cho giờ ra ca.
-   - Ghi nhận `Status = ScheduleStatus.Completed`, `ApprovalType = "WORKING"`, `CheckInMethod = CheckOutMethod = "MANUAL"`.
+   - Ghi nhận `Status = ScheduleStatus.Completed`, `ApprovalType = "WORKING"`, `CheckInMethod = CheckOutMethod = "MANUAL"`. Kích hoạt ngay lập tức quyền mở POS cho nhân viên.
 2. **Tiêu chí Nghỉ phép hưởng lương (`PaidLeave`):**
    - Áp dụng khi nhân viên nghỉ phép năm, việc riêng có lương.
    - `CheckInTime = null`, `CheckOutTime = null`, `LateMinutes = 0`.
@@ -81,13 +81,7 @@ Hệ thống MUST cung cấp giao diện cho phép Chủ cửa hàng (Store Owne
 - **THEN**:
   - Hệ thống tự động gán `CheckInTime` ứng với 06:00 và `CheckOutTime` ứng với 14:00 ngày làm việc.
   - `ActualWorkHours` tự động ghi nhận bằng `8.00` giờ, `Status = Completed`, `ApprovalType = "WORKING"`.
-
-#### Scenario: Chủ cửa hàng chấm nghỉ phép hưởng lương
-- **GIVEN**: Ca làm việc có thời lượng định mức `DurationHours = 8.0`.
-- **WHEN**: Chủ cửa hàng chọn tiêu chí "Nghỉ phép hưởng lương" và lưu.
-- **THEN**:
-  - `ActualWorkHours` MUST bằng `8.00` giờ, `Status = Completed`, `ApprovalType = "PAID_LEAVE"`.
-  - Ca này được bảo toàn tính vào ngày công hưởng lương `PaidLeaveDays` trong bảng lương tháng.
+  - Mở khóa cho nhân viên mở ca POS ngay lập tức.
 
 ---
 
@@ -117,6 +111,20 @@ Trường hợp chi nhánh chưa từng cấu hình `BranchAttendancePolicy` (`p
 
 ---
 
+### Requirement: REQ-ATT-06 Cơ chế Xử lý Mở ca POS khi FaceID gặp Sự cố
+Hệ thống MUST cung cấp 2 giải pháp xử lý khi nhân viên gặp sự cố FaceID (camera hỏng, ánh sáng yếu, không khớp mặt $< 85\%$) để đảm bảo không bị nghẽn quầy bán hàng:
+1. **Xử lý nhanh qua Chủ cửa hàng (Tức thì - Realtime):** Nhân viên báo Chủ cửa hàng $\rightarrow$ Chủ mở Bảng chấm công trên điện thoại bấm [Chấm công] tiêu chí "Đi làm" $\rightarrow$ `CheckInTime` được cập nhật $\rightarrow$ Giao diện POS tự động nhận diện và mở khóa quyền [Mở phiên thu ngân] ngay lập tức.
+2. **Gửi Đơn báo sự cố chấm công trực tiếp từ Popup FaceID:** Nếu Chủ không online, popup FaceID hiển thị nút **[Báo sự cố chấm công]** $\rightarrow$ Nhân viên gửi đơn giải trình đính kèm ảnh chụp hiện trường $\rightarrow$ Chủ duyệt đơn $\rightarrow$ Ca chuyển `Completed`/`InShift` và mở khóa phiên POS.
+
+#### Scenario: Khách hàng đang đứng chờ thanh toán khi Camera POS bị lỗi
+- **GIVEN**: Nhân viên E đến ca lúc 07:00, camera POS bị mất kết nối không thể quét FaceID. Khách hàng đã xếp hàng chờ tính tiền.
+- **WHEN**: Nhân viên E gọi điện cho Chủ cửa hàng. Chủ cửa hàng mở Web quản lý trên smartphone, chọn ca của Nhân viên E và bấm [Lưu thiết lập] chấm công Đi làm (mất 5 giây).
+- **THEN**:
+  - `CheckInTime` của Nhân viên E được ghi nhận ngay lập tức trên hệ thống.
+  - Màn hình POS tự động refresh trạng thái, nút [Mở phiên thu ngân] chuyển sang màu xanh cho phép mở ca bán hàng ngay lập tức cho khách.
+
+---
+
 ## Acceptance checklist
 
 - [ ] REQ-ATT-01: Điểm danh vào ca FaceID phản hồi $\le 1.0$ giây, yêu cầu liveness chớp mắt thật.
@@ -128,3 +136,4 @@ Trường hợp chi nhánh chưa từng cấu hình `BranchAttendancePolicy` (`p
 - [ ] REQ-ATT-03: Chấm công thủ công tiêu chí "Nghỉ phép hưởng lương" bảo toàn đủ `ActualWorkHours = DurationHours`, loại `PAID_LEAVE`.
 - [ ] REQ-ATT-04: Đăng ký thành công vector 128 số thực `FaceDescriptor` cho nhân viên.
 - [ ] REQ-ATT-05: Fallback êm khi chưa có policy chi nhánh, không văng lỗi 500, tính dung sai = 0.
+- [ ] REQ-ATT-06: Cơ chế mở POS khi FaceID lỗi hỗ trợ cả 2 cách: Chủ chấm nhanh từ xa (tức thì 5s) và Gửi đơn báo sự cố chấm công từ popup FaceID.
