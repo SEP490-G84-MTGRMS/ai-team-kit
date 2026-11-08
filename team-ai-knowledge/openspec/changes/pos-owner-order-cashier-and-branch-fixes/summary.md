@@ -15,3 +15,7 @@ Duyệt review/skeptic.md và tasks.md (6 tasks T1-T6 tuần tự từ DB, Domai
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:20
 
 Duyệt bước Apply: Hoàn thành 6/6 tasks, thêm CashierName vào Order entity & OrderResponse, sửa dropdown POS Header ẩn lịch sử ca cho Owner, sửa tên chi nhánh động và xem đơn hàng toàn chuỗi, loại bỏ fallback user.fullName.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:21
+
+Duyệt test-report.md: verdict PASS, 571/571 backend tests pass, frontend build 0 errors, toàn bộ 4 vấn đề đã được kiểm chứng thành công.
