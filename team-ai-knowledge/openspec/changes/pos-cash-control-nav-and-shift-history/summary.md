@@ -7,3 +7,7 @@ User duyệt proposal: chuyển hạn mức chi két sang Cài đặt & Thiết 
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 06:36
 
 User duyệt brainstorm: phương án chuyển hạn mức chi két sang Cài đặt & Thiết lập, thêm button Lịch sử giao ca tại Lịch làm việc, tinh gọn POS shift kết nối Backend API và viết unit test.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 06:37
+
+User duyệt verify-spec: skeptic review chấp nhận và kế hoạch 8 tasks sẵn sàng triển khai.
