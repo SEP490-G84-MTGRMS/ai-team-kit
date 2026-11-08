@@ -134,3 +134,179 @@ Hệ thống **MUST** kiểm tra vai trò của người dùng hiện tại thô
    - `Product.DefaultPurchasePrice`: Alias `[NotMapped]` trỏ về `CostPrice` (giá mua tham khảo mặc định khi lập PO).
    - `ProductUnit.SellingPrice`: Alias `[NotMapped]` trỏ về `Price` (giá bán cơ bản theo đơn vị quy đổi).
 
+---
+## Requirements Sáp Nhập Từ Các Change Con
+
+<!-- Sáp nhập từ change: product-unit-crud -->
+# Specs: product-unit-crud
+
+## API / Contract
+| Method | Path | Request Body | Response Body | Error Codes |
+|---|---|---|---|---|
+| GET | `/api/v1/products/{productId}/units` | — | `200 OK`: `ApiResponse<IReadOnlyList<ProductUnitResponse>>` | `404 Not Found` (Sản phẩm không tồn tại) |
+| GET | `/api/v1/product-units/{id}` | — | `200 OK`: `ApiResponse<ProductUnitResponse>` | `404 Not Found` (Đơn vị không tồn tại) |
+| POST | `/api/v1/products/{productId}/units` | `ProductUnitCreateRequest` | `201 Created`: `ApiResponse<ProductUnitResponse>` | `400 Bad Request` (Tỷ lệ $\le 0$, tên rỗng, trùng tên), `404 Not Found`, `409 Conflict` (Trùng barcode) |
+| PUT | `/api/v1/product-units/{id}` | `ProductUnitUpdateRequest` | `200 OK`: `ApiResponse<ProductUnitResponse>` | `400 Bad Request`, `404 Not Found`, `409 Conflict` |
+| DELETE | `/api/v1/product-units/{id}` | — | `200 OK`: `ApiResponse<object>` | `400 Bad Request` (Không thể xóa đơn vị cơ bản duy nhất), `404 Not Found` |
+
+---
+
+## ADDED Requirements
+
+### Requirement: REQ-UNIT-01 Truy vấn danh sách đơn vị quy đổi theo sản phẩm
+Hệ thống **MUST** cung cấp endpoint `GET /api/v1/products/{productId}/units` trả về toàn bộ các đơn vị tính của sản phẩm thuộc Tenant hiện tại. Danh sách **SHALL** được sắp xếp ưu tiên đơn vị cơ bản (`IsBaseUnit == true`) lên trước, sau đó theo tỷ lệ quy đổi tăng dần.
+
+#### Scenario: Lấy danh sách đơn vị của sản phẩm thành công
+- **GIVEN** Sản phẩm "Bia Heineken" có 3 đơn vị: Lon (cơ bản, tỷ lệ 1), Lốc 6 (tỷ lệ 6), Thùng 24 (tỷ lệ 24)
+- **WHEN** Gửi request `GET /api/v1/products/{productId}/units`
+- **THEN** Hệ thống phản hồi HTTP 200 với mảng 3 đơn vị, đơn vị Lon đứng đầu tiên.
+
+#### Scenario: Truy vấn với sản phẩm không tồn tại
+- **GIVEN** `productId` không tồn tại trong hệ thống hoặc thuộc tenant khác
+- **WHEN** Gửi request `GET /api/v1/products/{productId}/units`
+- **THEN** Hệ thống MUST trả về HTTP 404 Not Found.
+
+---
+
+### Requirement: REQ-UNIT-02 Thêm mới đơn vị tính quy đổi cho sản phẩm
+Hệ thống **MUST** cung cấp endpoint `POST /api/v1/products/{productId}/units` để tạo đơn vị tính mới.
+- Hệ thống **MUST** kiểm tra `ConversionRate > 0` và `Price >= 0`.
+- Hệ thống **MUST** kiểm tra không được trùng `UnitName` với các đơn vị đã có của sản phẩm.
+- Nếu đơn vị mới được đặt `IsBaseUnit = true`, hệ thống **MUST** gán `ConversionRate = 1.0` và tự động cập nhật đơn vị cơ bản cũ về `IsBaseUnit = false`.
+
+#### Scenario: Thêm thành công đơn vị "Thùng 24"
+- **GIVEN** Sản phẩm "Nước ngọt Coca" đã có đơn vị cơ bản "Chai"
+- **WHEN** Gửi `POST /api/v1/products/{productId}/units` với `{ UnitName: "Thùng 24", ConversionRate: 24, Price: 220000, Barcode: "893500123456" }`
+- **THEN** Hệ thống phản hồi HTTP 201 Created kèm dữ liệu đơn vị vừa tạo.
+
+#### Scenario: Thêm đơn vị có tỷ lệ quy đổi không hợp lệ
+- **GIVEN** Người dùng nhập `ConversionRate = 0` hoặc âm
+- **WHEN** Gửi `POST /api/v1/products/{productId}/units`
+- **THEN** Hệ thống MUST trả về HTTP 400 Bad Request với thông báo lỗi: "Tỷ lệ quy đổi phải lớn hơn 0."
+
+#### Scenario: Thêm đơn vị trùng tên đã tồn tại trong cùng sản phẩm
+- **GIVEN** Sản phẩm đã có đơn vị "Lốc 6"
+- **WHEN** Gửi `POST` tạo đơn vị mới cũng có tên "lốc 6" (không phân biệt hoa thường)
+- **THEN** Hệ thống MUST trả về HTTP 400 Bad Request với thông báo: "Đơn vị tính này đã tồn tại cho sản phẩm."
+
+---
+
+### Requirement: REQ-UNIT-03 Cập nhật thông tin đơn vị tính quy đổi
+Hệ thống **MUST** cung cấp endpoint `PUT /api/v1/product-units/{id}` để cập nhật thông tin đơn vị tính (`UnitName`, `ConversionRate`, `Price`, `Barcode`, `IsBaseUnit`).
+
+#### Scenario: Cập nhật giá bán và mã vạch của đơn vị tính
+- **GIVEN** Đơn vị "Thùng 24" đang có giá bán 220,000 đ
+- **WHEN** Gửi `PUT /api/v1/product-units/{id}` với giá mới 230,000 đ
+- **THEN** Hệ thống phản hồi HTTP 200 OK với giá bán mới đã được cập nhật.
+
+#### Scenario: Cập nhật trùng tên với một đơn vị khác của cùng sản phẩm
+- **GIVEN** Sản phẩm có 2 đơn vị: "Chai" (Id 1) và "Két 20" (Id 2)
+- **WHEN** Gửi `PUT /api/v1/product-units/{id2}` đổi tên thành "Chai"
+- **THEN** Hệ thống MUST trả về HTTP 400 Bad Request báo lỗi trùng lặp tên đơn vị.
+
+---
+
+### Requirement: REQ-UNIT-04 Xóa đơn vị tính quy đổi
+Hệ thống **MUST** cung cấp endpoint `DELETE /api/v1/product-units/{id}` để xóa đơn vị tính.
+- Hệ thống **MUST** từ chối xóa nếu đơn vị đó có `IsBaseUnit == true` và là đơn vị duy nhất còn lại của sản phẩm.
+
+#### Scenario: Xóa thành công đơn vị quy đổi phụ
+- **GIVEN** Sản phẩm có đơn vị cơ bản "Lon" và đơn vị phụ "Thùng 24"
+- **WHEN** Gửi `DELETE /api/v1/product-units/{thung24Id}`
+- **THEN** Hệ thống xóa đơn vị khỏi database và phản hồi HTTP 200 OK.
+
+#### Scenario: Từ chối xóa đơn vị cơ bản duy nhất
+- **GIVEN** Sản phẩm chỉ có duy nhất 1 đơn vị tính là đơn vị cơ bản "Gói"
+- **WHEN** Gửi `DELETE /api/v1/product-units/{goiId}`
+- **THEN** Hệ thống MUST trả về HTTP 400 Bad Request với thông báo: "Không thể xóa đơn vị tính cơ bản duy nhất của sản phẩm."
+
+---
+
+## Acceptance checklist
+- [ ] Interface `IProductUnitRepository` và class `ProductUnitRepository` được đăng ký DI trong Infrastructure.
+- [ ] Interface `IProductUnitService` và class `ProductUnitService` được triển khai với đầy đủ 5 phương thức CRUD.
+- [ ] Controller `ProductUnitsController` (hoặc endpoints trong `ProductsController`) xử lý chuẩn xác 5 APIs:
+  - `GET /api/v1/products/{productId}/units`
+  - `GET /api/v1/product-units/{id}`
+  - `POST /api/v1/products/{productId}/units`
+  - `PUT /api/v1/product-units/{id}`
+  - `DELETE /api/v1/product-units/{id}`
+- [ ] Mọi ràng buộc nghiệp vụ (tỷ lệ $> 0$, giá $\ge 0$, tên đơn vị duy nhất theo sản phẩm, bảo vệ đơn vị cơ bản) được kiểm chứng qua Unit Tests.
+- [ ] 100% test cases pass, build solution không có lỗi.
+
+
+<!-- Sáp nhập từ change: auto-generate-catalog-codes -->
+# Specification: Tự động sinh mã tuần tự cho Category và Product
+
+## Capability Summary
+Cung cấp cơ chế tự động sinh mã tuần tự dạng `CAT000001`, `CAT000002`... cho Nhóm hàng (Category) và `SP000001`, `SP000002`... cho Sản phẩm (Product) khi người dùng để trống mã lúc tạo mới. Cho phép để trống `Barcode` (`null`) nếu người dùng không quét hoặc không nhập mã vạch, đảm bảo tính nhất quán, phân tách đa người thuê (Multi-tenancy) và không xung đột mã.
+
+## Architecture Map
+- **Frontend**: Màn hình tạo Nhóm hàng (`CategoryModal`) / Màn hình tạo Sản phẩm (`ProductFormModal`) gửi payload tạo mới với trường mã để trống (`null` hoặc `""`).
+- **Backend API**:
+  - `POST /api/v1/categories` -> `CategoryService.CreateAsync` -> `CategoryRepository.GetMaxSequentialCodeAsync` -> Database PostgreSQL.
+  - `POST /api/v1/products` -> `CatalogService.CreateProductAsync` -> `ProductRepository.GetMaxSequentialCodeAsync` -> Database PostgreSQL.
+
+---
+
+## MODIFIED Requirements
+
+### Requirement: REQ-CAT-01 Tự động sinh mã tuần tự cho Nhóm hàng
+Khi người dùng tạo mới một Nhóm hàng mà không cung cấp mã (`request.Code` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** tự động sinh mã theo định dạng `CAT{number:D6}` với số thứ tự tăng dần bắt đầu từ `CAT000001`. Nếu người dùng cung cấp mã hợp lệ, hệ thống **MUST** chuẩn hóa `Trim().ToUpper()` và lưu đúng mã đó.
+
+#### Scenario: Tạo nhóm hàng đầu tiên khi chưa có nhóm hàng nào
+**GIVEN** Trong hệ thống của Tenant hiện tại chưa có nhóm hàng nào có mã dạng `CAT{number}`  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/categories` với `Name = "Bánh kẹo"` và `Code = ""`  
+**THEN** Hệ thống tạo mới nhóm hàng thành công với `CategoryCode = "CAT000001"`
+
+#### Scenario: Tạo nhóm hàng tiếp theo tự động tăng tuần tự
+**GIVEN** Trong hệ thống của Tenant hiện tại đã có nhóm hàng với mã `CAT000001`  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/categories` với `Name = "Nước giải khát"` và `Code = null`  
+**THEN** Hệ thống tạo mới nhóm hàng thành công với `CategoryCode = "CAT000002"`
+
+#### Scenario: Tạo nhóm hàng với mã tùy chỉnh của người dùng
+**GIVEN** Người dùng muốn đặt mã nhóm hàng theo quy ước riêng  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/categories` với `Name = "Gia vị"` và `Code = "gia-vi-nhap-khau"`  
+**THEN** Hệ thống lưu nhóm hàng với `CategoryCode = "GIA-VI-NHAP-KHAU"` mà không ghi đè mã tự sinh
+
+#### Scenario: Phòng chống xung đột mã tuần tự đã tồn tại (Collision Prevention)
+**GIVEN** Trong hệ thống đã tồn tại mã `CAT000001` do người dùng tự nhập thủ công từ trước  
+**WHEN** Người dùng tạo mới nhóm hàng bỏ trống mã  
+**THEN** Hệ thống phát hiện `CAT000001` đã tồn tại và tự động cấp mã tiếp theo không bị trùng là `CAT000002`
+
+---
+
+### Requirement: REQ-PROD-01 Tự động sinh mã tuần tự cho Sản phẩm & Cho phép Barcode là null
+Khi người dùng tạo mới một Sản phẩm mà không cung cấp mã sản phẩm (`request.ProductCode` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** tự động sinh mã theo định dạng `SP{number:D6}` với số thứ tự tăng dần bắt đầu từ `SP000001`. 
+Đồng thời, nếu người dùng không nhập mã vạch (`request.Barcode` là `null`, chuỗi rỗng hoặc chỉ chứa khoảng trắng), hệ thống **MUST** lưu giá trị `Barcode` là `null` (không bắt buộc và không tự gán bằng ProductCode). Nếu người dùng có nhập mã vạch, hệ thống **MUST** kiểm tra tính duy nhất của mã vạch đó.
+
+#### Scenario: Tạo sản phẩm đầu tiên khi chưa có sản phẩm nào và không nhập Barcode
+**GIVEN** Trong hệ thống của Tenant hiện tại chưa có sản phẩm nào có mã dạng `SP{number}`  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Sữa đặc Ông Thọ"`, `ProductCode = ""` và `Barcode = ""`  
+**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000001"` và `Barcode = null`
+
+#### Scenario: Tạo sản phẩm tiếp theo tự động tăng tuần tự và không nhập Barcode
+**GIVEN** Trong hệ thống của Tenant hiện tại đã có sản phẩm với mã `SP000001`  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `Name = "Bánh mì hoa cúc"`, `ProductCode = null` và `Barcode = null`  
+**THEN** Hệ thống tạo mới sản phẩm thành công với `ProductCode = "SP000002"` và `Barcode = null`
+
+#### Scenario: Tạo sản phẩm bỏ trống mã nhưng có quét Barcode riêng
+**GIVEN** Người dùng quét mã vạch trên bao bì sản phẩm là `893850123456` nhưng không nhập mã quản lý nội bộ  
+**WHEN** Người dùng gửi yêu cầu `POST /api/v1/products` với `ProductCode = null` và `Barcode = "893850123456"`  
+**THEN** Hệ thống tạo mới sản phẩm với `ProductCode = "SP000003"` và `Barcode = "893850123456"`
+
+#### Scenario: Phân tách độc lập theo Tenant (Tenant Isolation)
+**GIVEN** Cửa hàng Tenant A đã tạo 10 sản phẩm (mã cao nhất là `SP000010`)  
+**WHEN** Cửa hàng Tenant B (cửa hàng mới) tạo sản phẩm đầu tiên bỏ trống mã  
+**THEN** Hệ thống cấp mã cho Tenant B là `SP000001`, hoàn toàn độc lập với Tenant A
+
+---
+
+## Acceptance Checklist
+- [ ] Bổ sung `GetMaxSequentialCodeAsync` vào `ICategoryRepository` và `CategoryRepository`.
+- [ ] Bổ sung `GetMaxSequentialCodeAsync` vào `IProductRepository` và `ProductRepository`.
+- [ ] Cập nhật `CategoryService.CreateAsync` sinh mã `CAT000001`, `CAT000002`... khi bỏ trống mã.
+- [ ] Cập nhật `CatalogService.CreateProductAsync` sinh mã `SP000001`, `SP000002`... khi bỏ trống mã; và lưu `Barcode = null` nếu bỏ trống mã vạch.
+- [ ] Cấu hình EF Core `ProductConfiguration`: Cho phép `Barcode` là nullable và tạo migration `MakeProductBarcodeNullable`.
+- [ ] Viết Unit Tests bao phủ cả 2 Service cho các kịch bản mã đầu tiên, mã tuần tự, mã nhập tay, và barcode null.
+- [ ] Chạy `dotnet test` đạt 100% passed toàn bộ solution.

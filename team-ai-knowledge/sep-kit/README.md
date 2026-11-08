@@ -10,13 +10,13 @@ Cuối mỗi bước, agent dừng lại hỏi **Approve / Reject** — chỉ kh
 | 3 | `/sep-verify-spec` | Verify Spec | `review/skeptic.md`, `tasks.md` | đủ file, tasks có checklist + Approve |
 | 4 | `/sep-apply` | Apply | code + tick `tasks.md` | mọi task `- [x]` + Approve |
 | 5 | `/sep-test` | Test | `test-report.md` | `verdict: PASS` + Approve |
-| 6 | `/sep-archive` | Archive | merge `specs.md` → `openspec/specs/<capability>/spec.md` | `.status = archived` |
+| 6 | `/sep-archive` | Archive | đổi `.status` + rename folder `-archived-YYYY-MM-DD` | **không** merge `openspec/specs/` |
 
 Lệnh ngoài pipeline:
 
 | Lệnh | Việc |
 |---|---|
-| `/sep-refactor <mô tả>` | Tìm đúng capability + REQ trong `openspec/specs/`, confirm, merge delta. **Không tạo change.** |
+| `/sep-refactor <mô tả>` | Tìm đúng **change** trong `openspec/changes/`, confirm, merge delta vào `specs.md` của change. **Không tạo change mới, không ghi openspec/specs/.** |
 | `/sep-status` | Change đang làm, bước hiện tại, việc tiếp theo (`sep_chon_change` để đổi). |
 
 **Chỉ `/sep-spec` được gọi `sep_tao_change`.** Chat thường không tự tạo change.

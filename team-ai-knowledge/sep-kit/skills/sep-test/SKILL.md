@@ -73,10 +73,19 @@ tester: '@username'
 
    `verdict: PASS` chỉ khi **mọi** Scenario pass. Có cái fail → `verdict: FAIL`.
 6. FAIL → báo lỗi, sửa code (quay lại `/sep-apply` nếu cần thêm task), chạy lại test và lưu lại test-report.md đến khi PASS.
-7. **Đồng bộ Google Sheets (Tùy chọn)**:
-   - Sau khi `test-report.md` đạt `verdict: PASS`, hỏi user:
+7. **Đồng bộ Google Sheets & Xuất File Excel Kiểm thử Từng màn hình (.xlsx)**:
+   - **Tài liệu kiểm thử từng màn hình (FPT SEP490 Standard)**:
+     Toàn bộ tài liệu kiểm thử được tổ chức theo từng màn hình UI (40 màn hình) tại thư mục `ai-team-kit/test_documents/screens/` và 5 tập Master Report (`Report-5.1_Unit_Test_Master.xlsx` -> `Report-5.5_Acceptance_Test_Scripts_Master.xlsx`).
+     Mỗi file màn hình tuân thủ tuyệt đối biểu mẫu chuẩn FPT với 7 Sheet: `Cover`, `Test Statistics`, `5.1 - Unit Test`, `5.2 - Integration Test`, `5.3 - System Test FRs`, `5.4 - Security & NFRs`, `5.5 - Acceptance Test`.
+     Để sinh hoặc cập nhật toàn bộ tài liệu kiểm thử từng màn hình, chạy lệnh:
+     ```powershell
+     python "ai-team-kit/team-ai-knowledge/scripts/generate_screen_test_docs.py"
+     ```
+     (Xem chi tiết tại skill `test-document-generator` và file tra cứu `ai-team-kit/test_documents/INDEX.md`).
+   - **Đồng bộ Google Sheets trực tuyến (Tùy chọn)**:
+     Sau khi `test-report.md` đạt `verdict: PASS`, hỏi user:
      *"Bạn có muốn đồng bộ kết quả kiểm thử này lên Google Sheet không? Hãy chọn các report cần điền (VD: chỉ 5.1 & 5.3, hoặc cả 5 file, hoặc bỏ qua)."*
-   - Nếu user chọn -> gọi tool `sep_dong_bo_test_sheet({ reportTypes: [...] })` để tự động cập nhật/upsert lên các file Google Sheets tương ứng.
+     Nếu user chọn -> gọi tool `sep_dong_bo_test_sheet({ reportTypes: [...] })` để tự động cập nhật/upsert lên các file Google Sheets tương ứng.
 8. **Gate** (chỉ khi PASS): tóm tắt số scenario pass, lệnh đã chạy, kết quả đồng bộ Sheet (nếu có); hỏi "Approve hay Reject?".
    Reject → xử lý, `sep_duyet_buoc` (`reject`, lý do), hỏi lại. Approve → `sep_duyet_buoc` (`buoc: "test"`, `approve`, `tomTat`, `caiTien`).
 

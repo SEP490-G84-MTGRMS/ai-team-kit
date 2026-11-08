@@ -13,3 +13,15 @@
 ## Test
 - [x] T9 — Kiểm thử tương tác giao diện: Responsive layout, 5 thẻ KPI, lọc chi nhánh, ngành hàng, tìm kiếm từ khóa, drawer lô date và in báo cáo (REQ-01..06)
 - [x] T10 — Kiểm tra TypeScript build (`npm run build`) và lint để đảm bảo 0 lỗi biên dịch.
+
+## Tasks Sáp Nhập Từ Các Change Con
+
+<!-- Tasks sáp nhập từ: inventory-dashboard -->
+# Tasks: Inventory Dashboard
+
+- [x] T1 — Thêm index `(BranchId, ExpiryDate)` trên `ProductBatches`
+- [x] T2 — `InventoryDashboardQuery` + handler (filter `TenantId`, `BranchId`)
+- [x] T3 — Endpoint `GET /api/inventory/dashboard`
+- [x] T4 — Script seed 50k lô cho dev
+- [ ] T5 — Trang React: KPI cards + chart + table
+- [ ] T6 — Test: đổi chi nhánh, màu cảnh báo HSD, đo thời gian phản hồi

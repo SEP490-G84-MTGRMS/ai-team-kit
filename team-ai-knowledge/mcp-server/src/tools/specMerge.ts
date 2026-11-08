@@ -144,7 +144,7 @@ export function mergeDeltaSpec(
   const content = [
     `# Spec: ${ctx.capability}`,
     '',
-    '> Spec gốc của capability. Cập nhật qua `/sep-archive` (merge từ change) hoặc `/sep-refactor` (merge delta trực tiếp).',
+    '> Spec gốc / seed của capability. Delta nghiệp vụ nằm trong `openspec/changes/<change>/specs.md`. `/sep-archive` không merge vào đây; `/sep-refactor` sửa specs của change.',
     '',
     '## Requirements',
     '',

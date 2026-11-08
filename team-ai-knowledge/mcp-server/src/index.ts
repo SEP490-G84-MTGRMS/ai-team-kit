@@ -566,12 +566,18 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         }
 
         case 'sep_tim_requirement': {
-          const p = args as { capability: string; query: string };
+          const p = args as { tenChange?: string; capability?: string; query: string };
           return { content: [{ type: 'text' as const, text: await sep.handleTimRequirement(p) }] };
         }
 
         case 'sep_cap_nhat_capability': {
-          const p = args as { capability: string; delta: string; tomTat: string; reqsDaChot?: string[] };
+          const p = args as {
+            tenChange?: string;
+            capability?: string;
+            delta: string;
+            tomTat: string;
+            reqsDaChot?: string[];
+          };
           return { content: [{ type: 'text' as const, text: await sep.handleCapNhatCapability(p) }] };
         }
 

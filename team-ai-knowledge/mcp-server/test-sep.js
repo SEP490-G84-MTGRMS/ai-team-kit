@@ -137,25 +137,43 @@ await test('test-report thiếu verdict bị chặn; FAIL chưa cho archive', as
   await rejects(sep.handleChuyenTrangThai({ trangThai: 'archived' }), /Test chưa xong|verdict/);
 });
 
-await test('PASS + duyệt test → archive merge spec gốc', async () => {
+await test('PASS + duyệt test → archive đổi tên folder, không merge specs', async () => {
   await save('test-report.md', '---\nverdict: PASS\n---\n# R');
   await rejects(sep.handleChuyenTrangThai({ trangThai: 'archived' }), /chưa được duyệt/);
   await approve('test');
+  const beforeSpec = read('openspec/specs/supplier/spec.md');
   const out = await sep.handleChuyenTrangThai({ trangThai: 'archived' });
-  assert.match(out, /openspec\/specs\/supplier\/spec\.md`: \+2 ~0 -0/);
-  const spec = read('openspec/specs/supplier/spec.md');
-  assert.match(spec, /REQ-01 Tạo nhà cung cấp/);
-  assert.ok(commits.at(-1).files.includes('openspec/specs/supplier/spec.md'));
+  assert.match(out, /archived-/);
+  assert.match(out, /Không.*merge/i);
+  assert.equal(read('openspec/specs/supplier/spec.md'), beforeSpec);
+  assert.ok(!fs.existsSync(path.join(tmp, 'openspec/changes/supplier-crud/.session.md')));
+  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/changes')).filter((d) => d.startsWith('supplier-crud-archived-'));
+  assert.equal(archivedDirs.length, 1);
+  assert.ok(fs.existsSync(path.join(tmp, 'openspec/changes', archivedDirs[0], '.status')));
+  assert.equal(fs.readFileSync(path.join(tmp, 'openspec/changes', archivedDirs[0], '.status'), 'utf8').trim(), 'archived');
 });
 
-await test('change thứ 2 cùng capability: MODIFIED + REMOVED cộng dồn', async () => {
+await test('mergeDeltaSpec: MODIFIED + REMOVED trên base có sẵn', async () => {
+  const base = `# Spec: supplier
+
+## Requirements
+
+### Requirement: REQ-01 Tạo nhà cung cấp
+Hệ thống MUST tạo nhà cung cấp.
+
+### Requirement: REQ-02 Xoá nhà cung cấp
+Hệ thống MUST xoá mềm.
+
+## Lịch sử
+- 2026-09-01 · \`supplier-crud\` · +2 ~0 -0
+`;
   const delta = `## MODIFIED Requirements
 ### Requirement: REQ-01 Tạo nhà cung cấp
 Hệ thống MUST tạo nhà cung cấp và kiểm tra trùng mã số thuế.
 ## REMOVED Requirements
 ### Requirement: REQ-02 Xoá nhà cung cấp
 `;
-  const r = mergeDeltaSpec(read('openspec/specs/supplier/spec.md'), delta, { capability: 'supplier', change: 'supplier-tax', date: '2026-10-01' });
+  const r = mergeDeltaSpec(base, delta, { capability: 'supplier', change: 'supplier-tax', date: '2026-10-01' });
   assert.deepEqual([r.added.length, r.modified.length, r.removed.length], [0, 1, 1]);
   assert.match(r.content, /mã số thuế/);
   assert.doesNotMatch(r.content, /REQ-02/);
@@ -164,7 +182,11 @@ Hệ thống MUST tạo nhà cung cấp và kiểm tra trùng mã số thuế.
   assert.equal(r.warnings.length, 0);
 });
 
-await test('archived → không sửa artifact', () => rejects(save('specs.md', '# x', 'supplier-crud'), /đã archive/));
+await test('archived → không sửa artifact', async () => {
+  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/changes')).filter((d) => d.startsWith('supplier-crud-archived-'));
+  assert.equal(archivedDirs.length, 1);
+  await rejects(save('specs.md', '# x', archivedDirs[0]), /đã archive/);
+});
 
 await test('schema bug-fix: không cần + không nhận design-brief', async () => {
   await sep.handleTaoChange({
@@ -244,29 +266,31 @@ await test('sep_lui_buoc lùi về bước trước và reset cổng duyệt', a
 await test('sep_tao_change thiếu capability bị chặn', () =>
   rejects(sep.handleTaoChange({ moTa: 'không có cap', tenChange: 'no-cap' }), /Thiếu `capability`/));
 
-await test('sep_tim_capability tìm supplier theo query', async () => {
-  const out = await sep.handleTimCapability({ query: 'nha cung cap tao' });
-  assert.match(out, /`supplier`/);
-  assert.match(out, /openspec\/specs\/supplier\/spec\.md/);
+await test('sep_tim_capability tìm change theo query', async () => {
+  const out = await sep.handleTimCapability({ query: 'tax-bug thue' });
+  assert.match(out, /`tax-bug`/);
+  assert.match(out, /openspec\/changes\/tax-bug\/specs\.md/);
 });
 
 await test('sep_tim_capability 0 match', async () => {
-  const out = await sep.handleTimCapability({ query: 'xyzzy-khong-co-capability-nao' });
+  const out = await sep.handleTimCapability({ query: 'xyzzy-khong-co-change-nao' });
   assert.match(out, /Không tìm thấy/);
 });
 
-await test('sep_cap_nhat_capability merge delta', async () => {
+await test('sep_cap_nhat_capability merge delta vào change specs.md', async () => {
+  const beforeSpec = read('openspec/specs/supplier/spec.md');
   const out = await sep.handleCapNhatCapability({
-    capability: 'supplier',
-    tomTat: 'bo REQ demo',
-    reqsDaChot: ['REQ-01 Tạo nhà cung cấp'],
+    tenChange: 'tax-bug',
+    tomTat: 'sua REQ thue',
+    reqsDaChot: ['Thuế'],
     delta: `## MODIFIED Requirements
-### Requirement: REQ-01 Tạo nhà cung cấp
-Hệ thống MUST tạo nhà cung cấp (đã refactor).
+### Requirement: Thuế
+MUST đúng (đã refactor).
 `,
   });
-  assert.match(out, /Đã cập nhật spec gốc/);
-  assert.match(read('openspec/specs/supplier/spec.md'), /đã refactor/);
+  assert.match(out, /Đã cập nhật specs của change/);
+  assert.match(read('openspec/changes/tax-bug/specs.md'), /đã refactor/);
+  assert.equal(read('openspec/specs/supplier/spec.md'), beforeSpec);
 });
 
 fs.rmSync(tmp, { recursive: true, force: true });

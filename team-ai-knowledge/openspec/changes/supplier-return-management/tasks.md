@@ -16,7 +16,7 @@
 
 ## Frontend
 - [x] T1 — Xây dựng Types & API Client (`supplierReturn.types.ts`, `supplierReturnApi.ts`): Kết nối backend endpoints kèm fallback dữ liệu mẫu
-- [x] T2 — Xây dựng Màn hình Danh sách Phiếu Trả Hàng (`SupplierReturnListPage.tsx`): Bảng 10 cột, thẻ KPI tổng quan, thanh lọc đa tiêu chí, phân trang
+- [x] T2 — Xây dựng Màn hình Danh sách Phiếu Trả Hàng (`SupplierReturnListPage.tsx`): Bảng 10 cột, thanh lọc đa tiêu chí, phân trang (đã bỏ khối thẻ KPI tóm tắt để tinh giản UI)
 - [x] T3 — Xây dựng Màn hình Tạo Phiếu Trả Hàng (`SupplierReturnFormPage.tsx`): Chọn GRN gốc, bảng sản phẩm tính `AvailableReturnQty`, cảnh báo nhập quá số lượng, nhập lý do
 - [x] T4 — Xây dựng Màn hình Chi tiết Phiếu Trả Hàng (`SupplierReturnDetailPage.tsx`): Tiến trình trạng thái, Modal ghi nhận phản hồi NCC, Modal xác nhận bàn giao thực tế, Hủy phiếu
 - [x] T5 — Cập nhật `router.tsx` và `AppTopNav.tsx`: Đăng ký route `/store-owner/supplier-returns` và thêm mục menu "Trả hàng NCC"

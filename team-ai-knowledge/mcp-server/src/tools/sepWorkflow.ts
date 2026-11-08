@@ -6,7 +6,8 @@
  *   /sep-verify-spec  verify-spec  review/skeptic.md, tasks.md
  *   /sep-apply        apply        (mọi task trong tasks.md đã tick + .status >= apply)
  *   /sep-test         test         test-report.md (frontmatter verdict: PASS)
- *   /sep-archive      archived     (.status = archived) → merge specs.md vào openspec/specs/<capability>/spec.md
+ *   /sep-archive      archived     (.status = archived) + rename folder thêm `-archived-YYYY-MM-DD`
+ *                                 (KHÔNG merge vào openspec/specs/)
  *
  * Folder: openspec/changes/<change>/ — .status giữ key của bước hiện tại.
  * Gate (change tạo mới có `gate: true`): mỗi bước phải được user Approve (sep_duyet_buoc) trước khi sang bước sau.
@@ -96,7 +97,7 @@ export const SEP_STEPS: StepDef[] = [
     label: 'Archive',
     command: '/sep-archive',
     artifacts: [],
-    guide: 'Test PASS → sep_chuyen_trang_thai archived (tự merge specs.md vào openspec/specs/<capability>/spec.md), lưu bài học (luu_bai_hoc) nếu có.',
+    guide: 'Test PASS → sep_chuyen_trang_thai archived (đổi .status + đổi tên folder thêm `-archived-YYYY-MM-DD`, không merge vào openspec/specs/), lưu bài học (luu_bai_hoc) nếu có.',
   },
 ];
 
@@ -514,17 +515,34 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
   // ── Tool handlers ───────────────────────────────────────────────────────────
 
   async function listCapabilitySlugs(): Promise<string[]> {
-    const files = await provider.listFiles(SPECS_DIR, 'spec.md');
     const slugs = new Set<string>();
-    for (const f of files) {
-      const m = f.replace(/\\/g, '/').match(new RegExp(`^${SPECS_DIR}/([^/]+)/spec\\.md$`));
-      if (m && m[1] !== 'README') slugs.add(m[1]);
-    }
+    try {
+      const files = await provider.listFiles(SPECS_DIR, 'spec.md');
+      for (const f of files) {
+        const m = f.replace(/\\/g, '/').match(new RegExp(`^${SPECS_DIR}/([^/]+)/spec\\.md$`));
+        if (m && m[1] !== 'README') slugs.add(m[1]);
+      }
+    } catch {}
+    try {
+      const changeNames = await listChangeNames();
+      for (const ch of changeNames) {
+        const sess = await readSession(ch);
+        if (sess?.data?.capability) slugs.add(sess.data.capability);
+      }
+    } catch {}
     return [...slugs].sort();
   }
 
   async function capabilityExists(capability: string): Promise<boolean> {
-    return provider.fileExists(`${SPECS_DIR}/${capability}/spec.md`);
+    if (await provider.fileExists(`${SPECS_DIR}/${capability}/spec.md`)) return true;
+    try {
+      const changeNames = await listChangeNames();
+      for (const ch of changeNames) {
+        const sess = await readSession(ch);
+        if (sess?.data?.capability === capability) return true;
+      }
+    } catch {}
+    return false;
   }
 
   const QUERY_STOPWORDS = new Set([
@@ -607,7 +625,7 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
         `⛔ Capability \`${capSlug}\` chưa có trong \`openspec/specs/\`. ` +
           `Dùng capability có sẵn: ${existing.map((c) => `\`${c}\``).join(', ')} ` +
           'hoặc `/sep-spec` với `taoCapabilityMoi: true` nếu thật sự tạo capability mới. ' +
-          'Muốn sửa spec cũ → `/sep-refactor` (không tạo change).',
+          'Muốn sửa specs của change đang mở → `/sep-refactor` (không tạo change mới).',
       );
     }
 
@@ -627,11 +645,24 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
 
     await write(`${base(name)}/.session.md`, session);
     await write(`${base(name)}/.status`, 'spec\n');
+
+    const commitPaths = rel(name, ['.session.md', '.status']);
+    if (!exists && params.taoCapabilityMoi) {
+      const stubPath = `${SPECS_DIR}/${capSlug}/spec.md`;
+      const stub = mergeDeltaSpec(null, '', {
+        capability: capSlug,
+        change: name,
+        date: new Date().toISOString().slice(0, 10),
+      }).content;
+      await write(stubPath, stub);
+      commitPaths.push(stubPath);
+    }
+
     await options.activeStore?.set(name);
-    const git = await commit(rel(name, ['.session.md', '.status']), `sep(${name}): tạo change`);
+    const git = await commit(commitPaths, `sep(${name}): tạo change`);
     const note = exists
-      ? `Capability: \`${capSlug}\` (đã có spec gốc).`
-      : `Capability: \`${capSlug}\` (mới — sẽ tạo khi archive).`;
+      ? `Capability: \`${capSlug}\` (đã có stub/spec gốc).`
+      : `Capability: \`${capSlug}\` (mới — đã tạo stub \`${SPECS_DIR}/${capSlug}/spec.md\`).`;
     return reply(`✅ Đã tạo change \`${name}\` tại \`${base(name)}/\` (đang làm)\n${note}`, git, await summarize(name));
   }
 
@@ -646,13 +677,17 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
   }
 
   async function handleTimCapability(params: { query: string; limit?: number }): Promise<string> {
+    /** /sep-refactor: tìm OpenSpec **change** trong openspec/changes/ (không tìm openspec/specs/). */
     const query = (params.query || '').trim();
-    if (!query) throw new Error('Thiếu query. Truyền mô tả cần tìm (VD: "lead time nhà cung cấp", "cutoff PO").');
+    if (!query) throw new Error('Thiếu query. Truyền mô tả / tên change cần tìm.');
     const tokens = queryTokens(query);
-    const slugs = await listCapabilitySlugs();
     const limit = Math.min(Math.max(params.limit ?? 8, 1), 20);
+    const names = await listChangeNames();
+
     type Hit = {
+      name: string;
       capability: string;
+      status: string;
       score: number;
       matchedReqs: string[];
       snippets: string[];
@@ -660,47 +695,51 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     };
     const hits: Hit[] = [];
 
-    for (const cap of slugs) {
-      const md = (await provider.readFile(`${SPECS_DIR}/${cap}/spec.md`)) || '';
-      const reqs = extractRequirements(md);
+    for (const name of names) {
+      const info = await inspectChange(name);
+      const specs = (await provider.readFile(`${base(name)}/specs.md`)) || '';
+      const proposal = (await provider.readFile(`${base(name)}/proposal.md`)) || '';
+      const session = await readSession(name);
+      const sessionText = `${String(session?.data?.capability || '')} ${session?.content || ''}`;
+      const reqs = extractRequirements(specs);
       let score = 0;
-      const reason: string[] = [];
       const matchedReqs: string[] = [];
       const snippets: string[] = [];
-      const capSlug = toSlug(cap);
+      const reason: string[] = [];
 
-      if (capSlug === toSlug(query)) {
-        score += 100;
-        reason.push('trùng tên capability');
-      }
       for (const t of tokens) {
-        if (capSlug.includes(t)) {
+        if (name.includes(t) || toSlug(name).includes(t)) {
           score += 25;
-          reason.push(`tên capability chứa "${t}"`);
+          reason.push(`tên change~${t}`);
         }
-        let hitReq = false;
+        if (info.capability.includes(t)) {
+          score += 18;
+          reason.push(`capability~${t}`);
+        }
+        if (sessionText.toLowerCase().includes(t)) score += 6;
+        if (proposal.toLowerCase().includes(t)) {
+          score += 8;
+          const sn = snippetAround(proposal, t);
+          if (sn && snippets.length < 3) snippets.push(sn);
+        }
         for (const r of reqs) {
           const hay = `${r.name}\n${r.text}`.toLowerCase();
-          if (hay.includes(t)) {
-            hitReq = true;
+          if (toSlug(r.name).includes(t) || hay.includes(t)) {
             score += 12;
             if (!matchedReqs.includes(r.name)) matchedReqs.push(r.name);
             const sn = snippetAround(`${r.name}: ${r.text}`, t);
             if (sn && snippets.length < 3) snippets.push(sn);
           }
         }
-        // Body ngoài REQ chỉ tính token dài (≥5) để tránh khớp boilerplate
-        if (!hitReq && t.length >= 5) {
-          const sn = snippetAround(md, t);
-          if (sn) {
-            score += 4;
-            if (snippets.length < 3) snippets.push(sn);
-          }
-        }
+        if (t.length >= 5 && specs.toLowerCase().includes(t)) score += 4;
       }
+      if (info.state.status === 'archived') score = Math.max(score > 0 ? 1 : 0, Math.floor(score * 0.4));
+
       if (score > 0) {
         hits.push({
-          capability: cap,
+          name,
+          capability: info.capability,
+          status: info.state.status,
           score,
           matchedReqs: matchedReqs.slice(0, 8),
           snippets,
@@ -709,29 +748,30 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       }
     }
 
-    hits.sort((a, b) => b.score - a.score || a.capability.localeCompare(b.capability));
+    hits.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
     const top = hits.slice(0, limit);
 
     if (!top.length) {
       return [
-        `⛔ Không tìm thấy capability/requirement khớp query: "${query}".`,
+        `⛔ Không tìm thấy change khớp query: "${query}".`,
         '',
-        'Gợi ý: thử từ khóa khác, gọi `sep_liet_ke_capability`, hoặc `/sep-spec` nếu đây là chức năng chưa có capability.',
-        `Đang có: ${(await listCapabilitySlugs()).map((c) => `\`${c}\``).join(', ') || '(trống)'}`,
+        'Gợi ý: thử từ khóa khác, gọi `sep_danh_sach_change`, hoặc `/sep-spec` nếu cần change mới.',
+        `Đang có: ${names.map((n) => `\`${n}\``).join(', ') || '(trống)'}`,
       ].join('\n');
     }
 
     const lines = [
-      `### Kết quả \`sep_tim_capability\` — query: "${query}"`,
+      `### Kết quả tìm **change** (\`sep_tim_capability\` / sep-refactor) — query: "${query}"`,
       '',
       top.length === 1
-        ? '✅ 1 ứng viên nổi bật — vẫn hỏi user xác nhận trước khi sửa.'
-        : `⚠️ ${top.length} ứng viên — **bắt buộc** user chọn 1 capability (+ REQ) trước khi merge.`,
+        ? '✅ 1 ứng viên nổi bật — vẫn hỏi user xác nhận trước khi sửa `specs.md` của change.'
+        : `⚠️ ${top.length} ứng viên — **bắt buộc** user chọn 1 change trước khi merge delta.`,
       '',
     ];
     for (const [i, h] of top.entries()) {
-      lines.push(`#### ${i + 1}. \`${h.capability}\` (score ${h.score})`);
-      lines.push(`- Path: \`${SPECS_DIR}/${h.capability}/spec.md\``);
+      lines.push(`#### ${i + 1}. \`${h.name}\` (score ${h.score}) · status=\`${h.status}\` · cap=\`${h.capability}\``);
+      lines.push(`- Path: \`openspec/changes/${h.name}/specs.md\``);
+      if (h.status === 'archived') lines.push('- ⚠️ Change đã archive — không sửa được artifact.');
       if (h.reason.length) lines.push(`- Lý do: ${h.reason.join('; ')}`);
       if (h.matchedReqs.length) lines.push(`- REQ khớp: ${h.matchedReqs.map((r) => `\`${r}\``).join(', ')}`);
       for (const sn of h.snippets) lines.push(`- Snippet: …${sn}…`);
@@ -740,15 +780,25 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     return lines.join('\n');
   }
 
-  async function handleTimRequirement(params: { capability: string; query: string }): Promise<string> {
-    const cap = toSlug(params.capability || '');
+  async function handleTimRequirement(params: {
+    capability?: string;
+    tenChange?: string;
+    query: string;
+  }): Promise<string> {
     const query = (params.query || '').trim();
-    if (!cap) throw new Error('Thiếu capability.');
     if (!query) throw new Error('Thiếu query để tìm requirement.');
-    if (!(await capabilityExists(cap))) {
-      throw new Error(`⛔ Capability \`${cap}\` không tồn tại trong \`openspec/specs/\`. Gọi \`sep_tim_capability\` trước.`);
+
+    const name = params.tenChange?.trim()
+      ? assertChangeName(params.tenChange)
+      : params.capability?.trim()
+        ? assertChangeName(params.capability)
+        : await resolveName(undefined);
+
+    if (!(await changeExists(name))) {
+      throw new Error(`⛔ Không tìm thấy change \`${name}\`. Gọi \`sep_tim_capability\` (tìm change) trước.`);
     }
-    const md = (await provider.readFile(`${SPECS_DIR}/${cap}/spec.md`)) || '';
+
+    const md = (await provider.readFile(`${base(name)}/specs.md`)) || '';
     const tokens = queryTokens(query);
     const reqs = extractRequirements(md);
     const scored = reqs
@@ -765,12 +815,12 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       .sort((a, b) => b.score - a.score);
 
     if (!scored.length) {
-      return `⛔ Không có requirement khớp trong \`${cap}\` cho query "${query}". Các REQ hiện có:\n` +
-        reqs.map((r) => `- \`${r.name}\``).join('\n');
+      return `⛔ Không có requirement khớp trong change \`${name}\` cho query "${query}". Các REQ hiện có:\n` +
+        (reqs.length ? reqs.map((r) => `- \`${r.name}\``).join('\n') : '- (chưa có specs.md / chưa có REQ)');
     }
 
     return [
-      `### Requirement trong \`${cap}\` khớp "${query}"`,
+      `### Requirement trong change \`${name}\` khớp "${query}"`,
       '',
       ...scored.slice(0, 12).flatMap((r) => [
         `#### \`${r.name}\` (score ${r.score})`,
@@ -783,31 +833,44 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
   }
 
   async function handleCapNhatCapability(params: {
-    capability: string;
+    tenChange?: string;
+    /** @deprecated dùng tenChange — giữ để tương thích cũ */
+    capability?: string;
     delta: string;
     tomTat: string;
     reqsDaChot?: string[];
   }): Promise<string> {
-    const cap = toSlug(params.capability || '');
-    if (!cap) throw new Error('Thiếu capability.');
-    if (!(await capabilityExists(cap))) {
-      throw new Error(`⛔ Capability \`${cap}\` không tồn tại — không được tạo mới qua /sep-refactor. Dùng \`sep_tim_capability\` hoặc \`/sep-spec\`.`);
+    const name = params.tenChange?.trim()
+      ? assertChangeName(params.tenChange)
+      : params.capability?.trim()
+        ? assertChangeName(params.capability)
+        : await resolveName(undefined);
+
+    if (!(await changeExists(name))) {
+      throw new Error(`⛔ Không tìm thấy change \`${name}\`. /sep-refactor chỉ cập nhật \`openspec/changes/<change>/specs.md\`.`);
     }
+    const st = await loadState(name);
+    if (st.status === 'archived') {
+      throw new Error(`⛔ Change \`${name}\` đã archive — không sửa specs.md.`);
+    }
+
     const delta = (params.delta || '').trim();
     if (!delta) throw new Error('Thiếu delta (## ADDED|MODIFIED|REMOVED Requirements).');
     const tomTat = (params.tomTat || '').trim();
     if (!tomTat) throw new Error('Thiếu tomTat (tóm tắt thay đổi sau khi user Approve).');
 
-    const target = `${SPECS_DIR}/${cap}/spec.md`;
+    const info = await inspectChange(name);
+    const target = `${base(name)}/specs.md`;
     const result = mergeDeltaSpec(await provider.readFile(target), delta, {
-      capability: cap,
+      capability: info.capability || name,
       change: `sep-refactor:${tomTat.slice(0, 40).replace(/\s+/g, '-')}`,
       date: new Date().toISOString().slice(0, 10),
     });
     await write(target, result.content);
+    await appendLog(name, `sep-refactor: ${tomTat}`);
     const git = await commit(
-      [target],
-      `sep(specs/${cap}): refactor update`,
+      [target, `${base(name)}/.session.md`],
+      `sep(${name}): refactor specs`,
       true,
     );
     const reqNote = params.reqsDaChot?.length
@@ -815,13 +878,13 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       : '';
     return reply(
       [
-        `✅ Đã cập nhật spec gốc \`${target}\``,
+        `✅ Đã cập nhật specs của change \`${target}\``,
         `Tóm tắt: ${tomTat}`,
         `Merge: +${result.added.length} ~${result.modified.length} -${result.removed.length}${reqNote}`,
         ...result.warnings.map((w) => `⚠️ ${w}`),
       ].join('\n'),
       git,
-      'Không tạo OpenSpec change. Tiếp theo: code theo spec mới ở chat thường (hoặc `/sep-spec` nếu cần change đầy đủ).',
+      'Không ghi `openspec/specs/`. Tiếp theo: code theo specs change (hoặc `/sep-spec` nếu cần change mới).',
     );
   }
 
@@ -970,25 +1033,61 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     return reply(head, git, await summarize(name));
   }
 
-  async function archiveSpecs(name: string, info: ChangeInfo): Promise<{ files: string[]; note: string }> {
-    const delta = await provider.readFile(`${base(name)}/specs.md`);
-    if (!delta) return { files: [], note: 'Không có specs.md — bỏ qua merge spec gốc.' };
-    const target = `${SPECS_DIR}/${info.capability}/spec.md`;
-    const result = mergeDeltaSpec(await provider.readFile(target), delta, {
-      capability: info.capability,
-      change: name,
-      date: new Date().toISOString().slice(0, 10),
-    });
-    await write(target, result.content);
-    const note = [
-      `📚 Đã merge specs vào \`${target}\`: +${result.added.length} ~${result.modified.length} -${result.removed.length}`,
-      ...result.warnings.map(w => `  ⚠️ ${w}`),
-    ].join('\n');
-    return { files: [target], note };
+  function archiveFolderName(name: string, date = new Date()): string {
+    const d = date.toISOString().slice(0, 10);
+    if (/-archived-\d{4}-\d{2}-\d{2}$/.test(name)) return name;
+    return `${name}-archived-${d}`;
+  }
+
+  async function renameChangeFolder(oldName: string, newName: string): Promise<string[]> {
+    if (oldName === newName) return [];
+    if (await changeExists(newName)) {
+      throw new Error(`⛔ Không đổi tên được: folder \`${newName}\` đã tồn tại.`);
+    }
+    const oldBase = base(oldName);
+    const files = (await provider.listFiles(oldBase)).map((f) => f.replace(/\\/g, '/'));
+    if (!files.length) {
+      throw new Error(`⛔ Không tìm thấy file nào trong \`${oldBase}\` để đổi tên.`);
+    }
+    const written: string[] = [];
+    for (const src of files) {
+      const relInside = src.startsWith(`${oldBase}/`) ? src.slice(oldBase.length + 1) : path.basename(src);
+      const content = await provider.readFile(src);
+      if (content === null) continue;
+      const dest = `${base(newName)}/${relInside}`;
+      await write(dest, content);
+      written.push(dest);
+    }
+    for (const src of files) {
+      await provider.deleteFile(src);
+    }
+    return written;
+  }
+
+  async function archiveChangeFolder(oldName: string, newName: string): Promise<string[]> {
+    const oldBase = base(oldName);
+    const newBase = `openspec/archive/${newName}`;
+    const files = (await provider.listFiles(oldBase)).map((f) => f.replace(/\\/g, '/'));
+    if (!files.length) {
+      throw new Error(`⛔ Không tìm thấy file nào trong \`${oldBase}\` để archive.`);
+    }
+    const written: string[] = [];
+    for (const src of files) {
+      const relInside = src.startsWith(`${oldBase}/`) ? src.slice(oldBase.length + 1) : path.basename(src);
+      const content = await provider.readFile(src);
+      if (content === null) continue;
+      const dest = `${newBase}/${relInside}`;
+      await write(dest, content);
+      written.push(dest);
+    }
+    for (const src of files) {
+      await provider.deleteFile(src);
+    }
+    return written;
   }
 
   async function handleChuyenTrangThai(params: { tenChange?: string; trangThai: LifecycleStatus }): Promise<string> {
-    const name = await resolveName(params.tenChange);
+    let name = await resolveName(params.tenChange);
     if (!(await changeExists(name))) throw new Error(`Không tìm thấy change \`${name}\`.`);
     if (!LIFECYCLE_STATUSES.includes(params.trangThai)) {
       throw new Error(`trangThai chỉ nhận: ${LIFECYCLE_STATUSES.join(', ')}`);
@@ -1001,16 +1100,43 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
     const moved = await writeStatus(name, st, params.trangThai);
     if (!moved) return `ℹ️ \`${name}\` đã ở bước ${st.status}.\n\n${await summarize(name)}`;
 
-    const extra: string[] = [];
+    const commitFiles: string[] = [...rel(name, ['.status', '.session.md'])];
     let note = '';
     if (params.trangThai === 'archived') {
-      const merged = await archiveSpecs(name, await inspectChange(name));
-      extra.push(...merged.files);
-      note = merged.note;
+      const date = new Date().toISOString().slice(0, 10);
+      const newName = archiveFolderName(name);
+      const session = await readSession(name);
+      if (session) {
+        await writeSession(
+          name,
+          { ...session.data, archivedAt: date, previousName: session.data.previousName || name },
+          session.content,
+        );
+      }
+      await appendLog(name, `chuyển bước → archived (không merge openspec/specs/)`);
+      if (newName !== name) {
+        const written = await renameChangeFolder(name, newName);
+        commitFiles.length = 0;
+        commitFiles.push(...written);
+        const active = await options.activeStore?.get();
+        if (active === name) await options.activeStore?.set(newName);
+        note = [
+          `📦 Đã archive + đổi tên folder:`,
+          `- Trước: \`openspec/changes/${name}/\``,
+          `- Sau: \`openspec/changes/${newName}/\``,
+          `- **Không** merge vào \`openspec/specs/\`.`,
+        ].join('\n');
+        name = newName;
+      } else {
+        note = `📦 Đã archive \`${name}\` (folder đã có hậu tố archived). **Không** merge vào \`openspec/specs/\`.`;
+        commitFiles.push(...rel(name, ['.status', '.session.md']));
+      }
+    } else {
+      await appendLog(name, `chuyển bước → ${params.trangThai}`);
     }
-    await appendLog(name, `chuyển bước → ${params.trangThai}`);
+
     const isCheckpoint2 = params.trangThai === 'archived';
-    const git = await commit([...rel(name, ['.status', '.session.md']), ...extra], `sep(${name}): ${params.trangThai}`, isCheckpoint2);
+    const git = await commit(commitFiles, `sep(${name}): ${params.trangThai}`, isCheckpoint2);
     return reply([`✅ \`${name}\` → **${params.trangThai}**`, note].filter(Boolean).join('\n'), git, await summarize(name));
   }
 
@@ -1652,12 +1778,12 @@ export const SEP_TOOL_DEFINITIONS = [
   {
     name: 'sep_tim_capability',
     description:
-      'SEP /sep-refactor: Tìm capability + REQ khớp mô tả user trong openspec/specs/. ' +
-      'Trả ranked list kèm score, matchedReqs, snippets. 0 match → dừng; nhiều match → bắt user chọn trước khi sửa.',
+      'SEP /sep-refactor: Tìm **change** trong openspec/changes/ khớp mô tả (không tìm openspec/specs/). ' +
+      'Trả ranked list kèm score, status, matchedReqs. 0 match → dừng; nhiều match → bắt user chọn 1 change trước khi sửa.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        query: { type: 'string', description: 'Mô tả cần sửa (VD: bỏ lead time nhà cung cấp, cutoff PO)' },
+        query: { type: 'string', description: 'Mô tả / tên change cần sửa (VD: lead time, refactor-fe10)' },
         limit: { type: 'number', description: 'Số ứng viên tối đa (mặc định 8)' },
       },
       required: ['query'],
@@ -1666,25 +1792,27 @@ export const SEP_TOOL_DEFINITIONS = [
   {
     name: 'sep_tim_requirement',
     description:
-      'SEP /sep-refactor: Trong một capability đã chọn, tìm các ### Requirement khớp query. Bắt buộc sau khi đã chốt capability.',
+      'SEP /sep-refactor: Trong một change đã chọn, tìm ### Requirement trong specs.md của change đó.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        capability: { type: 'string', description: 'Capability đã tồn tại (kebab-case)' },
+        tenChange: { type: 'string', description: 'Tên change (ưu tiên)' },
+        capability: { type: 'string', description: 'Alias cũ — nếu không có tenChange thì dùng như tên change' },
         query: { type: 'string', description: 'Từ khóa / mô tả requirement cần sửa' },
       },
-      required: ['capability', 'query'],
+      required: ['query'],
     },
   },
   {
     name: 'sep_cap_nhat_capability',
     description:
-      'SEP /sep-refactor: Merge delta ADDED/MODIFIED/REMOVED thẳng vào openspec/specs/<capability>/spec.md. ' +
-      'KHÔNG tạo change. Chỉ gọi sau khi user Approve đúng capability + REQ + nội dung delta.',
+      'SEP /sep-refactor: Merge delta ADDED/MODIFIED/REMOVED vào openspec/changes/<change>/specs.md. ' +
+      'KHÔNG ghi openspec/specs/. Chỉ gọi sau khi user Approve đúng change + REQ + nội dung delta.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        capability: { type: 'string', description: 'Capability đã tồn tại' },
+        tenChange: { type: 'string', description: 'Tên change cần cập nhật specs.md' },
+        capability: { type: 'string', description: 'Alias cũ — nếu không có tenChange thì dùng như tên change' },
         delta: { type: 'string', description: 'Markdown delta ## ADDED|MODIFIED|REMOVED Requirements' },
         tomTat: { type: 'string', description: 'Tóm tắt thay đổi (sau Approve)' },
         reqsDaChot: {
@@ -1693,7 +1821,7 @@ export const SEP_TOOL_DEFINITIONS = [
           description: 'Tên requirement user đã xác nhận sẽ sửa',
         },
       },
-      required: ['capability', 'delta', 'tomTat'],
+      required: ['delta', 'tomTat'],
     },
   },
   {
@@ -1764,7 +1892,7 @@ export const SEP_TOOL_DEFINITIONS = [
     name: 'sep_chuyen_trang_thai',
     description:
       'SEP: Chuyển bước. "apply" (/sep-apply, cần xong + duyệt spec, brainstorm, verify-spec) hoặc ' +
-      '"archived" (/sep-archive, cần mọi task đã tick, test-report.md verdict PASS và đã duyệt; tự merge specs.md vào openspec/specs/<capability>/spec.md).',
+      '"archived" (/sep-archive, cần mọi task đã tick, test-report.md verdict PASS và đã duyệt; đổi .status + rename folder `-archived-YYYY-MM-DD`, không merge openspec/specs/).',
     inputSchema: {
       type: 'object' as const,
       properties: {

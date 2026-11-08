@@ -20,21 +20,16 @@
 
 ### Requirement: REQ-01 Màn hình Danh sách Phiếu Trả Hàng NCC (UI-RTV-01)
 Hệ thống MUST hiển thị giao diện danh sách phiếu trả hàng tại đường dẫn `/store-owner/supplier-returns` bao gồm:
-1. **Thanh chỉ số KPI**:
-   - Tổng số phiếu trả hàng.
-   - Phiếu chờ phản hồi (`PENDING_SUPPLIER`).
-   - Phiếu đã duyệt chờ bàn giao (`APPROVED`).
-   - Phiếu đã hoàn tất (`COMPLETED`).
-   - Tổng giá trị hàng yêu cầu trả (VNĐ).
-2. **Bộ lọc đa tiêu chí (Unified Filter Bar)**:
+1. **Bộ lọc đa tiêu chí (Unified Filter Bar)**:
    - Ô tìm kiếm từ khóa (Mã phiếu trả, Mã GRN gốc, Tên NCC, Tên người tạo).
    - Dropdown Chi nhánh (chỉ mở cho Store Owner, khóa cho Employee).
    - Dropdown Nhà cung cấp.
    - Dropdown Trạng thái (`ALL`, `DRAFT`, `PENDING_SUPPLIER`, `APPROVED`, `REJECTED`, `COMPLETED`, `CANCELLED`).
    - Nút "Tìm kiếm", "Đặt lại" và nút "+ Tạo phiếu trả hàng".
-3. **Bảng dữ liệu phiếu trả hàng**:
+2. **Bảng dữ liệu phiếu trả hàng**:
    - Cột: Mã phiếu trả, Phiếu nhập gốc (GRN), Nhà cung cấp, Chi nhánh, Ngày tạo, Số SKU, Tổng SL yêu cầu, Trạng thái (Semantic Badge), Thao tác.
    - Phân trang chuẩn MT-GRMS.
+   *(Lưu ý: Bỏ thanh chỉ số KPI tóm tắt phía trên bảng để tối ưu không gian hiển thị danh sách thao tác).*
 
 #### Scenario: Lọc các phiếu đã được NCC duyệt đang chờ bàn giao
 - GIVEN người dùng đang ở màn hình danh sách phiếu trả hàng

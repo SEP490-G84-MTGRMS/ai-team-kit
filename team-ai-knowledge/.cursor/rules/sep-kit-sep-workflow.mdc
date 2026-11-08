@@ -1,5 +1,5 @@
 ---
-description: "Quy trình SEP 6 bước (/sep-spec → /sep-archive) + /sep-refactor cập nhật spec gốc. Chỉ /sep-spec được tạo change."
+description: "Quy trình SEP 6 bước (/sep-spec → /sep-archive) + /sep-refactor cập nhật specs.md của change. Chỉ /sep-spec được tạo change."
 alwaysApply: true
 ---
 
@@ -14,23 +14,23 @@ alwaysApply: true
 | 3 | `/sep-verify-spec` | review persona (`review/skeptic.md` bắt buộc), `tasks.md` |
 | 4 | `/sep-apply` | code + tick hết `tasks.md` |
 | 5 | `/sep-test` | `test-report.md` với `verdict: PASS` |
-| 6 | `/sep-archive` | archive + merge specs vào `openspec/specs/` |
+| 6 | `/sep-archive` | archive (đổi `.status` = archived, đổi tên folder `-archived-YYYY-MM-DD` và chuyển vào `openspec/archive/`) |
 
 `/sep-status` xem tiến độ và chọn change đang làm.
 `/sep-back` quay lại bước trước (rollback) an toàn khi cần sửa lại spec/task mà không mất file.
 
-## Cập nhật spec gốc (không tạo change)
+## Cập nhật specs của change (không tạo change mới)
 
 | Lệnh | Việc |
 |---|---|
-| `/sep-refactor <mô tả>` | Tìm **đúng** capability + requirement trong `openspec/specs/`, confirm user, merge delta. **Không** gọi `sep_tao_change`. |
+| `/sep-refactor <mô tả>` | Tìm **đúng change** trong `openspec/changes/`, confirm user, merge delta vào `specs.md` của change. **Không** gọi `sep_tao_change`, **không** ghi `openspec/specs/`. |
 
 ## Luật tạo change (cứng)
 
 - **Chỉ** khi user gõ `/sep-spec` mới được gọi MCP `sep_tao_change`.
 - Chat thường, `/sep-brainstorm`, `/sep-apply`, `/sep-refactor`, … **cấm** tạo change.
 - User yêu cầu chức năng mới mà chưa có change → **đề nghị** `/sep-spec`, dừng chờ (không tự tạo).
-- User muốn sửa requirement / bỏ field trên capability đã có → đề nghị `/sep-refactor` (không `/sep-spec` trừ khi user cố ý cần change mới).
+- User muốn sửa requirement trên một **change đang mở** → đề nghị `/sep-refactor` (không `/sep-spec` trừ khi cần change mới).
 - Chỉnh sửa rất nhỏ (typo UI, đổi text) → không cần SEP.
 
 ## Luật khác
