@@ -7,3 +7,7 @@ Duyệt proposal.md: Ẩn nút lịch sử ca ở POS Header cho Owner, hiển t
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:12
 
 Duyệt exploration.md và specs.md: xác định rõ root cause 4 lỗi và đặc tả delta REQ-POS-OWNER-HEADER-01 đến REQ-POS-ORDER-CASHIER-SNAPSHOT-04.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:13
+
+Duyệt review/skeptic.md và tasks.md (6 tasks T1-T6 tuần tự từ DB, Domain, Application đến Frontend và Test).
