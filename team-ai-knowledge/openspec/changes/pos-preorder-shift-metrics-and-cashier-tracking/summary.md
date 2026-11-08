@@ -11,3 +11,7 @@ Duyệt exploration.md và specs.md: giải pháp toàn diện cho người tạ
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:45
 
 Duyệt review/skeptic.md và tasks.md (6 tasks T1-T6 tuần tự từ DB, Domain, Application đến Frontend và Test).
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:53
+
+Đã implement T1-T6: bổ sung FulfilledByCashierName/FulfilledAtUtc, điều chỉnh số liệu ca cho đơn đặt trước (chỉ tính cọc khi PendingPickup), ghi nhận tiền phần còn lại vào ca khi giao hàng, bổ sung cột người tạo/giao hàng trên giao diện, và toàn bộ 573 tests backend + frontend build đều thành công 100%.
