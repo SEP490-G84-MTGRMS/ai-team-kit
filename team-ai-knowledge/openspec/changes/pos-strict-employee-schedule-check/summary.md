@@ -15,3 +15,7 @@ Duyệt kế hoạch 8 tasks và kết quả review skeptic.md đạt 5/5 điể
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 10:47
 
 Hoàn thành 8/8 tasks: kiểm tra lịch trực theo EmployeeSchedule, miễn trừ STORE_OWNER, endpoint cashier-eligibility, Alert và disable nút Thanh toán trên POS UI, seed data đối chứng Ba Đình, 569/569 backend tests passed và frontend build 0 lỗi.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 10:48
+
+Duyệt báo cáo test-report.md verdict PASS: 569/569 tests passed, frontend build 0 lỗi, xác nhận chặn cứng nhân viên ngoài ca và mở cho nhân viên trong ca cùng chủ cửa hàng.
