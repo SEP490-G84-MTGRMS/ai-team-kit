@@ -1,9 +1,9 @@
 # Tasks: schedule-approval-requests
 
 ## DB & Domain
-- [ ] T1 — Cập nhật Enums trong `HREnums.cs`: `ScheduleRequestType`, `ShiftSwapType`, `LeaveType`, `ScheduleApprovalStatus`, `ScheduleStatus.OnLeave` (REQ-01)
-- [ ] T2 — Tạo Domain Entity `ScheduleApprovalRequest.cs` và cập nhật `EmployeeSchedule.cs` thêm quan hệ 1 - N (REQ-01, REQ-06)
-- [ ] T3 — Cấu hình EF Core Fluent API `ScheduleApprovalRequestConfiguration.cs`, cập nhật `MTGrmsDbContext.cs` và tạo Migration (REQ-01, REQ-06)
+- [x] T1 — Cập nhật Enums trong `HREnums.cs`: `ScheduleRequestType`, `ShiftSwapType`, `LeaveType`, `ScheduleApprovalStatus`, `ScheduleStatus.OnLeave` (REQ-01)
+- [x] T2 — Tạo Domain Entity `ScheduleApprovalRequest.cs` và cập nhật `EmployeeSchedule.cs` thêm quan hệ 1 - N (REQ-01, REQ-06)
+- [x] T3 — Cấu hình EF Core Fluent API `ScheduleApprovalRequestConfiguration.cs`, cập nhật `AppDbContext.cs` và tạo Migration (REQ-01, REQ-06)
 
 ## Backend (Application & API)
 - [ ] T4 — Tạo DTOs và FluentValidation cho `CreateScheduleApprovalRequestCommand` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05)
