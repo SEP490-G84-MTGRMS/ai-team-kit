@@ -11,3 +11,7 @@ User duyệt phương án 2 gói cước: Gói Thường 270k (+80k option nhân
 ## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-08 08:25
 
 User duyệt cấu hình giá đột phá: Gói Thường 99k/tháng (+30k option nhân viên) và Gói Pro 249k/tháng (sẵn 2 chi nhánh + full nhân viên, +80k/chi nhánh thêm), dùng thử 3 ngày, bỏ kho phụ.
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-08 08:26
+
+User phê duyệt danh sách 9 tasks thực thi, chuyển sang bước Apply để lập trình.
