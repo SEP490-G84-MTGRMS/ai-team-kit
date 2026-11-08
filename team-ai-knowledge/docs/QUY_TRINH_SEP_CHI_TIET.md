@@ -300,3 +300,4 @@ flowchart TD
 - [ ] Luôn kiểm tra change đang kích hoạt bằng `/sep-status` trước khi chạy các lệnh kế tiếp.
 - [ ] Tuyệt đối không tự ý sửa đổi file `.status` hoặc can thiệp thủ công vào thư mục `openspec/changes/`.
 - [ ] Luôn để người dùng xác nhận Approve / Reject trước khi chuyển bước.
+

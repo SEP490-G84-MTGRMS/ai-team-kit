@@ -77,8 +77,22 @@ Hệ thống MUST giới hạn quyền thay đổi hạn mức nợ `DebtLimit` 
 
 ---
 
+### Requirement: REQ-08.6 Chuẩn hóa Phân trang Bảng Khách hàng với Shared TablePagination
+Bảng dữ liệu Khách hàng (`CustomerTable.tsx` / FE-08) MUST sử dụng component dùng chung `TablePagination` tại `src/components/common/TablePagination/` thay vì render tĩnh toàn bộ dữ liệu:
+1. Hiển thị thông tin dải bản ghi: `{from} - {to} / {total} khách hàng`.
+2. Bộ chọn số dòng / trang linh hoạt: `10, 20, 50` dòng/trang.
+3. Điều hướng trang: Nút Prev/Next có tooltip và chặn click khi ở trang biên, tự động rút gọn `...` khi > 7 trang.
+4. Đồng bộ màu sắc nút Primary với Topbar: Màu Deep Teal `#0F766E` (`var(--blue-primary)`), hover `#115E59`.
+
+#### Scenario: Phân trang danh sách khách hàng lớn
+- **GIVEN** Hệ thống có 85 khách hàng, `pageSize` là 10.
+- **WHEN** Người dùng xem bảng khách hàng ở trang 1.
+- **THEN** Component hiển thị "1 - 10 / 85 khách hàng", dải nút `[1, 2, 3, 4, '...', 9]`, nút Prev bị disabled và nút trang 1 active màu `#0F766E`.
+
+---
+
 ## Acceptance Checklist
-- [ ] Bảng danh sách khách hàng render đầy đủ thông tin, hỗ trợ phân trang và tìm kiếm tức thì.
+- [ ] Bảng danh sách khách hàng render đầy đủ thông tin, hỗ trợ phân trang chuẩn TablePagination và tìm kiếm tức thì.
 - [ ] Drawer trượt hiển thị chi tiết hồ sơ, hạn mức nợ và lịch sử giao dịch.
 - [ ] Modal thu nợ hoạt động chuẩn xác với tiền mặt và sinh mã VietQR động.
 - [ ] Validation số điện thoại và hạn mức nợ hoạt động chặt chẽ.

@@ -28,3 +28,4 @@
 ## Test & Verification
 - [x] T18 — Viết xUnit Unit Tests trong `MT_GRMS.UnitTests` kiểm thử các kịch bản REQ-SP01 đến REQ-SP06 (Chặn trùng gán, Độc quyền Primary Supplier, Lọc đa tenant, Validate giá/MOQ)
 - [x] T19 — Chạy kiểm thử Frontend (`npm run lint`, `npm run build`) và xác minh tương thích các tỷ lệ hiển thị màn hình 100%, 125%, 150% (Đạt 100% build PASS)
+- [x] T20 — Thay thế mã inline style phân trang trong `SupplierProductTable.tsx` bằng component dùng chung `TablePagination` (REQ-SP07)

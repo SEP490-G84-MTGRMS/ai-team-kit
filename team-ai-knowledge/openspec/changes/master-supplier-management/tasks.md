@@ -40,3 +40,4 @@
 ## Test & Verification
 - [x] T32 — Cập nhật/bổ sung unit tests cho tìm kiếm đa thực thể, search-suggestions, RBAC 403/404 và export logic (REQ-03, REQ-SEARCH-01, REQ-EXPORT-01, REQ-RBAC-01)
 - [x] T33 — Chạy `dotnet test` Backend và `npm run lint` / `npm run build` Frontend đạt 100% PASS
+- [x] T37 — Chuẩn hóa component `TablePagination` dùng chung trên bảng `SupplierTable.tsx` (FE-01/UI-09), đồng bộ màu nút Primary `#0F766E` (REQ-PAGE-01)

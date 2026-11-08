@@ -96,6 +96,20 @@ Giao diện phân hệ FE-07 MUST tuân thủ nghiêm ngặt quy chuẩn thiết
 
 ---
 
+### Requirement: REQ-07.6 Chuẩn hóa Phân trang Bảng Chi phí với Shared TablePagination
+Bảng chi phí `ExpenseTable.tsx` MUST thay thế cụm phân trang thủ công cũ bằng component dùng chung `TablePagination`:
+1. Hiển thị dải số liệu: `{from} - {to} / {total} khoản chi`.
+2. Hỗ trợ chọn số dòng / trang: `10, 20, 50` dòng.
+3. Nút Prev / Next và các nút trang số tự động chèn dấu ba chấm `...` khi tổng số trang > 7.
+4. Đồng bộ màu nền nút phân trang active và nút chính Primary sang màu chuẩn `#0F766E` (`var(--blue-primary)`).
+
+#### Scenario: Chuyển trang chi phí vận hành
+- **GIVEN** Danh sách chi phí có 40 bản ghi, `pageSize` = 10.
+- **WHEN** Quản lý chọn sang trang 2.
+- **THEN** Bảng render 10 bản ghi từ thứ 11 đến 20, dòng thông tin hiển thị "11 - 20 / 40 khoản chi", nút trang 2 active màu `#0F766E`.
+
+---
+
 ## Acceptance Checklist
 - [ ] Màn hình `/dashboard/expenses` hiển thị đúng layout và tích hợp vào Router của dự án.
 - [ ] 4 Thẻ KPI hiển thị đúng số liệu tổng hợp chi phí trong tháng.

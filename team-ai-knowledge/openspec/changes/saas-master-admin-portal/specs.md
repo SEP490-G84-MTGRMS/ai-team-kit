@@ -141,6 +141,22 @@ Hệ thống MUST ngăn chặn mọi truy cập trái phép hoặc không có qu
 
 ---
 
+### Requirement: REQ-ADMIN-PAGE-01: Chuẩn hóa Phân trang & Định dạng Bảng Tenant
+Bảng dữ liệu khách thuê `TenantDataTable.tsx` MUST:
+1. Sử dụng component `TablePagination` động thay thế danh sách nút trang tĩnh hardcode `1, 2, 3 ... 7`:
+   - Dải thông tin: `{from} - {to} / {total} khách thuê`.
+   - Chọn số dòng: `10, 20, 50` dòng/trang.
+   - Nút Prev/Next và dãy nút trang rút gọn `...` khi > 7 trang.
+2. Hiển thị nhãn Subdomain, Gói dịch vụ và Trạng thái dạng plain-text phẳng, không viền capsule thừa.
+3. Nút bấm chính và số trang active MUST dùng màu Deep Teal `#0F766E` (`var(--blue-primary)`).
+
+#### Scenario: Phân trang danh sách khách thuê
+- **GIVEN** Có 128 khách thuê trong hệ thống, pageSize = 10.
+- **WHEN** Admin mở trang Quản lý khách thuê ở trang 1.
+- **THEN** Hiển thị "1 - 10 / 128 khách thuê", nút trang 1 active màu `#0F766E`, các trang lớn rút gọn `[1, 2, 3, 4, '...', 13]`.
+
+---
+
 ## Acceptance checklist
 - [ ] REQ-ADMIN-BE-01: API lấy danh sách gói cước (`GET /api/admin/plans`) lọc theo keyword và status.
 - [ ] REQ-ADMIN-BE-01: API thống kê KPI gói cước (`GET /api/admin/plans/kpis`) tính toán đúng TotalPlans, ActivePlans, ActiveTenants, MRR.

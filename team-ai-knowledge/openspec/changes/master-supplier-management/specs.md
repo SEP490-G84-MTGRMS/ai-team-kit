@@ -246,6 +246,20 @@ Store Owner CRUD blackout + lý do. Đơn mới (FE-05) loại ngày này — ch
 
 ---
 
+### Requirement: REQ-PAGE-01 Chuẩn hóa Phân trang Bảng Nhà Cung Cấp với Shared TablePagination
+Bảng danh sách Nhà cung cấp (`SupplierTable.tsx` / FE-09.01) MUST sử dụng component dùng chung `TablePagination`:
+1. Hiển thị thông tin: `{from} - {to} / {total} nhà cung cấp`.
+2. Hỗ trợ chọn số dòng / trang: `10, 20, 50` dòng/trang.
+3. Cung cấp nút điều hướng Trước/Sau (`<` / `>`) kèm nút số trang rút gọn `...` khi > 7 trang.
+4. Nút bấm chính và số trang active MUST dùng màu Deep Teal `#0F766E` (`var(--blue-primary)`).
+
+#### Scenario: Phân trang danh sách NCC
+- **GIVEN** Hệ thống có 50 Nhà cung cấp, pageSize = 10.
+- **WHEN** Người dùng click chuyển sang trang 3.
+- **THEN** Bảng hiển thị 10 NCC từ thứ 21 đến 30, text hiển thị "21 - 30 / 50 nhà cung cấp", nút trang 3 active.
+
+---
+
 ## Unchanged Requirements
 REQ-02 type narrowing BR-S07; REQ-04 AP ledger idempotency; REQ-05 Dual-role (không hiện trên list); REQ-06 tenant isolation.
 

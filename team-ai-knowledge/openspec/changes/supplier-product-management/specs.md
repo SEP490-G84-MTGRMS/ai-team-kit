@@ -102,6 +102,20 @@ Hệ thống MUST đảm bảo dữ liệu gán sản phẩm - nhà cung cấp �
 
 ---
 
+### Requirement: REQ-SP07 Chuẩn hóa Phân trang Bảng Sản Phẩm Nhà Cung Cấp
+Component bảng `SupplierProductTable.tsx` MUST thay thế toàn bộ mã inline style cũ bằng component chuẩn hóa `TablePagination`:
+1. Hiển thị dải số liệu: `{from} - {to} / {total} sản phẩm`.
+2. Hỗ trợ chọn số dòng: `10, 20, 50` sản phẩm/trang.
+3. Nút Prev/Next và dãy nút trang số tự động chèn dấu `...` khi > 7 trang.
+4. Đồng bộ màu nền nút phân trang active chuẩn Design Token `#0F766E` (`var(--blue-primary)`).
+
+#### Scenario: Phân trang danh sách sản phẩm NCC
+- **GIVEN** NCC có 60 sản phẩm, pageSize = 10.
+- **WHEN** Người dùng chuyển sang trang 2.
+- **THEN** Bảng render 10 sản phẩm từ thứ 11 đến 20, dòng thông tin hiển thị "11 - 20 / 60 sản phẩm".
+
+---
+
 ## Acceptance checklist
 
 - [ ] **REQ-SP01**: Gán sản phẩm mới cho NCC thành công; chặn trùng lặp sản phẩm cùng NCC (BR-SP01); validate Giá > 0 và MOQ >= 1 (BR-SP03).

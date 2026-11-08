@@ -21,3 +21,4 @@
 
 ## 5. Verification & Quality Gate
 - [x] T12 — Kiểm thử chất lượng mã nguồn: Biên dịch TypeScript (`npm run build`), kiểm tra lint (`oxlint`), và xác minh toàn bộ các trạng thái giao diện (REQ-07.5)
+- [x] T13 — Thay thế phân trang cũ trong `ExpenseTable.tsx` bằng component dùng chung `TablePagination` và đồng bộ màu nút Primary `#0F766E` (REQ-07.6)

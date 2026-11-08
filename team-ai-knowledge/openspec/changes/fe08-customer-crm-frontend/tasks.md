@@ -14,3 +14,4 @@
 ## 3. Integration & Testing
 - [x] T8 — Tích hợp toàn diện các components vào `CustomerManagementPage` và liên kết navigation menu `Đối tác -> Khách hàng` (REQ-08.1)
 - [x] T9 — Kiểm thử giao diện (UI & Validation Test): kiểm tra các kịch bản tìm kiếm, vượt hạn mức nợ, thanh toán VietQR và responsive trên Desktop/Tablet (REQ-08.1 đến REQ-08.5)
+- [x] T10 — Tích hợp component `TablePagination` chuẩn hóa (dải số liệu, chọn pageSize 10/20/50, Prev/Next và rút gọn ...) vào `CustomerTable.tsx` & `useCustomerCrm.ts`, đồng bộ màu nút Primary `#0F766E` (REQ-08.6)

@@ -27,6 +27,7 @@
 - [x] 5.5 Tạo `src/features/admin/components/ExtendGraceModal.tsx` modal gia hạn ân hạn.
 - [x] 5.6 Tạo `src/features/admin/components/ApplyLockModal.tsx` modal khóa tài khoản.
 - [x] 5.7 Tạo trang `src/pages/admin/TenantManagementPage.tsx` lắp ráp Quản lý khách thuê.
+- [x] 5.8 Loại bỏ hardcode tĩnh trong `TenantDataTable.tsx`, tích hợp `TablePagination` động, làm phẳng text Subdomain/Gói dịch vụ và đồng bộ màu nút Primary `#0F766E` (REQ-ADMIN-PAGE-01)
 
 ## 6. Routing & Navigation Link
 - [x] 6.1 Cập nhật `src/app/router.tsx` bổ sung routes `/admin`, `/admin/dashboard`, `/admin/tenants`.
