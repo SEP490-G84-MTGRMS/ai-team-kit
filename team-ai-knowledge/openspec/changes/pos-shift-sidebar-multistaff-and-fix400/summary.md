@@ -15,3 +15,7 @@
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 09:47
 
 Hoàn thành toàn bộ 7 tasks: sửa lỗi 400 Bad Request lịch sử ca, tích hợp Sidebar StoreOwnerLayout, xóa ZReportModal và Quầy #01, chuẩn bị 2 tài khoản nhân viên Ba Đình test cùng ca, xác nhận 565/565 backend tests pass và build frontend 0 lỗi.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 09:55
+
+Báo cáo test-report.md verdict PASS, đã xác nhận 565/565 backend test passed, build frontend 0 lỗi, giải quyết triệt để lỗi 400 Bad Request và tích hợp Sidebar StoreOwnerLayout cho màn hình lịch sử ca.

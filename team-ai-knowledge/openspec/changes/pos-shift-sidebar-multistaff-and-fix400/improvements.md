@@ -15,3 +15,7 @@ Thực hiện 7 tasks theo thứ tự trong tasks.md và tick từng task
 ## Apply · 2026-11-08 09:47
 
 Luôn validate Guid nullable và fallback TenantContext trong API query để tránh lỗi 400.
+
+## Test · 2026-11-08 09:55
+
+Luôn kiểm thử song song cả Unit Test, Integration Test và Frontend Build trước khi bàn giao.
