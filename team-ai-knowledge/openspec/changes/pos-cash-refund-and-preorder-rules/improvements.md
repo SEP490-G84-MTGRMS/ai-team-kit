@@ -7,3 +7,7 @@
 ## Brainstorm · 2026-11-08 16:16
 
 Đã chốt phân luồng Đổi/Trả/Hủy đơn đặt trước theo 2 Tab và chuẩn hóa 100% tiền hoàn từ két mặt.
+
+## Verify Spec · 2026-11-08 16:18
+
+Tasks đã phân chia 8 đầu việc rõ ràng và quy định chặt chẽ trường hợp hoàn tiền mặt duy nhất từ két.
