@@ -11,3 +11,7 @@ Duyệt exploration.md và specs.md: xác định rõ root cause 4 lỗi và đ�
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:13
 
 Duyệt review/skeptic.md và tasks.md (6 tasks T1-T6 tuần tự từ DB, Domain, Application đến Frontend và Test).
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:20
+
+Duyệt bước Apply: Hoàn thành 6/6 tasks, thêm CashierName vào Order entity & OrderResponse, sửa dropdown POS Header ẩn lịch sử ca cho Owner, sửa tên chi nhánh động và xem đơn hàng toàn chuỗi, loại bỏ fallback user.fullName.
