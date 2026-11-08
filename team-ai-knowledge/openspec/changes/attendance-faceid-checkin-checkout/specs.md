@@ -111,17 +111,25 @@ Trường hợp chi nhánh chưa từng cấu hình `BranchAttendancePolicy` (`p
 
 ---
 
-### Requirement: REQ-ATT-06 Cơ chế Xử lý Mở ca POS khi FaceID gặp Sự cố
-Hệ thống MUST cung cấp 2 giải pháp xử lý khi nhân viên gặp sự cố FaceID (camera hỏng, ánh sáng yếu, không khớp mặt $< 85\%$) để đảm bảo không bị nghẽn quầy bán hàng:
-1. **Xử lý nhanh qua Chủ cửa hàng (Tức thì - Realtime):** Nhân viên báo Chủ cửa hàng $\rightarrow$ Chủ mở Bảng chấm công trên điện thoại bấm [Chấm công] tiêu chí "Đi làm" $\rightarrow$ `CheckInTime` được cập nhật $\rightarrow$ Giao diện POS tự động nhận diện và mở khóa quyền [Mở phiên thu ngân] ngay lập tức.
-2. **Gửi Đơn báo sự cố chấm công trực tiếp từ Popup FaceID:** Nếu Chủ không online, popup FaceID hiển thị nút **[Báo sự cố chấm công]** $\rightarrow$ Nhân viên gửi đơn giải trình đính kèm ảnh chụp hiện trường $\rightarrow$ Chủ duyệt đơn $\rightarrow$ Ca chuyển `Completed`/`InShift` và mở khóa phiên POS.
+### Requirement: REQ-ATT-06 Tách riêng 2 Loại đơn Sự cố Chấm công & Cơ chế Mở ca Tức thì
+Hệ thống MUST tách biệt hoàn toàn 2 nghiệp vụ báo sự cố chấm công thành 2 loại đơn yêu cầu độc lập:
+1. **Sự cố Check-in vào ca (`CheckInIncident = 2`):**
+   - Nhân viên chỉ cần nhập giờ vào thực tế đề xuất (`RequestedCheckInTime`).
+   - Khi tạo đơn thành công, hệ thống MUST tự động kích hoạt `CheckInTime = NOW()`, `CheckInMethod = "INCIDENT_PENDING"`, chuyển `Status = InProgress`.
+   - Màn hình POS mở khóa ngay lập tức cho phép nhân viên bấm [Mở phiên thu ngân] bán hàng không cần chờ Chủ duyệt.
+   - Chủ cửa hàng đối soát hình ảnh và duyệt sau trên Bảng duyệt đơn.
+2. **Sự cố Check-out ra ca (`CheckOutIncident = 5`):**
+   - Áp dụng khi tan ca FaceID lỗi hoặc quên chấm công ra sau khi đã hoàn tất đóng ca POS Z-Report.
+   - Nhân viên chỉ cần nhập giờ ra thực tế đề xuất (`RequestedCheckOutTime`) và ảnh minh chứng.
+   - Đơn lưu ở trạng thái `Pending` để Chủ cửa hàng duyệt chốt giờ ra ca, tính `ActualWorkHours` và chuyển `Status = Completed`.
 
-#### Scenario: Khách hàng đang đứng chờ thanh toán khi Camera POS bị lỗi
-- **GIVEN**: Nhân viên E đến ca lúc 07:00, camera POS bị mất kết nối không thể quét FaceID. Khách hàng đã xếp hàng chờ tính tiền.
-- **WHEN**: Nhân viên E gọi điện cho Chủ cửa hàng. Chủ cửa hàng mở Web quản lý trên smartphone, chọn ca của Nhân viên E và bấm [Lưu thiết lập] chấm công Đi làm (mất 5 giây).
+#### Scenario: Nhân viên gặp lỗi FaceID đầu ca gửi đơn Check-in mở ca POS tức thì
+- **GIVEN**: Nhân viên E đến ca lúc 07:00, camera POS bị lỗi không thể nhận diện FaceID.
+- **WHEN**: Nhân viên E mở modal gửi đơn, chọn loại "Sự cố Check-in (Vào ca)", chụp ảnh khuôn mặt và bấm [Gửi yêu cầu].
 - **THEN**:
-  - `CheckInTime` của Nhân viên E được ghi nhận ngay lập tức trên hệ thống.
-  - Màn hình POS tự động refresh trạng thái, nút [Mở phiên thu ngân] chuyển sang màu xanh cho phép mở ca bán hàng ngay lập tức cho khách.
+  - Đơn được tạo với `RequestType = CheckInIncident`.
+  - Hệ thống tự động cập nhật `CheckInTime = UtcNow`, `CheckInMethod = "INCIDENT_PENDING"`.
+  - Giao diện POS tự động làm mới, nút [Mở phiên thu ngân] chuyển sang màu xanh mở ca thành công.
 
 ---
 
@@ -136,4 +144,4 @@ Hệ thống MUST cung cấp 2 giải pháp xử lý khi nhân viên gặp sự 
 - [ ] REQ-ATT-03: Chấm công thủ công tiêu chí "Nghỉ phép hưởng lương" bảo toàn đủ `ActualWorkHours = DurationHours`, loại `PAID_LEAVE`.
 - [ ] REQ-ATT-04: Đăng ký thành công vector 128 số thực `FaceDescriptor` cho nhân viên.
 - [ ] REQ-ATT-05: Fallback êm khi chưa có policy chi nhánh, không văng lỗi 500, tính dung sai = 0.
-- [ ] REQ-ATT-06: Cơ chế mở POS khi FaceID lỗi hỗ trợ cả 2 cách: Chủ chấm nhanh từ xa (tức thì 5s) và Gửi đơn báo sự cố chấm công từ popup FaceID.
+- [ ] REQ-ATT-06: Tách riêng 2 đơn `CheckInIncident = 2` và `CheckOutIncident = 5`. Gửi đơn Check-in tự động kích hoạt `CheckInTime` mở ca bán hàng POS ngay lập tức.
