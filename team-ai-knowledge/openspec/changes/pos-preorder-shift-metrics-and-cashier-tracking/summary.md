@@ -15,3 +15,7 @@ Duyệt review/skeptic.md và tasks.md (6 tasks T1-T6 tuần tự từ DB, Domai
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:53
 
 Đã implement T1-T6: bổ sung FulfilledByCashierName/FulfilledAtUtc, điều chỉnh số liệu ca cho đơn đặt trước (chỉ tính cọc khi PendingPickup), ghi nhận tiền phần còn lại vào ca khi giao hàng, bổ sung cột người tạo/giao hàng trên giao diện, và toàn bộ 573 tests backend + frontend build đều thành công 100%.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 13:07
+
+Duyệt bước Test: Tất cả 4 REQ/Scenario đều đã được đối soát chi tiết, 529 unit tests và 44 integration tests pass 100%, frontend build tsc -b thành công. Đảm bảo chất lượng theo chuẩn SEP.
