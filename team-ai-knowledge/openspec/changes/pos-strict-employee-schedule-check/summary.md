@@ -11,3 +11,7 @@ Duyệt thiết kế exploration.md, design-brief.md và specs.md: cơ chế ki�
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 10:28
 
 Duyệt kế hoạch 8 tasks và kết quả review skeptic.md đạt 5/5 điểm; sẵn sàng chuyển sang bước Apply để lập trình.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 10:47
+
+Hoàn thành 8/8 tasks: kiểm tra lịch trực theo EmployeeSchedule, miễn trừ STORE_OWNER, endpoint cashier-eligibility, Alert và disable nút Thanh toán trên POS UI, seed data đối chứng Ba Đình, 569/569 backend tests passed và frontend build 0 lỗi.

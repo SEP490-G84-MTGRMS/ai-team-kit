@@ -11,3 +11,7 @@ Luôn phân định rõ trường hợp ca thông thường và ca qua đêm khi
 ## Verify Spec · 2026-11-08 10:28
 
 Tuân thủ chặt chẽ nguyên tắc Karpathy coding: sửa đúng chỗ, tối thiểu và kiểm thử toàn diện.
+
+## Apply · 2026-11-08 10:47
+
+Áp dụng cả chặn ở backend và khóa tương tác ở frontend để tối ưu UX cho thu ngân.
