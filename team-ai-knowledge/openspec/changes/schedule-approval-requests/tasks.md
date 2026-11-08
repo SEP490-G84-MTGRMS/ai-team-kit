@@ -6,12 +6,12 @@
 - [x] T3 — Cấu hình EF Core Fluent API `ScheduleApprovalRequestConfiguration.cs`, cập nhật `AppDbContext.cs` và tạo Migration (REQ-01, REQ-06)
 
 ## Backend (Application & API)
-- [ ] T4 — Tạo DTOs và FluentValidation cho `CreateScheduleApprovalRequestCommand` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05)
-- [ ] T5 — Viết MediatR Handler cho `CreateScheduleApprovalRequestCommand` với ràng buộc `PayslipId == null` và kiểm tra trùng lặp (REQ-01, REQ-06)
-- [ ] T6 — Viết Query Handler `GetPendingScheduleApprovalRequestsQuery` và `GetScheduleApprovalRequestsByScheduleIdQuery` (REQ-06)
-- [ ] T7 — Viết Command Handler `PeerConfirmShiftSwapCommand` xử lý đồng nghiệp xác nhận đổi ca (REQ-02)
-- [ ] T8 — Viết Command Handler `ReviewScheduleApprovalRequestCommand` xử lý đồng bộ kết quả ca (`OnLeave`, hoán đổi `EmployeeId`, tính lại giờ công sự cố, cộng OT) (REQ-02, REQ-03, REQ-04, REQ-05)
-- [ ] T9 — Viết Controller `ScheduleApprovalRequestsController.cs` và tích hợp endpoints vào `EmployeeSchedulesController.cs` (REQ-01, REQ-06)
+- [x] T4 — Tạo DTOs và FluentValidation cho `CreateScheduleApprovalRequestCommand` (REQ-01, REQ-02, REQ-03, REQ-04, REQ-05)
+- [x] T5 — Viết MediatR Handler cho `CreateScheduleApprovalRequestCommand` với ràng buộc `PayslipId == null` và kiểm tra trùng lặp (REQ-01, REQ-06)
+- [x] T6 — Viết Query Handler `GetPendingScheduleApprovalRequestsQuery` và `GetScheduleApprovalRequestsByScheduleIdQuery` (REQ-06)
+- [x] T7 — Viết Command Handler `PeerConfirmShiftSwapCommand` xử lý đồng nghiệp xác nhận đổi ca (REQ-02)
+- [x] T8 — Viết Command Handler `ReviewScheduleApprovalRequestCommand` xử lý đồng bộ kết quả ca (`OnLeave`, hoán đổi `EmployeeId`, tính lại giờ công sự cố, cộng OT) (REQ-02, REQ-03, REQ-04, REQ-05)
+- [x] T9 — Viết Controller `ScheduleApprovalRequestsController.cs` và tích hợp endpoints vào `EmployeeSchedulesController.cs` (REQ-01, REQ-06)
 
 ## Frontend
 - [ ] T10 — Định nghĩa Enums & TypeScript Interfaces `scheduleApprovalTypes.ts` và tạo API Service `scheduleApprovalService.ts` (REQ-01)
