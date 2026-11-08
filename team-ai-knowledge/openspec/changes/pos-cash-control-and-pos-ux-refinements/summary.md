@@ -11,3 +11,7 @@ Duyệt exploration.md và specs.md: 10 yêu cầu kỹ thuật chi tiết kèm 
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 14:39
 
 Duyệt review/skeptic.md và tasks.md: Hoàn thành bước Verify Spec, kế hoạch 10 tasks rõ ràng, an toàn kiến trúc và không có rủi ro cao. Chuyển sang bước Apply.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 14:58
+
+Hoàn thành 10/10 tasks: Backend validation rút két, loại bỏ nút thừa POS/Invoice, chuẩn hóa đơn vị quy đổi đổi trả hàng, chặn bán hàng khi chưa mở ca, bổ sung modal chi tiết ca Z-report, ẩn nút nhận ca đối với chủ, dọn dẹp kiểm soát quỹ, chuẩn hóa thu nợ. Build FE và 530 Unit Tests + 44 Integration Tests PASS 100%.
