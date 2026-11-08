@@ -7,3 +7,7 @@
 ## Brainstorm · 2026-11-08 10:27
 
 Luôn phân định rõ trường hợp ca thông thường và ca qua đêm khi so khớp khung giờ.
+
+## Verify Spec · 2026-11-08 10:28
+
+Tuân thủ chặt chẽ nguyên tắc Karpathy coding: sửa đúng chỗ, tối thiểu và kiểm thử toàn diện.
