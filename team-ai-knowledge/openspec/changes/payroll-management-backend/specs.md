@@ -87,6 +87,47 @@ Hệ thống MUST hỗ trợ xác nhận chi trả lương đơn lẻ hoặc the
 
 ---
 
+### Requirement: REQ-PAY-05 Liên thông Phiếu yêu cầu: Bảo toàn công Nghỉ phép hưởng lương (PAID_LEAVE)
+Hệ thống MUST tự động quét và tính các ca làm việc có trạng thái `OnLeave` nhưng đã được phê duyệt đơn xin nghỉ có lương (`Schedule.ApprovalStatus == ScheduleApprovalStatus.Approved` VÀ `Schedule.ApprovalType == "PAID_LEAVE"`) vào tổng số ngày công hưởng lương trong kỳ (`PaidLeaveDays`).
+- Lương tháng (`Monthly`): Ngày nghỉ có lương được cộng trực tiếp vào số ngày công hưởng lương:
+  $$\text{BaseSalaryEarned} = \text{ROUND}\left(\frac{\text{WorkedDays} + \text{PaidLeaveDays}}{\text{StandardDays}} \times \text{BaseRate}, 0\right)$$
+- Lương ca (`Shift`): Ca nghỉ có lương được hưởng 100% định mức ca:
+  $$\text{BaseSalaryEarned} = \text{ROUND}\left((\text{TotalCompletedShifts} + \text{PaidLeaveDays}) \times \text{BaseRate}, 0\right)$$
+- Lương giờ (`Hourly`): Giờ nghỉ có lương được quy đổi theo giờ chuẩn của ca:
+  $$\text{BaseSalaryEarned} = \text{ROUND}\left((\text{TotalWorkHours} + (\text{PaidLeaveDays} \times \text{StandardDayHours})) \times \text{BaseRate}, 0\right)$$
+
+#### Scenario: Nhân viên lương tháng có 2 ngày nghỉ phép hưởng lương
+- **GIVEN**: Nhân viên G lương tháng `BaseRate = 13,000,000 VND` (`StandardDays = 26.0`). Thực tế làm việc 22 ngày công (`WorkedDays = 22.0`), có 2 ngày nghỉ phép năm được duyệt `PAID_LEAVE` (`PaidLeaveDays = 2.0`). Không có vi phạm hay giảm trừ.
+- **WHEN**: Tính bảng lương tháng cho nhân viên G.
+- **THEN**:
+  - Tổng ngày công hưởng lương = `22.0 + 2.0 = 24.0` ngày.
+  - `BaseSalaryEarned` MUST bằng `ROUND((24.0 / 26.0) * 13,000,000, 0) = 12,000,000 VND`.
+  - Phiếu lương ghi nhận rõ `WorkedDays = 22.0`, `PaidLeaveDays = 2.0`.
+
+---
+
+### Requirement: REQ-PAY-06 Liên thông Phiếu yêu cầu: Công nhận công sau Giải trình sự cố chấm công
+Hệ thống MUST tự động công nhận giờ làm việc và trạng thái hoàn thành ca đối với các ca làm việc có đơn báo sự cố chấm công (`CheckInIncident`) đã được duyệt:
+- Ca làm việc chuyển `Status = ScheduleStatus.Completed`, `ApprovalStatus = Approved`, `ApprovalType = "INCIDENT_RESOLVED"`.
+- `ActualWorkHours` được cập nhật dựa trên giờ vào/ra được phê duyệt và được tính trọn vẹn vào `TotalWorkHours` và `TotalCompletedShifts` trong kỳ tính lương.
+
+#### Scenario: Nhân viên quên chấm công được chủ duyệt đơn sự cố
+- **GIVEN**: Nhân viên H làm ca 8 tiếng nhưng bị lỗi FaceID nên ca bị treo `Missing`. Nhân viên gửi đơn giải trình sự cố chấm công kèm ảnh minh chứng. Chủ cửa hàng phê duyệt đơn, hệ thống cập nhật ca với `ActualWorkHours = 8.0` và `Status = Completed`.
+- **WHEN**: Chủ cửa hàng thực hiện tính bảng lương tháng.
+- **THEN**: Ca làm việc này MUST được tính vào tổng giờ làm `TotalWorkHours` và số ca hoàn thành `TotalShifts` của nhân viên H như một ca làm việc bình thường.
+
+---
+
+### Requirement: REQ-PAY-07 Liên thông Phiếu yêu cầu: Phê duyệt làm thêm giờ (Overtime)
+Hệ thống MUST chỉ ghi nhận và tính chi trả lương làm thêm giờ (`OvertimePay`) cho các ca làm việc có `OvertimeMinutes > 0` VÀ có trạng thái phê duyệt `Schedule.ApprovalStatus == ScheduleApprovalStatus.Approved`. Các ca có số phút làm thêm nhưng chưa được phê duyệt hoặc bị từ chối MUST bị loại khỏi quỹ lương OT.
+
+#### Scenario: Ca có tăng ca nhưng chưa được phê duyệt
+- **GIVEN**: Nhân viên K có ca làm việc ghi nhận `OvertimeMinutes = 120` (2 giờ), nhưng đơn OT đang ở trạng thái `Pending` (chưa duyệt) hoặc `ApprovalStatus != Approved`.
+- **WHEN**: Khởi tạo bảng lương cho nhân viên K.
+- **THEN**: Hệ thống MUST ghi nhận `OtHours = 0` và `OvertimePay = 0 VND` cho ca làm việc này.
+
+---
+
 ## Acceptance checklist
 - [ ] REQ-PAY-01: Tính toán đúng `BaseSalaryEarned` cho 3 hình thức `Monthly`, `Shift`, `Hourly`.
 - [ ] REQ-PAY-01: Tính toán tiền làm thêm giờ (OT) chuẩn xác với hệ số 150% (ngày thường) và 200% (ngày nghỉ).
@@ -94,4 +135,7 @@ Hệ thống MUST hỗ trợ xác nhận chi trả lương đơn lẻ hoặc the
 - [ ] REQ-PAY-02: Cấn trừ tạm ứng chính xác, không để `NetSalary` âm.
 - [ ] REQ-PAY-03: Chặn ghi đè hoặc xóa phiếu lương đã có `Status = Paid`.
 - [ ] REQ-PAY-04: Chi trả lương tự động cập nhật trạng thái `Paid` và sinh Phiếu chi Sổ quỹ với số tiền tương ứng.
+- [ ] REQ-PAY-05: Liên thông ngày nghỉ có lương `PAID_LEAVE`, cộng đủ ngày công cho `Monthly`, `Shift`, `Hourly`.
+- [ ] REQ-PAY-06: Ca duyệt sự cố chấm công `INCIDENT_RESOLVED` được công nhận công và tính lương trọn vẹn.
+- [ ] REQ-PAY-07: Chỉ tính tiền OT cho các ca đã được phê duyệt `ApprovalStatus == Approved`.
 - [ ] Tối thiểu 5 Unit Tests đạt `PASS 100%`.
