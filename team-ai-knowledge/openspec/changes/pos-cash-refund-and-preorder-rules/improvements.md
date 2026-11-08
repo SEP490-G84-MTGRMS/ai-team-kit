@@ -11,3 +11,7 @@
 ## Verify Spec · 2026-11-08 16:18
 
 Tasks đã phân chia 8 đầu việc rõ ràng và quy định chặt chẽ trường hợp hoàn tiền mặt duy nhất từ két.
+
+## Apply · 2026-11-08 16:26
+
+Đã hoàn thành 8/8 tasks trên cả backend và frontend, build 0 lỗi và 38/38 unit tests pass.

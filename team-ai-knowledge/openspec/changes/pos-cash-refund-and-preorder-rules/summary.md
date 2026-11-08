@@ -11,3 +11,7 @@ Duyệt proposal chuẩn hóa hoàn tiền từ két quầy thu ngân (CASH) và
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 16:18
 
 Review skeptic đạt 5/5, tasks.md gồm 8 task đã sẵn sàng triển khai.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 16:26
+
+Đã hoàn tất code hoàn tiền mặt 100% từ két quầy, phân loại Restock/Damaged, bắt buộc lý do đổi trả và ràng buộc đổi trả đơn đặt trước.
