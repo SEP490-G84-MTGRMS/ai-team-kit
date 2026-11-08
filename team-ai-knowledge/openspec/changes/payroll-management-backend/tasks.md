@@ -19,6 +19,11 @@
 - [x] T8 — Đăng ký DI trong `MT_GRMS.Infrastructure/DependencyInjection.cs` cho `IPayslipRepository` và `IPayslipService` (REQ-PAY-01)
 - [x] T9 — Tạo `PayslipsController.cs` tại `MT_GRMS.Api/Controllers/PayslipsController.cs` với các endpoints: `GET`, `GET /{id}`, `POST /generate-batch`, `POST /{id}/pay`, `POST /batch-pay`, `DELETE /{id}` (REQ-PAY-01, REQ-PAY-04)
 
+## Liên thông Phiếu yêu cầu Ca làm việc (Schedule Approval Integration)
+- [x] T10 — Cập nhật `ScheduleApprovalService.cs`: Gán `ApprovalStatus = Approved`, `ApprovalType = "OVERTIME"` / `"INCIDENT_RESOLVED"` / `"PAID_LEAVE"`, cập nhật `Status = Completed` cho ca sự cố chấm công khi phê duyệt (REQ-PAY-05, REQ-PAY-06, REQ-PAY-07)
+- [x] T11 — Cập nhật `ScheduleRepository.cs`: Mở rộng `GetCompletedSchedulesInPeriodAsync` quét cả ca `Completed` và ca `OnLeave` đã duyệt (REQ-PAY-05)
+- [x] T12 — Cập nhật `PayslipService.cs`: Cộng `PaidLeaveDays` vào công hưởng lương cho `Monthly`, `Shift`, `Hourly`, chỉ tính OT khi ca có `ApprovalStatus == Approved` (REQ-PAY-05, REQ-PAY-07)
+
 ## Test & Verification
-- [x] T10 — Viết Unit Tests `PayslipServiceTests.cs` kiểm thử các kịch bản tính lương theo tháng có OT và BHXH, tính lương part-time ca/giờ, cấn trừ nợ tạm ứng, và chi trả sinh bút toán Sổ quỹ (REQ-PAY-01, REQ-PAY-02, REQ-PAY-03, REQ-PAY-04)
-- [x] T11 — Chạy `dotnet test` và `dotnet build` xác minh 100% tests PASS và 0 compile errors (REQ-PAY-01)
+- [x] T13 — Viết Unit Tests `PayslipServiceTests.cs` kiểm thử các kịch bản tính lương theo tháng có OT và BHXH, tính lương part-time ca/giờ, cấn trừ nợ tạm ứng, và chi trả sinh bút toán Sổ quỹ (REQ-PAY-01, REQ-PAY-02, REQ-PAY-03, REQ-PAY-04)
+- [x] T14 — Chạy `dotnet test` và `dotnet build` xác minh 100% tests PASS và 0 compile errors (REQ-PAY-01, REQ-PAY-05, REQ-PAY-06, REQ-PAY-07)
