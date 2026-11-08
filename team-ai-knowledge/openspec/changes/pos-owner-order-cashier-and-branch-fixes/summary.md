@@ -3,3 +3,7 @@
 ## Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:08
 
 Duyệt proposal.md: Ẩn nút lịch sử ca ở POS Header cho Owner, hiển thị đúng tên chi nhánh thực tế, Owner xem đơn hàng toàn chuỗi, và lưu snapshot CashierName trên Order entity.
+
+## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-08 12:12
+
+Duyệt exploration.md và specs.md: xác định rõ root cause 4 lỗi và đặc tả delta REQ-POS-OWNER-HEADER-01 đến REQ-POS-ORDER-CASHIER-SNAPSHOT-04.
