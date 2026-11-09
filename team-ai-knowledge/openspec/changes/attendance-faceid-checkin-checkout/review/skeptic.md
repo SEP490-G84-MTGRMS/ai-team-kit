@@ -2,19 +2,14 @@
 
 | Chiều | Điểm (1–5) | Nhận xét |
 |---|---|---|
-| D1 Completeness | 4.5/5 | Đầy đủ 6 requirements chi tiết, có scenario GIVEN/WHEN/THEN cho cả trường hợp bình thường và ngoại lệ (chống giả mạo ảnh, quên đóng ca POS, chưa có policy). Cần làm rõ xử lý ca khi Chủ từ chối đơn Check-in đã mở ca. |
-| D2 Correctness | 5/5 | Logic nghiệp vụ chính xác, công thức tính ActualWorkHours và LateMinutes rõ ràng, phân định đúng vai trò mở ca POS và kiểm soát gian lận. |
-| D3 Coherence | 5/5 | Hoàn toàn nhất quán giữa proposal, exploration, design-brief, specs và 2 tài liệu đặc tả nghiệp vụ nhân viên. |
-| D4 Constraints | 5/5 | Tuân thủ tuyệt đối Privacy-First (Client-side AI, 0 VNĐ máy chủ GPU), đa tenant (TenantId/BranchId), nén ảnh snapshot. |
-| D5 Blast Radius | 4.5/5 | Mở rộng tương thích ngược trên EmployeeSchedule và ScheduleApprovalRequest, liên thông chặt chẽ nhưng an toàn với ShiftZReport và PayrollManagement. |
+| D1 Completeness | 5/5 | Đã bao phủ đầy đủ các luồng: FaceMatcher theo khoảng cách Euclid, nút xác nhận luôn hiển thị, trích xuất vector tự động khi upload avatar, ràng buộc đóng ca POS Z-Report, và graceful fallback policy. |
+| D2 Correctness | 5/5 | Chuẩn hóa theo `TUTORIAL.md`. Hằng số `DISTANCE_THRESHOLD = 0.6` đảm bảo tính toán khoảng cách Euclid chính xác; backend chấp nhận `FaceMatchScore >= 70%` tương ứng. |
+| D3 Coherence | 5/5 | Thống nhất giữa `Prompt_TrienKhai_CheckIn_CheckOut_FaceID.md`, `specs.md` và mã nguồn triển khai thực tế. Loại bỏ đăng ký khuôn mặt thủ công riêng rẽ và điều kiện chớp mắt cứng. |
+| D4 Constraints | 5/5 | Tối ưu hóa hiệu năng cao: tính vector 1 lần duy nhất tại avatar upload, lưu JSON 128 số thực. Điểm danh tại POS chỉ tải mảng vector, không load ảnh gốc. Ảnh snapshot nén Base64 JPEG trước khi upload. |
+| D5 Blast Radius | 5/5 | Các cột dữ liệu mới là nullable, bảo toàn toàn vẹn dữ liệu ca làm và nhân sự cũ. Bộ kiểm thử 514/514 unit tests pass 100%. |
 
 ## Vấn đề
-
-- [MEDIUM] REQ-ATT-06: Khi nhân viên gửi đơn `CheckInIncident`, hệ thống áp dụng Optimistic Bypass để kích hoạt `CheckInTime = UtcNow` và mở ca POS ngay lập tức. Cần quy định rõ hậu quả nếu sau đó Chủ cửa hàng kiểm tra camera phát hiện gian lận và bấm **Từ chối (Reject)** đơn này.
-  - *Đề xuất:* Khi Chủ Reject đơn CheckInIncident, hệ thống **bảo toàn 100% doanh thu hóa đơn bán lẻ** phát sinh trong ca POS để không sai lệch sổ sách tiền mặt/kho, nhưng **chuyển trạng thái ca chấm công thành Cancelled / Disputed với `ActualWorkHours = 0.00`** để không tính lương giờ công đó cho nhân viên vi phạm, đồng thời lưu vết lý do từ chối để làm căn cứ kỷ luật.
-
-- [LOW] REQ-ATT-01: Quy định kích thước và định dạng ảnh snapshot tải lên (`CheckInFaceImageUrl`, `CheckOutFaceImageUrl`) để tránh làm nặng bộ nhớ lưu trữ và nghẽn băng thông quầy thu ngân.
-  - *Đề xuất:* Client-side POS tự động nén ảnh từ Canvas thành định dạng JPEG tỉ lệ nén 0.8, kích thước tối đa 1280x720 và dung lượng $\le 500\text{ KB}$ trước khi gửi MultipartForm lên Backend.
+- [MEDIUM] REQ-ATT-04: Xử lý thông báo khi ảnh tải lên không phát hiện được khuôn mặt (hoặc góc nghiêng/quá mờ). → Đề xuất: Trong `EmployeeFormModal.tsx`, hiển thị thông báo toast màu vàng nếu không trích xuất được vector để quản lý chọn ảnh góc chụp thẳng rõ hơn.
+- [LOW] REQ-ATT-01: Giải phóng WebCam stream và canvas context khi đóng modal để giải phóng bộ nhớ trên máy POS. → Đề xuất: Kiểm tra kỹ hàm cleanup `stream.getTracks().forEach(t => t.stop())` trong `FaceIdAttendanceModal.tsx`.
 
 ## Kết luận: Chấp nhận
-Specs đã rất chặt chẽ, giải quyết triệt để bài toán vận hành thực tế tại chuỗi tạp hóa (không để quầy thu ngân bị tê liệt khi lỗi camera, đồng thời vẫn giữ được chốt chặn đối soát của Chủ cửa hàng). Đã đủ điều kiện lập Tasks và triển khai.
