@@ -11,3 +11,7 @@ Tách riêng 2 loại đơn CheckInIncident (2) và CheckOutIncident (5), cơ ch
 ## Verify Spec · 2026-11-08 16:49
 
 Bổ sung quy định xử lý khi Chủ từ chối đơn Check-in (bảo toàn hóa đơn POS, hủy giờ công) và nén ảnh snapshot client-side <= 500KB
+
+## Verify Spec · 2026-11-09 08:30
+
+Chuẩn hóa cơ chế FaceMatcher khoảng cách Euclid và tự động hóa trích xuất vector từ ảnh avatar

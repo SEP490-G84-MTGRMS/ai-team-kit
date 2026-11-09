@@ -11,3 +11,7 @@ User đã approve Proposal: Chuẩn hóa 2 phương thức điểm danh (AI Face
 ## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-08 16:49
 
 Đã hoàn thành Skeptic review D1-D5 và lập 17 tasks chi tiết theo DB -> Backend -> Frontend -> Test
+
+## Verify Spec — ✅ Approve bởi @minhtamhtyb · 2026-11-09 08:30
+
+Đặc tả FaceID đã được đồng bộ 100% với TUTORIAL.md, review Skeptic và Guardian đạt kết quả tốt, tasks.md hoàn chỉnh 18 tasks. User xác nhận chuyển sang Apply.
