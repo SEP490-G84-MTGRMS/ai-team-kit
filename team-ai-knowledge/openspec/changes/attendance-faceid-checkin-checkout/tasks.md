@@ -21,6 +21,7 @@
 - [x] T13 — Nâng cấp `EmployeeFormModal.tsx` hỗ trợ huấn luyện đa ảnh (tối đa 4 ảnh mẫu góc mặt khác nhau), trích xuất mảng vector 128 số và lưu trữ `FaceImageUrls`, `FaceDescriptor`, `FaceRegisteredAt` (REQ-ATT-04)
 - [x] T14 — Hoàn thiện Modal Chấm công thủ công 3 tiêu chí trong Lịch làm việc (REQ-ATT-03)
 - [x] T15 — Đồng bộ giao diện gửi đơn và duyệt đơn cho cả 2 loại đơn CheckInIncident và CheckOutIncident (REQ-ATT-06)
+- [x] T19 — Chuyển đổi FaceID sang Chế độ xác thực cá nhân 1:1 Verification (`FaceIdAttendanceModal.tsx` & `faceIdService.ts`): Bắt buộc nhân viên đăng nhập tài khoản cá nhân, FaceMatcher chỉ nạp duy nhất Face Descriptor của chính tài khoản đó, lập tức từ chối và cảnh báo nếu người khác đưa mặt vào, chỉ hiển thị canvas thông tin của chính nhân viên đó (REQ-ATT-07)
 
 ## Test & Build
 - [x] T16 — Cập nhật Unit Tests Backend cho Service Check-in, Check-out với kiểm tra ngưỡng khoảng cách Euclid FaceMatchScore <= 0.50m (REQ-ATT-01, REQ-ATT-02, REQ-ATT-05)
