@@ -15,3 +15,7 @@ Duyệt kết quả thẩm định review/skeptic.md và kế hoạch tasks.md c
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:44
 
 Hoàn tất 8/8 tasks: FE-03 kiểm soát giá bán & lịch sử giá, sửa bậc thang khuyến mãi, chọn quà tặng Mua X tặng Y và sửa ngày hiệu lực voucher. 577/577 test pass, frontend build pass.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:47
+
+Đã kiểm thử thành công toàn bộ 5 nhóm yêu cầu (FE-03.1, FE-03.2, bậc thang khuyến mãi, chọn quà tặng kho, ngày voucher). 577/577 backend tests PASS, frontend build PASS 0 lỗi.
