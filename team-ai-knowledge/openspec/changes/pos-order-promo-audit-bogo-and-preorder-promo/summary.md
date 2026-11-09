@@ -7,3 +7,7 @@
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 12:36
 
 Đã duyệt exploration.md, design-brief.md và specs.md (6 Requirements: REQ-ORD-PROMO-01..02, REQ-ORD-BOGO-01..03, REQ-ORD-PRE-01).
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 12:39
+
+Đã duyệt bước Verify Spec (Skeptic + Guardian PASS) và kế hoạch 8 tasks T1..T8 trong tasks.md.
