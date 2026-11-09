@@ -1241,6 +1241,38 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
       throw new Error(`Không tìm thấy kịch bản test nào trong test-report.md của \`${name}\`. Hãy đảm bảo test-report.md có bảng kịch bản test.`);
     }
 
+    let featureCode = params.featureCode?.trim();
+    if (!featureCode) {
+      const match = name.match(/fe-?(\d+)/i);
+      featureCode = match ? `FE-${match[1].padStart(2, '0')}` : name;
+    }
+    const session = await readSession(name);
+    const featureName = params.featureName?.trim() || session?.data?.capability || name;
+
+    let webAppUrl = process.env.GOOGLE_SHEET_WEBAPP_URL?.trim();
+    let apiKey = process.env.GOOGLE_SHEET_API_KEY?.trim() || 'MT_GRMS_TEST_SECRET_2026';
+    const tester = params.tester?.trim() || process.env.GOOGLE_SHEET_DEFAULT_TESTER?.trim() || options.defaultAssignee || 'AI-Agent';
+
+    if (!webAppUrl) {
+      const envRaw = await provider.readFile('.env');
+      if (envRaw) {
+        const urlMatch = envRaw.match(/GOOGLE_SHEET_WEBAPP_URL\s*=\s*(.+)/);
+        if (urlMatch) webAppUrl = urlMatch[1].trim().replace(/^["']|["']$/g, '');
+        const keyMatch = envRaw.match(/GOOGLE_SHEET_API_KEY\s*=\s*(.+)/);
+        if (keyMatch) apiKey = keyMatch[1].trim().replace(/^["']|["']$/g, '');
+      }
+    }
+
+    if (!webAppUrl) {
+      return [
+        `⚠️ **Chưa cấu hình GOOGLE_SHEET_WEBAPP_URL**!`,
+        '',
+        `Để đồng bộ kết quả lên Google Sheets, bạn cần:`,
+        `1. Triển khai Google Apps Script theo hướng dẫn tại: [README.md](file:///d:/Sourse_code_Do_An/ai-team-kit/team-ai-knowledge/scripts/google-apps-script/README.md).`,
+        `2. Điền biến \`GOOGLE_SHEET_WEBAPP_URL\` và \`GOOGLE_SHEET_API_KEY\` vào file \`.env\` tại gốc \`team-ai-knowledge\`.`,
+      ].join('\n');
+    }
+
     // Tự động đọc specs.md của change để bổ sung GIVEN, WHEN, THEN, Role, Priority (tránh N/A trên Sheet)
     let specScenarios: SpecScenario[] = [];
     const specsMd = await provider.readFile(`${base(name)}/specs.md`);
@@ -1285,38 +1317,6 @@ export function createSepWorkflow(provider: DataProvider, options: SepWorkflowOp
         feedback: item.feedback || item.notes || '',
       };
     });
-
-    let featureCode = params.featureCode?.trim();
-    if (!featureCode) {
-      const match = name.match(/fe-?(\d+)/i);
-      featureCode = match ? `FE-${match[1].padStart(2, '0')}` : name;
-    }
-    const session = await readSession(name);
-    const featureName = params.featureName?.trim() || session?.data?.capability || name;
-
-    let webAppUrl = process.env.GOOGLE_SHEET_WEBAPP_URL?.trim();
-    let apiKey = process.env.GOOGLE_SHEET_API_KEY?.trim() || 'MT_GRMS_TEST_SECRET_2026';
-    const tester = params.tester?.trim() || process.env.GOOGLE_SHEET_DEFAULT_TESTER?.trim() || options.defaultAssignee || 'AI-Agent';
-
-    if (!webAppUrl) {
-      const envRaw = await provider.readFile('.env');
-      if (envRaw) {
-        const urlMatch = envRaw.match(/GOOGLE_SHEET_WEBAPP_URL\s*=\s*(.+)/);
-        if (urlMatch) webAppUrl = urlMatch[1].trim().replace(/^["']|["']$/g, '');
-        const keyMatch = envRaw.match(/GOOGLE_SHEET_API_KEY\s*=\s*(.+)/);
-        if (keyMatch) apiKey = keyMatch[1].trim().replace(/^["']|["']$/g, '');
-      }
-    }
-
-    if (!webAppUrl) {
-      return [
-        `⚠️ **Chưa cấu hình GOOGLE_SHEET_WEBAPP_URL**!`,
-        '',
-        `Để đồng bộ kết quả lên Google Sheets, bạn cần:`,
-        `1. Triển khai Google Apps Script theo hướng dẫn tại: [README.md](file:///d:/Sourse_code_Do_An/ai-team-kit/team-ai-knowledge/scripts/google-apps-script/README.md).`,
-        `2. Điền biến \`GOOGLE_SHEET_WEBAPP_URL\` và \`GOOGLE_SHEET_API_KEY\` vào file \`.env\` tại gốc \`team-ai-knowledge\`.`,
-      ].join('\n');
-    }
 
     const allowedTypes = params.reportTypes && params.reportTypes.length > 0
       ? params.reportTypes.map(t => String(t).trim())
@@ -1949,6 +1949,10 @@ export const SEP_TOOL_DEFINITIONS = [
         featureName: { type: 'string', description: 'Tên đầy đủ của tính năng để ghi vào ô B2 trên Sheet.' },
         tabName: { type: 'string', description: 'Tên tab trên Google Sheet (mặc định lấy theo featureCode).' },
         tester: { type: 'string', description: 'Tên người kiểm thử. Mặc định lấy từ cấu hình hoặc SEP_ASSIGNEE.' },
+        items: {
+          type: 'array',
+          description: 'Danh sách các kịch bản test truyền trực tiếp (nếu không đọc từ test-report.md).',
+        },
       },
     },
   },
