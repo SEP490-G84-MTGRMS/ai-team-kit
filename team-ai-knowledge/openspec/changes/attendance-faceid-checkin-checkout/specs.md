@@ -14,17 +14,17 @@
 
 ## ADDED Requirements
 
-### Requirement: REQ-ATT-01 Điểm danh vào ca bằng AI FaceID (FaceMatcher & Khoảng cách Euclid <= 0.50) trên Web POS
+### Requirement: REQ-ATT-01 Điểm danh vào ca bằng AI FaceID (FaceMatcher & Khoảng cách Euclid <= 0.45) trên Web POS
 Hệ thống MUST hỗ trợ nhân viên tự điểm danh vào ca (`Check-in`) trực tiếp tại camera máy POS quầy thu ngân thông qua thư viện AI Client-side `@vladmandic/face-api`:
-- **FaceMatcher & Ngưỡng khoảng cách Euclid:** Hệ thống MUST sử dụng cơ chế `faceapi.FaceMatcher` kết hợp `faceapi.LabeledFaceDescriptors` với ngưỡng khoảng cách `DISTANCE_THRESHOLD = 0.5`. So khớp thuần túy dựa trên khoảng cách Euclid $\le 0.50$ (khoảng cách càng nhỏ càng chính xác), loại bỏ điểm số phần trăm tối thiểu.
-- **Backend Validation:** Backend MUST kiểm tra `FaceMatchScore` (lưu giá trị khoảng cách Euclid): nếu `FaceMatchScore > 0.50m` thì ném `BusinessException("FACE_MATCH_FAILED", "Khoảng cách nhận diện khuôn mặt vượt quá ngưỡng cho phép (tối đa 0.50).")`.
+- **FaceMatcher & Ngưỡng khoảng cách Euclid:** Hệ thống MUST sử dụng cơ chế `faceapi.FaceMatcher` kết hợp `faceapi.LabeledFaceDescriptors` với ngưỡng khoảng cách `DISTANCE_THRESHOLD = 0.45`. So khớp thuần túy dựa trên khoảng cách Euclid $\le 0.45$ (khoảng cách càng nhỏ càng chính xác), loại bỏ điểm số phần trăm tối thiểu.
+- **Backend Validation:** Backend MUST kiểm tra `FaceMatchScore` (lưu giá trị khoảng cách Euclid): nếu `FaceMatchScore > 0.45m` thì ném `BusinessException("FACE_MATCH_FAILED", "Khoảng cách nhận diện khuôn mặt vượt quá ngưỡng cho phép (tối đa 0.45).")`.
 - **Nút Xác nhận luôn hiển thị:** Nút "Xác nhận vào ca" trên modal POS MUST mặc định luôn hiển thị rõ ràng, không bị disabled, cho phép nhân viên bấm xác nhận tức thì khi đứng trước camera.
 - **Canvas Overlay:** Đồng bộ tỷ lệ và kích thước canvas đè khít lên video qua `faceapi.matchDimensions` và vẽ khung bounding box, tên nhân viên, khoảng cách thực tế bằng `faceapi.draw.DrawBox`.
 - **Lưu vết và Kích hoạt ca:** Khi điểm danh thành công, hệ thống MUST lưu `CheckInTime = UtcNow.AddHours(7)`, `CheckInMethod = "FACE_ID"`, upload ảnh snapshot camera lên Cloudinary lưu link vào `CheckInFaceImageUrl`, lưu khoảng cách vào `FaceMatchScore`, tự động tính toán số phút đi muộn `LateMinutes`, và mở quyền mở phiên thu ngân POS cho nhân viên.
 
 #### Scenario: Nhân viên bấm xác nhận vào ca thành công với FaceID
 - **GIVEN**: Nhân viên A có ca làm việc trong ngày. Đứng trước camera POS lúc 07:55:00.
-- **WHEN**: Nhân viên nhìn vào camera, khung xanh hiển thị tên và khoảng cách $d \le 0.50$. Nhân viên bấm nút "Xác nhận vào ca".
+- **WHEN**: Nhân viên nhìn vào camera, khung xanh hiển thị tên và khoảng cách $d \le 0.45$. Nhân viên bấm nút "Xác nhận vào ca".
 - **THEN**: 
   - Hệ thống chụp snapshot nén gửi về Backend kèm khoảng cách $d$, lưu `CheckInTime` hợp lệ, `LateMinutes = 0`.
   - Màn hình POS mở khóa cho phép nhân viên A bấm [Mở phiên thu ngân].
@@ -32,9 +32,9 @@ Hệ thống MUST hỗ trợ nhân viên tự điểm danh vào ca (`Check-in`) 
 ---
 
 ### Requirement: REQ-ATT-02 Điểm danh ra ca bằng AI FaceID & Ràng buộc đóng ca POS
-Hệ thống MUST hỗ trợ nhân viên tự điểm danh ra ca (`Check-out`) bằng AI FaceID theo ngưỡng khoảng cách Euclid $\le 0.50$ và bắt buộc kiểm tra điều kiện đóng ca bán hàng POS:
+Hệ thống MUST hỗ trợ nhân viên tự điểm danh ra ca (`Check-out`) bằng AI FaceID theo ngưỡng khoảng cách Euclid $\le 0.45$ và bắt buộc kiểm tra điều kiện đóng ca bán hàng POS:
 - Hệ thống MUST chặn điểm danh ra ca nếu phiên ca bán hàng của nhân viên trên máy POS tương ứng đang ở trạng thái mở (`ShiftZReport.Status == ShiftState.Open`).
-- Khi phiên POS đã đóng (`Closed`), nút "Xác nhận ra ca" luôn hiển thị cho phép nhân viên bấm chấm công ra, hệ thống so khớp FaceMatcher ($d \le 0.50$), ghi nhận `CheckOutTime = UtcNow.AddHours(7)`, upload ảnh snapshot `CheckOutFaceImageUrl`, lưu khoảng cách vào `FaceMatchScore`.
+- Khi phiên POS đã đóng (`Closed`), nút "Xác nhận ra ca" luôn hiển thị cho phép nhân viên bấm chấm công ra, hệ thống so khớp FaceMatcher ($d \le 0.45$), ghi nhận `CheckOutTime = UtcNow.AddHours(7)`, upload ảnh snapshot `CheckOutFaceImageUrl`, lưu khoảng cách vào `FaceMatchScore`.
 - Hệ thống MUST tự động tính toán tổng giờ làm việc thực tế:
   $$\text{ActualWorkHours} = \max\left(0, \text{ROUND}\left((\text{CheckOutTime} - \text{CheckInTime}).\text{TotalHours}, 2\right)\right)$$
 - Hệ thống chuyển trạng thái ca sang `ScheduleStatus.Completed` để chốt công.
@@ -84,18 +84,18 @@ Hệ thống MUST tách biệt hoàn toàn 2 nghiệp vụ báo sự cố chấm
 ### Requirement: REQ-ATT-07 Chế độ Cá nhân (1:1 Verification) khi Chấm công FaceID
 Hệ thống MUST áp dụng chế độ xác thực 1:1 Verification nhằm loại bỏ hoàn toàn rủi ro điểm danh hộ:
 1. **Quyền truy cập:** Chỉ nhân viên đã đăng nhập vào tài khoản cá nhân mới được phép mở và sử dụng modal chấm công AI FaceID. Người dùng chưa đăng nhập sẽ bị từ chối truy cập ngay lập tức.
-2. **Đối chiếu độc quyền 1:1:** Thư viện `face-api.js` CHỈ ĐƯỢC PHÉP nạp duy nhất Face Descriptor của chính tài khoản nhân viên đang đăng nhập vào `FaceMatcher`. Tuyệt đối không nạp danh sách nhân viên khác.
+2. **Đối chiếu độc quyền 1:1:** Thư viện `face-api.js` CHỈ ĐƯỢC PHÉP nạp duy nhất Face Descriptor của chính tài khoản nhân viên đang đăng nhập vào `FaceMatcher` với ngưỡng khoảng cách `DISTANCE_THRESHOLD = 0.45`. Tuyệt đối không nạp danh sách nhân viên khác.
 3. **Hiển thị Canvas và Cảnh báo:**
-   - Nếu khuôn mặt trên camera trùng khớp ($d \le 0.50$): Canvas vẽ khung viền xanh lá `#10B981`, hiển thị nhãn tên nhân viên đó kèm khoảng cách Euclid.
-   - Nếu người khác đưa mặt vào hoặc $d > 0.50$: Canvas vẽ khung viền đỏ `#EF4444`, hiển thị nhãn `"Không khớp với [Tên NV] (d: 0.xx)"`. Tuyệt đối KHÔNG hiển thị tên của bất kỳ ai khác trên canvas.
-4. **Từ chối tức thì:** Khi bấm nút "Xác nhận vào ca" hoặc "Xác nhận ra ca", nếu khuôn mặt trước camera không trùng khớp với tài khoản đang đăng nhập, hệ thống lập tức từ chối và báo lỗi: `"Từ chối: Khuôn mặt trước camera không trùng khớp với tài khoản [Tên NV]. Không thể điểm danh!"`.
+   - Nếu khuôn mặt trên camera trùng khớp ($d \le 0.45$): Canvas vẽ khung viền xanh lá `#10B981`, hiển thị nhãn tên nhân viên đó kèm khoảng cách Euclid.
+   - Nếu người khác đưa mặt vào hoặc $d > 0.45$: Canvas vẽ khung viền đỏ `#EF4444`, hiển thị nhãn `"Không khớp với [Tên NV] (d: 0.xx)"`. Tuyệt đối KHÔNG hiển thị tên của bất kỳ ai khác trên canvas.
+4. **Từ chối tức thì:** Khi bấm nút "Xác nhận vào ca" hoặc "Xác nhận ra ca", nếu khuôn mặt trước camera không trùng khớp với tài khoản đang đăng nhập ($d > 0.45$), hệ thống lập tức từ chối và báo lỗi: `"Từ chối: Khuôn mặt trước camera không trùng khớp với tài khoản [Tên NV]. Không thể điểm danh!"`.
 
 ---
 
 ## Acceptance checklist
 
-- [x] REQ-ATT-01: Sử dụng FaceMatcher với ngưỡng khoảng cách `DISTANCE_THRESHOLD = 0.5` ($\le 0.50$), đồng bộ canvas bằng `matchDimensions` và vẽ khung bounding box `DrawBox`.
-- [x] REQ-ATT-01: Backend kiểm tra `FaceMatchScore <= 0.50m`, ném ngoại lệ nếu khoảng cách $> 0.50m$.
+- [x] REQ-ATT-01: Sử dụng FaceMatcher với ngưỡng khoảng cách `DISTANCE_THRESHOLD = 0.45` ($\le 0.45$), đồng bộ canvas bằng `matchDimensions` và vẽ khung bounding box `DrawBox`.
+- [x] REQ-ATT-01: Backend kiểm tra `FaceMatchScore <= 0.45m`, ném ngoại lệ nếu khoảng cách $> 0.45m$.
 - [x] REQ-ATT-01: Nút "Xác nhận vào ca" trên modal POS mặc định luôn hiển thị rõ ràng, cho phép bấm xác nhận tức thì.
 - [x] REQ-ATT-01: Chụp snapshot Base64 nén, tải lên Cloudinary lưu vào `CheckInFaceImageUrl`.
 - [x] REQ-ATT-02: Ràng buộc kiểm tra phiên POS đã `Closed` trước khi cho phép Check-out.
@@ -103,4 +103,4 @@ Hệ thống MUST áp dụng chế độ xác thực 1:1 Verification nhằm lo�
 - [x] REQ-ATT-04: Huấn luyện đa ảnh (tối đa 4 ảnh mẫu), lưu trữ `FaceImageUrls`, mảng vector `FaceDescriptor` và `FaceRegisteredAt`.
 - [x] REQ-ATT-05: Fallback chính sách điểm danh an toàn khi `policy == null`.
 - [x] REQ-ATT-06: Tách biệt đơn `CheckInIncident = 2` (mở ca POS tức thì) và `CheckOutIncident = 5`.
-- [x] REQ-ATT-07: Chế độ 1:1 Verification - Chỉ nhân viên đăng nhập mới truy cập được, FaceMatcher chỉ nạp duy nhất vector của chính tài khoản đó, từ chối ngay nếu người khác đưa mặt vào, canvas chỉ hiển thị thông tin nhân viên đó.
+- [x] REQ-ATT-07: Chế độ 1:1 Verification với ngưỡng khoảng cách $\le 0.45$ - Chỉ nhân viên đăng nhập mới truy cập được, FaceMatcher chỉ nạp duy nhất vector của chính tài khoản đó, từ chối ngay nếu người khác đưa mặt vào, canvas chỉ hiển thị thông tin nhân viên đó.
