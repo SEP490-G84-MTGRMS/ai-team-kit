@@ -3,6 +3,7 @@
 ## DB
 - [x] T1 — Migration bổ sung trường `FaceDescriptor`, `FaceImageUrls`, `FaceRegisteredAt` cho `Employees` và `CheckInFaceImageUrl`, `CheckOutFaceImageUrl`, `CheckInMethod`, `CheckOutMethod` cho `EmployeeSchedule` (REQ-ATT-01, REQ-ATT-04)
 - [x] T2 — Cập nhật Enum `ScheduleRequestType` hỗ trợ tách riêng `CheckInIncident = 2` và `CheckOutIncident = 5` (REQ-ATT-06)
+- [x] T2a — Cập nhật `DbInitializer.cs` (ALTER TABLE safe script bổ sung cột CSDL nếu chưa có) và `EmployeeSeedData.cs` (kiểm tra Exist từng trường, từng phụ cấp và từng ca làm việc trước khi add, kèm dữ liệu vector FaceID và ảnh mẫu 128 số float chuẩn)
 
 ## Backend
 - [x] T3 — Triển khai API lấy danh sách vector khuôn mặt nhân viên trong ngày theo chi nhánh `GET /api/v1/schedules/face-id/today-descriptors` kèm `FaceImageUrls` (REQ-ATT-01)
