@@ -11,3 +11,7 @@ Luôn đối chiếu dữ liệu seed tĩnh (DefaultBankId) với Global Query F
 ## Verify Spec · 2026-11-09 11:46
 
 Kiểm tra kỹ PromotionEvaluationTests.cs ngay trong bước Verify Spec giúp đồng bộ đặc tả Best-Offer và giữ tương thích 100% với hành vi cộng gộp Voucher hiện có.
+
+## Apply · 2026-11-09 11:57
+
+Viết unit test TDD tái hiện đúng trạng thái đỏ trước khi sửa code giúp chứng minh chính xác cả 3 lỗi nghiệp vụ cốt lõi (quỹ Bank tenant 2, bậc thang TIERS_JSON, conflict Best-Offer) đã được xử lý triệt để.
