@@ -4,8 +4,8 @@
 | Method | Path | Request Body | Response Body | HTTP Lỗi |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/login` (hoặc `/api/auth/login`) | `LoginRequest` (`usernameOrEmail`, `password`, `tenantCode?`) | `LoginResponse` (`accessToken`, `refreshToken`, `expiresAt`, `user`) | 400 Bad Request, 401 Unauthorized |
-| POST | `/api/v1/auth/refresh` (hoặc `/api/auth/refresh`) | `RefreshTokenRequest` (`refreshToken`) | `LoginResponse` | 400 Bad Request |
-| POST | `/api/v1/auth/logout` | Không có body | `{ success: true, message: string }` | - |
+| POST | `/api/v1/auth/refresh` (hoặc `/api/auth/refresh`) | `RefreshTokenRequest` (`refreshToken`) | `LoginResponse` (`accessToken`, `refreshToken`, `expiresAt`, `user`) | 400 Bad Request, 401 Unauthorized |
+| POST | `/api/v1/auth/logout` | `RefreshTokenRequest` (`refreshToken?`) | `{ success: true, message: string }` | 400 Bad Request |
 
 ## ADDED Requirements
 
@@ -57,10 +57,65 @@ Frontend MUST điều hướng người dùng tới đúng phân hệ màn hình
 - WHEN đăng nhập thành công
 - THEN hệ thống Frontend MUST lưu Access Token và điều hướng người dùng tới Bảng điều khiển `/admin/dashboard`
 
+---
+
+### Requirement: REQ-AUTH-04 Cơ chế Silent Refresh Ngầm với Axios Request Queue
+Hệ thống Frontend MUST triển khai Axios Response Interceptor chặn mã lỗi HTTP `401 Unauthorized` từ các API nghiệp vụ thông thường, tự động gọi API refresh ngầm và xử lý hàng đợi các request đồng thời mà không làm gián đoạn trải nghiệm người dùng.
+
+#### Scenario: Access Token hết hạn khi đang gọi API nghiệp vụ
+- GIVEN người dùng đang thao tác tại trang POS hoặc Quản lý chi nhánh với Access Token đã hết hạn
+- WHEN một API nghiệp vụ (ví dụ: `GET /api/branches`) gửi lên nhận phản hồi HTTP 401
+- THEN Frontend MUST NOT chuyển hướng về trang đăng nhập ngay lập tức; thay vào đó, hệ thống giữ request trong trạng thái chờ (pending Promise) và phát lệnh ngầm `POST /api/auth/refresh` với Refresh Token hiện tại
+
+#### Scenario: Nhiều API đồng thời gặp lỗi 401 (Concurrent 401 Requests)
+- GIVEN có 3 request API nghiệp vụ cùng phát sinh và nhận 401 trong cùng một khoảnh khắc
+- WHEN request đầu tiên kích hoạt quá trình refresh token (`isRefreshing = true`)
+- THEN 2 request sau MUST được đưa vào hàng đợi `failedQueue` mà không gửi thêm request refresh trùng lặp
+- WHEN quá trình refresh hoàn tất thành công, toàn bộ các request trong `failedQueue` MUST được tự động thực thi lại (retry) với Access Token mới và trả kết quả chính xác về cho các component
+
+---
+
+### Requirement: REQ-AUTH-05 Điều Hướng Hết Hạn Phiên Làm Việc (Graceful Session Expiry)
+Khi Refresh Token hết hạn hoặc không hợp lệ (API `/api/auth/refresh` phản hồi HTTP 401/400), hệ thống Frontend MUST dọn dẹp phiên làm việc an toàn, hiển thị thông báo rõ ràng và điều hướng về trang đăng nhập kèm tham số ghi nhớ trang đích.
+
+#### Scenario: Refresh Token hết hạn hoặc bị thu hồi
+- GIVEN phiên làm việc của người dùng đã quá hạn Refresh Token (ví dụ: quá 7 ngày không thao tác)
+- WHEN Frontend gọi `POST /api/auth/refresh` và nhận phản hồi HTTP 401 hoặc lỗi từ chối
+- THEN Frontend MUST:
+  1. Hủy bỏ và từ chối các request đang đợi trong `failedQueue`.
+  2. Xóa sạch `access_token`, `refresh_token`, và `auth_user` khỏi Storage và Zustand store.
+  3. Hiển thị thông báo Toast cảnh báo: *"Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."*
+  4. Ghi nhớ đường dẫn hiện tại và điều hướng về `/auth/login?redirect={encodeURIComponent(currentPath)}`.
+
+#### Scenario: Tự động đưa người dùng trở lại màn hình làm việc sau khi đăng nhập lại
+- GIVEN người dùng bị điều hướng về `/auth/login?redirect=%2Fadmin%2Fbranches`
+- WHEN người dùng đăng nhập lại thành công
+- THEN hệ thống MUST ưu tiên chuyển tiếp người dùng về đúng `/admin/branches` thay vì trang mặc định `/admin/dashboard`.
+
+---
+
+### Requirement: REQ-AUTH-06 Xác Thực & Xoay Vòng Refresh Token Ở Backend (Token Rotation)
+Backend `AuthService.cs` MUST quản lý Refresh Token an toàn trong CSDL PostgreSQL bảng `Users`, xác thực tính hợp lệ của token và hạn sử dụng `RefreshTokenExpiryTime`, đồng thời áp dụng cơ chế xoay vòng Refresh Token (Token Rotation) để phòng chống tấn công Replay Attack.
+
+#### Scenario: Refresh Token hợp lệ và còn hạn
+- GIVEN người dùng gửi `POST /api/auth/refresh` kèm chuỗi `refreshToken` hợp lệ khớp với giá trị lưu trong CSDL và `RefreshTokenExpiryTime > DateTime.UtcNow`
+- WHEN Backend xử lý yêu cầu refresh
+- THEN Backend MUST sinh mới cả `AccessToken` và một chuỗi `RefreshToken` mới ngẫu nhiên, lưu `RefreshToken` mới vào DB và cập nhật `RefreshTokenExpiryTime` mới, rồi trả về trong `LoginResponse`.
+
+#### Scenario: Refresh Token không tồn tại hoặc đã hết hạn
+- GIVEN `refreshToken` không tìm thấy trong CSDL hoặc thời điểm hiện tại đã vượt quá `RefreshTokenExpiryTime`
+- WHEN người dùng gửi yêu cầu refresh
+- THEN Backend MUST trả về HTTP 401 Unauthorized kèm thông báo lỗi `"Invalid or expired refresh token"`.
+
+---
+
 ## Acceptance checklist
 - [ ] REQ-01: API `POST /api/v1/auth/login` và `/api/auth/login` phản hồi HTTP 200 OK với đầy đủ `AccessToken`, `RefreshToken`, và `UserInfo` có string Uid.
 - [ ] REQ-02: `vite.config.ts` được cấu hình proxy `/api` tới backend port `5232`; `authService.ts` gửi đúng `usernameOrEmail`.
 - [ ] REQ-03: `LoginPage.tsx` điều hướng chính xác: `CASHIER` -> `/pos`, `ADMIN`/khác -> `/admin/dashboard`.
+- [ ] REQ-AUTH-04: Axios Interceptor trong `httpClient.ts` tự động phát hiện HTTP 401, xếp hàng các request đồng thời, gọi `/api/auth/refresh` và retry các request thành công không gây reload trang.
+- [ ] REQ-AUTH-05: Khi Refresh Token hết hạn hoặc không hợp lệ, hệ thống xóa token, hiển thị Toast cảnh báo và chuyển hướng về `/auth/login?redirect=...`.
+- [ ] REQ-AUTH-06: `AuthService.cs` lưu `RefreshToken` và `RefreshTokenExpiryTime` vào CSDL `Users`, xác thực và sinh token mới xoay vòng (Token Rotation) khi gọi refresh.
 - [ ] BE-UT: Toàn bộ danh sách Unit Tests trong `UserAuthenticationTests.cs` đạt kết quả PASS 100%.
 
 ---
@@ -203,65 +258,3 @@ Tài liệu `Database_Design_Data_Dictionary.md` MUST được cập nhật đ�
 
 ## Acceptance checklist
 - [ ] Bảng `Users` trong Data Dictionary chứa đủ 20 cột, có đầy đủ kiểu dữ liệu, ràng buộc UK và mô tả nghiệp vụ.
-- [ ] Bảng `TenantUsers` được bổ sung `BranchID` và `IsActive`.
-- [ ] Bảng `Tenants` được bổ sung thông tin pháp lý, gói thuê bao, hạn ân hạn và trạng thái khóa Soft/Hard Lock.
-- [ ] Bổ sung bảng `AuditLogs` đáp ứng yêu cầu lưu vết kiểm toán GB-07.
-- [ ] Mô hình Mermaid ERD và mã nguồn C# EF Core trong `Database_Design_Data_Dictionary.md` khớp 100% với từ điển dữ liệu.
-
-
-<!-- Sáp nhập từ change: postgres-docker-user-table -->
-# Specs: postgres-docker-user-table
-
-## ADDED Requirements
-
-### Requirement: REQ-AUTH-DB-01 Triển khai PostgreSQL 16 trên Docker Compose
-Hệ thống MUST cung cấp tệp `docker-compose.yml` để khởi chạy máy chủ PostgreSQL 16 Alpine với cấu hình kết nối chuẩn trên cổng 5432.
-
-#### Scenario: Khởi chạy container PostgreSQL thành công
-- **GIVEN** máy phát triển đã cài Docker và chưa chạy dịch vụ nào trên cổng 5432.
-- **WHEN** thực hiện lệnh `docker compose up -d` tại thư mục backend.
-- **THEN** container `mtgrms-postgres` MUST khởi động ở trạng thái healthy, lắng nghe trên cổng 5432 và tạo sẵn database `mtgrms_db`.
-
-#### Scenario: Lưu trữ dữ liệu bền vững qua Named Volume
-- **GIVEN** container `mtgrms-postgres` đang chạy và đã có dữ liệu.
-- **WHEN** container bị dừng hoặc restart (`docker compose down && docker compose up -d`).
-- **THEN** dữ liệu MUST được bảo toàn nguyên vẹn từ volume `postgres_data`.
-
----
-
-### Requirement: REQ-AUTH-DB-02 Cấu hình Bảng User Tối Giản với String Uid
-Hệ thống MUST định nghĩa thực thể `User` và bảng cơ sở dữ liệu `users` chỉ chứa đúng 3 trường: `id` (chuỗi Uid), `username` và `password`.
-
-#### Scenario: Lưu trữ thực thể User với string Uid
-- **GIVEN** một tài khoản người dùng mới có `Id = "usr_admin_01"`, `Username = "admin"`, `Password = "Admin@123"`.
-- **WHEN** thực thể được lưu vào bảng `users`.
-- **THEN** bản ghi MUST được tạo thành công với khóa chính `id` là kiểu chuỗi và không yêu cầu bất kỳ trường bắt buộc nào khác.
-
-#### Scenario: Ràng buộc tính duy nhất của Username
-- **GIVEN** bảng `users` đã tồn tại tài khoản có username `"admin"`.
-- **WHEN** có một bản ghi khác cố gắng chèn vào bảng với username `"admin"`.
-- **THEN** cơ sở dữ liệu MUST từ chối và ném lỗi vi phạm Unique Constraint `ix_users_username`.
-
----
-
-### Requirement: REQ-AUTH-DB-03 EF Core Initial Migration Cho Bảng Users
-Hệ thống MUST tạo một bản Migration đầu tiên chỉ sinh duy nhất bảng `users` và áp dụng thành công vào PostgreSQL.
-
-#### Scenario: Sinh migration độc lập chỉ chứa bảng users
-- **GIVEN** cấu hình DbContext của dự án `MT_GRMS_BACKEND`.
-- **WHEN** thực hiện lệnh tạo migration `InitialCreate_UserOnly`.
-- **THEN** tệp Migration sinh ra MUST chỉ chứa lệnh `migrationBuilder.CreateTable("users", ...)` mà không chứa bất kỳ bảng nào khác.
-
-#### Scenario: Áp dụng migration vào cơ sở dữ liệu và seed tài khoản mẫu
-- **GIVEN** container PostgreSQL 16 đang hoạt động.
-- **WHEN** thực hiện lệnh `dotnet ef database update`.
-- **THEN** bảng `users` MUST xuất hiện trong schema của database `mtgrms_db` và có sẵn 1 tài khoản quản trị viên mẫu để kiểm thử đăng nhập ngay lập tức.
-
----
-
-## Acceptance Checklist
-- [ ] REQ-AUTH-DB-01: Container `mtgrms-postgres` khởi chạy thành công qua `docker compose up -d`.
-- [ ] REQ-AUTH-DB-02: Thực thể `User` có `Id` kiểu string Uid, `Username`, `Password`, ràng buộc Unique trên `Username`.
-- [ ] REQ-AUTH-DB-03: Migration chỉ sinh đúng bảng `users` và `dotnet ef database update` hoàn tất không lỗi.
-- [ ] Đăng nhập thử nghiệm thành công với tài khoản seed `admin`.
-- [ ] Toàn bộ UnitTests & IntegrationTests tiếp tục PASS 100%.
