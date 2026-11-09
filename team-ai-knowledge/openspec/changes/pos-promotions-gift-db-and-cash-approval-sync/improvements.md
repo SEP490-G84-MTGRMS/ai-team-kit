@@ -7,3 +7,7 @@
 ## Brainstorm · 2026-11-09 09:10
 
 Hoàn thiện đầy đủ thiết kế chi tiết giải quyết cả 4 vấn đề kỹ thuật và trải nghiệm người dùng.
+
+## Verify Spec · 2026-11-09 09:11
+
+Phân chia 8 tasks theo đúng luồng Backend -> Frontend -> Test.
