@@ -11,3 +11,7 @@ Chạy song song Skeptic và Guardian 2 vòng phát hiện chính xác lỗi hoa
 ## Apply · 2026-11-09 19:34
 
 Khi dự án có nhiều thành viên thêm cột Entity mà chưa chạy migration, việc bổ sung đối chiếu tự động AppDbContext.Model với information_schema.columns lúc khởi động kèm chạy smoke test thực tế trên PostgreSQL giúp bắt trọn mọi lệch schema (WalletBalance, ConversionRate, FaceMatchScore) và xung đột Unique Index Barcode giữa các tenant demo.
+
+## Test · 2026-11-09 19:38
+
+Bổ sung cơ chế tự động đối chiếu AppDbContext.Model với information_schema (EnsureMissingModelSchemaAsync) trong DbInitializer giúp phát hiện và đồng bộ sớm mọi lệch cột CSDL PostgreSQL ngay khi khởi động, đồng thời dùng mã vạch tách biệt theo từng tenant trong dữ liệu mẫu để tránh xung đột Unique Index toàn cục IX_Products_Barcode.

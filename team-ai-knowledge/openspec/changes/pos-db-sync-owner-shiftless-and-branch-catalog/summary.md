@@ -15,3 +15,7 @@ User duyệt Verify Spec (review/skeptic.md Chấp nhận, review/guardian.md An
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 19:34
 
 Hoàn tất 12/12 task (T1-T12): đồng bộ schema PostgreSQL (Tenants, OrderDetails.ConversionRate, BranchProducts, EmployeeSchedules), đồng bộ PBKDF2 password 123456 cho chủ cửa hàng 0918889999 và 2 nhân viên all-time Ba Đình (0917778888, 0914445555), thêm endpoint self-check-in + nút Vào màn hình Bán hàng POS, bỏ đóng/mở ca cho STORE_OWNER (hạch toán vào Safe), và lọc đúng sản phẩm theo chi nhánh đang chọn (5/5/3 SP). Pass 601 UnitTests, 47 IntegrationTests, oxlint 0 errors, vite build PASS và live PostgreSQL API smoke test PASS.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 19:38
+
+Duyệt bước Test (verdict: PASS): 601/601 UnitTests, 47/47 IntegrationTests, kiểm thử E2E thực tế trên PostgreSQL mtgrms_db (0 lỗi 42703, đăng nhập 0918889999 + 2 nhân viên all-time Ba Đình, tự chấm công kèm nút vào POS, bán hàng không ca cho STORE_OWNER vào két sắt Safe, lọc chuẩn sản phẩm theo chi nhánh 5/5/3 SP) và build Production Frontend 2589 modules đều vượt qua 100%.
