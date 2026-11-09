@@ -15,12 +15,13 @@
 
 ## Frontend
 - [x] T10 — Tải và tích hợp models `@vladmandic/face-api` vào thư mục `public/models` và cấu hình service tải model client-side (REQ-ATT-01)
-- [x] T11 — Xây dựng Modal FaceID Check-in/Check-out với thuật toán Liveness chớp mắt EAR < 0.18 và so khớp vector trên màn hình POS (REQ-ATT-01, REQ-ATT-02)
-- [x] T12 — Nâng cấp Modal Đăng ký khuôn mặt trong trang Quản lý nhân viên (REQ-ATT-04)
-- [x] T13 — Hoàn thiện Modal Chấm công thủ công 3 tiêu chí trong Lịch làm việc (REQ-ATT-03)
-- [x] T14 — Đồng bộ giao diện gửi đơn và duyệt đơn cho cả 2 loại đơn CheckInIncident và CheckOutIncident (REQ-ATT-06)
+- [x] T11 — Tích hợp thuật toán `FaceMatcher`, `LabeledFaceDescriptors`, ngưỡng khoảng cách Euclid `DISTANCE_THRESHOLD = 0.6`, đồng bộ canvas `matchDimensions`, vẽ bounding box và khoảng cách tương đồng (REQ-ATT-01)
+- [x] T12 — Nâng cấp Modal FaceID Check-in/Check-out với nút Xác nhận vào/ra ca mặc định luôn hiển thị rõ ràng, cho phép bấm xác nhận tức thì (REQ-ATT-01, REQ-ATT-02)
+- [x] T13 — Tự động trích xuất `FaceDescriptor` khi tải ảnh đại diện `AvatarUrl` trong `EmployeeFormModal`, bỏ modal đăng ký khuôn mặt riêng lẻ (REQ-ATT-04)
+- [x] T14 — Hoàn thiện Modal Chấm công thủ công 3 tiêu chí trong Lịch làm việc (REQ-ATT-03)
+- [x] T15 — Đồng bộ giao diện gửi đơn và duyệt đơn cho cả 2 loại đơn CheckInIncident và CheckOutIncident (REQ-ATT-06)
 
 ## Test
-- [x] T15 — Viết Unit Tests Backend cho Service Check-in, Check-out, Liveness validation, và Graceful Fallback Policy (REQ-ATT-01, REQ-ATT-02, REQ-ATT-05)
-- [x] T16 — Viết Integration Tests cho luồng tạo đơn CheckInIncident tự động mở ca POS và duyệt đơn CheckOutIncident chốt công (REQ-ATT-06)
-- [x] T17 — Test kiểm thử giao diện Client-side FaceID trên trình duyệt máy POS với camera thật (REQ-ATT-01, REQ-ATT-02)
+- [x] T16 — Viết Unit Tests Backend cho Service Check-in, Check-out, FaceMatchScore >= 70%, và Graceful Fallback Policy (REQ-ATT-01, REQ-ATT-02, REQ-ATT-05)
+- [x] T17 — Viết Integration Tests cho luồng tạo đơn CheckInIncident tự động mở ca POS và duyệt đơn CheckOutIncident chốt công (REQ-ATT-06)
+- [x] T18 — Build sạch Frontend và Backend, kiểm thử tích hợp giao diện FaceID trên màn hình POS (REQ-ATT-01, REQ-ATT-02)
