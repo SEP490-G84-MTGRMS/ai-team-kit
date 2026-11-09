@@ -1,28 +1,46 @@
 # Tasks: auth-login-integration
 
-## Backend Tasks
-- [x] T1 — Bổ sung route kép `api/auth` và `api/v1/auth` trên `AuthController.cs` (REQ-02)
-- [x] T2 — Chuẩn hóa HTTP Status Codes (200 OK, 400 Bad Request, 401 Unauthorized) đóng gói qua `ApiResponse<T>`, loại bỏ mock fallback ngầm (REQ-01)
-- [x] T3 — Kiểm tra mật khẩu `user.Password == request.Password` trong `AuthService.cs` và thêm thuộc tính `Role` trong `UserInfo` record (REQ-01)
-- [x] T4 — Bổ sung và cập nhật bộ kiểm thử đơn vị & tích hợp (11 Unit Tests + 5 Integration Tests) bao phủ đầy đủ kịch bản 200, 400, 401 (REQ-01)
-- [x] T5 — Tạo file tóm tắt `docs/worklogs/2026-10-13_BE-AUTH_login-integration.md` và cập nhật `CHANGELOG.md` trong `MT_GRMS_BACKEND` (Quy định bắt buộc pre-commit hook)
+## Backend Tasks (ASP.NET Core 8 Web API)
+- [ ] T1 — Cấu hình CORS `AllowCredentials()` cho các origins cụ thể (`http://localhost:5173`, `http://localhost:3000`) và middleware đọc JWT từ Cookie trong `Program.cs` (REQ-02)
+- [ ] T2 — Cập nhật `AuthController.cs`:
+  - `POST /api/auth/login`: Xác thực thông tin, ghi `Set-Cookie` cho `access_token` và `refresh_token` (HttpOnly, SameSite=Lax), trả về `ApiResponse<UserInfo>` không chứa token trong body (REQ-01)
+  - `POST /api/auth/refresh`: Đọc `refresh_token` từ Cookie, xác thực, xoay vòng token mới và cập nhật cookies mới (REQ-AUTH-05, REQ-AUTH-07)
+  - `GET /api/auth/me`: Đọc danh tính từ cookie, trả về `ApiResponse<UserInfo>` để hydrate user state (REQ-AUTH-04)
+  - `POST /api/auth/logout`: Xóa cookies (`Max-Age=0`) và thu hồi Refresh Token trong DB (REQ-AUTH-06)
+- [ ] T3 — Cập nhật `AuthService.cs` & `IAuthService.cs`:
+  - Lưu và cập nhật `RefreshToken` & `RefreshTokenExpiryTime` vào CSDL PostgreSQL bảng `Users` khi Login & Refresh (REQ-AUTH-07)
+  - Triển khai phương thức thu hồi token khi Logout (REQ-AUTH-06)
+  - Triển khai `GetCurrentUserAsync` phục vụ endpoint `/api/auth/me` (REQ-AUTH-04)
+- [ ] T4 — Cập nhật Unit Tests & Integration Tests cho Auth Controller & Service với cơ chế HttpOnly Cookie (REQ-01, REQ-AUTH-07)
+- [ ] T5 — Tạo tệp worklog `MT_GRMS_BACKEND/docs/worklogs/` và cập nhật `CHANGELOG.md` theo quy tắc bắt buộc pre-commit (REQ-01)
 
-## Frontend Tasks
-- [x] T6 — Cấu hình `server.proxy` trong `MT_GRMS_FRONTEND/vite.config.ts` để proxy `/api` tới `http://localhost:5232` (REQ-02)
-- [x] T7 — Cập nhật `authTypes.ts` và `authService.ts` gửi `{ usernameOrEmail, password, tenantCode }`, bóc tách `ApiResponse` envelope và hiển thị lỗi thật (REQ-01, REQ-02)
-- [x] T8 — Kiểm tra và đảm bảo `LoginPage.tsx` xử lý thông báo lỗi sắc nét và điều hướng đúng phân hệ (`CASHIER` -> `/pos`, `ADMIN` -> `/admin/dashboard`) (REQ-03)
+## Frontend Tasks (React 19 / TypeScript / Vite)
+- [ ] T6 — Cấu hình `src/api/httpClient.ts`:
+  - Bật `withCredentials: true` trên Axios instance để tự động gửi/nhận Cookie (REQ-02)
+  - Loại bỏ hoàn toàn logic đọc/ghi token từ `localStorage` và header `Authorization` (REQ-AUTH-04)
+  - Triển khai Axios Response Interceptor chặn HTTP 401, quản lý cờ `isRefreshing` và hàng đợi `failedQueue` để tự động gọi ngầm `POST /api/auth/refresh` và retry các request trong hàng đợi (REQ-AUTH-05)
+  - Xử lý khi refresh thất bại (401/400): dọn dẹp state, hiển thị Toast cảnh báo hết hạn phiên, ghi nhớ URL và điều hướng về `/auth/login?redirect=...` (REQ-AUTH-06)
+- [ ] T7 — Cập nhật `useAuthStore.ts` & `authService.ts`:
+  - Loại bỏ hoàn toàn trường `token` khỏi `useAuthStore` và xóa sạch khỏi `localStorage` (REQ-AUTH-04)
+  - Bổ sung hàm `checkAuth()` gọi `GET /api/auth/me` để hydrate thông tin `user` khi tải lại trang hoặc mở tab mới (REQ-AUTH-04)
+  - Cập nhật `authService.login()` và `authService.logout()` tương thích với HttpOnly Cookies (REQ-01, REQ-AUTH-06)
+- [ ] T8 — Cập nhật `LoginPage.tsx` & `ProtectedRoute.tsx`:
+  - Khi đăng nhập thành công, ưu tiên điều hướng theo tham số `redirect` trên URL (nếu có), hoặc theo vai trò (`/pos` cho `CASHIER`, `/admin/dashboard` cho `ADMIN`) (REQ-03, REQ-AUTH-06)
+  - Cập nhật `ProtectedRoute.tsx` sử dụng `checkAuth()` để xác minh phiên làm việc an toàn, tránh redirect oan khi vừa F5 (REQ-AUTH-04)
+- [ ] T9 — Tạo tệp worklog `MT_GRMS_FRONTEND/docs/worklogs/` và cập nhật `CHANGELOG.md` theo quy tắc bắt buộc (REQ-01)
 
 ## Verification & Testing Tasks
-- [x] T9 — Chạy `dotnet test` xác minh toàn bộ test cases Backend PASS 100% (16/16 tests) (REQ-01)
-- [x] T10 — Chạy kiểm tra build Frontend TypeScript (`npm run build`) hoàn thành thành công không có lỗi (REQ-02, REQ-03)
+- [ ] T10 — Chạy `dotnet test` xác minh toàn bộ test cases Backend PASS 100% (REQ-01, REQ-AUTH-07)
+- [ ] T11 — Chạy `npm run build` trên Frontend xác minh 0 lỗi TypeScript và bundle thành công (REQ-AUTH-04, REQ-AUTH-05)
+- [ ] T12 — Kiểm thử End-to-End: Đăng nhập thành công -> F5 duy trì phiên qua Cookie -> Chờ/Giả lập Access Token hết hạn -> Silent refresh tự động thành công không gián đoạn -> Hết hạn refresh token chuyển về trang login kèm redirect URL.
 
+---
 ## Tasks Sáp Nhập Từ Các Change Con
 
 <!-- Tasks sáp nhập từ: auth-login-feature -->
 # Tasks: auth-login-feature
 
 ## Backend Tasks (ASP.NET Core 8 Web API)
-
 - [x] BE-01: Setup AuthDtos (LoginRequest, LoginResponse, UserInfo, RefreshTokenRequest)
 - [x] BE-02: Setup FluentValidation LoginRequestValidator
 - [x] BE-03: Implement IAuthService & AuthService (LoginAsync, RefreshTokenAsync)
@@ -34,7 +52,6 @@
 - [x] BE-09: Unit tests & Integration tests passing 100%
 
 ## Frontend Tasks (React 19 / TypeScript / Vite)
-
 - [x] FE-01: Tinh giản Login form (Phone-First trực diện: chỉ SĐT + Mật khẩu, bỏ hoàn toàn tabs và trường mã chuỗi tenant)
 - [x] FE-02: API integration AuthService.ts với fallback demo accounts (hỗ trợ khớp SĐT/email)
 - [x] FE-03: Zustand auth store (token, user, isAuthenticated, setAuth, logout)
