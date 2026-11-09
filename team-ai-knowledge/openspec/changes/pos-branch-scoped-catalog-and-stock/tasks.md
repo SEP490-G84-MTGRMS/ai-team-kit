@@ -1,22 +1,22 @@
 # Tasks: pos-branch-scoped-catalog-and-stock
 
-- [ ] T1 [Backend/Test] Cập nhật test harness `FakeOrderRepository` và viết unit test tái hiện lỗi (red tests) trong `MT_GRMS.UnitTests/PosOrderServiceTests.cs` (REQ-BRANCH-SCOPE-02)
-  - Seed mặc định `BranchProduct` Active cho các sản phẩm cơ sở (`_prodHaoHaoId`, `_prodCocaId`) tại `_branchQ1Id` để bảo toàn ~60 tests hiện có.
+- [x] T1 [Backend/Test] Cập nhật test harness `FakeOrderRepository` và viết unit test tái hiện lỗi (red tests) trong `MT_GRMS.UnitTests/PosOrderServiceTests.cs` (REQ-BRANCH-SCOPE-02)
+  - Seed mặc định `BranchProduct` Active cho các sản phẩm cơ sở (`_prodHaoHaoId`, `_prodCocaId`) tại `_branchId` để bảo toàn ~60 tests hiện có.
   - Viết test đỏ: `CreateOrderAsync` ném `PRODUCT_NOT_IN_BRANCH` khi sản phẩm không thuộc `BranchProducts` hoặc có `Status = "Inactive"`, xác nhận không trừ tồn kho.
   - Viết test đỏ: `CreatePreOrderAsync` ném `PRODUCT_NOT_IN_BRANCH` cho sản phẩm ngoài chi nhánh.
   - Viết test đỏ: `ProcessReturnExchangeAsync` chiều `NewItems` ném `PRODUCT_NOT_IN_BRANCH` khi sản phẩm đổi mới không thuộc chi nhánh đơn gốc.
   - Viết test đỏ: Dòng quà tặng (`IsGift = true`) ngoài chi nhánh bị bỏ qua kèm cảnh báo, đơn vẫn hoàn tất thành công.
-- [ ] T2 [Backend/Application] Triển khai validate `BranchProduct` Active trong `MT_GRMS.Application/Orders/OrderService.cs` (REQ-BRANCH-SCOPE-02, REQ-BRANCH-SCOPE-03)
+- [x] T2 [Backend/Application] Triển khai validate `BranchProduct` Active trong `MT_GRMS.Application/Orders/OrderService.cs` (REQ-BRANCH-SCOPE-02, REQ-BRANCH-SCOPE-03)
   - Trong `CreateOrderAsync`: kiểm tra mọi item bán (`!item.IsGift`) phải có `BranchProduct` với `Status` là `"Active"` (không phân biệt hoa thường) tại `request.BranchId`; nếu thiếu ném `BusinessException("PRODUCT_NOT_IN_BRANCH")`. Bỏ qua các item quà không có `BranchProduct` Active kèm cảnh báo.
   - Trong `CreatePreOrderAsync`: áp dụng logic kiểm tra `BranchProduct` Active tương tự trước khi tạo đơn đặt trước.
   - Trong `ProcessReturnExchangeAsync` (`NewItems`): nạp `BranchProducts` theo `originalOrder.BranchId` và kiểm tra sản phẩm đổi mới phải Active tại chi nhánh đơn gốc.
   - Chạy `dotnet test` để xác nhận toàn bộ red tests chuyển sang green.
-- [ ] T3 [Frontend/API] Loại bỏ fallback `/products` trong `MT_GRMS_FRONTEND/src/features/pos/api/posOrderApi.ts` (REQ-BRANCH-SCOPE-01, REQ-BRANCH-SCOPE-03)
+- [x] T3 [Frontend/API] Loại bỏ fallback `/products` trong `MT_GRMS_FRONTEND/src/features/pos/api/posOrderApi.ts` (REQ-BRANCH-SCOPE-01, REQ-BRANCH-SCOPE-03)
   - Xóa bỏ hoàn toàn fallback sang `httpClient.get('/products?pageSize=100')` khi có `branchId`.
   - Chỉ gọi `GET /branches/${branchId}/products?Status=Active`; khi không có sản phẩm trả về mảng rỗng `[]`, khi lỗi ném lỗi thật cho component xử lý.
-- [ ] T4 [Frontend/UI] Xóa bỏ mock fallback và chặn thao tác khi chưa chọn chi nhánh cụ thể (REQ-BRANCH-SCOPE-01)
+- [x] T4 [Frontend/UI] Xóa bỏ mock fallback và chặn thao tác khi chưa chọn chi nhánh cụ thể (REQ-BRANCH-SCOPE-01)
   - Trong `MT_GRMS_FRONTEND/src/features/pos/pages/PosCheckoutPage.tsx`: xóa bỏ fallback `getInitialProducts()` mock data; hiển thị trạng thái Empty "Chi nhánh chưa được gán sản phẩm" hoặc thông báo lỗi thật; không tự gán `summaries[0]` nếu `user.branchId` không khớp.
   - Trong `MT_GRMS_FRONTEND/src/features/pos/pages/InvoiceManagementPage.tsx`: khi đang lọc `branchFilter === 'ALL'`, bắt buộc người dùng chọn chi nhánh cụ thể trước khi tạo đơn đặt trước hoặc đổi/trả; không tự gán ngầm định `dbBranches[0]?.id`. Bỏ `.catch(() => null)` nuốt lỗi API.
-- [ ] T5 [Verification] Kiểm thử hồi quy toàn diện backend và frontend (REQ-BRANCH-SCOPE-01, REQ-BRANCH-SCOPE-02, REQ-BRANCH-SCOPE-03)
-  - Chạy `dotnet test MT_GRMS_BACKEND.sln` kiểm tra toàn bộ suite unit tests và integration tests.
-  - Chạy `npm --prefix MT_GRMS_FRONTEND run build` kiểm tra TypeScript compilation và Vite build.
+- [x] T5 [Verification] Kiểm thử hồi quy toàn diện backend và frontend (REQ-BRANCH-SCOPE-01, REQ-BRANCH-SCOPE-02, REQ-BRANCH-SCOPE-03)
+  - Chạy `dotnet test MT_GRMS_BACKEND.sln` kiểm tra toàn bộ suite unit tests và integration tests (642/642 tests passed).
+  - Chạy `npm --prefix MT_GRMS_FRONTEND run build` kiểm tra TypeScript compilation và Vite build thành công (exit code 0).
