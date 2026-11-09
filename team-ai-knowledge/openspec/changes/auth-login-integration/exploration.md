@@ -1,58 +1,62 @@
-# Exploration: Tích hợp Đăng nhập (Auth Login Integration) Giữa Backend và Frontend
+# Exploration: Tích hợp Đăng nhập, Quản lý Token & Xử lý Hết hạn Phiên (Session Expiry)
 
 ## 1. Hiện trạng Code Liên Quan
 - **Backend (`MT_GRMS_BACKEND`)**:
-  - `AuthController.cs`: Đang map endpoint `api/[controller]/login` (`POST /api/auth/login`).
-  - `LoginRequest.cs`: Record gồm `UsernameOrEmail`, `Password`, `TenantCode`.
-  - `LoginResponse.cs`: Record gồm `AccessToken`, `RefreshToken`, `ExpiresAt`, `UserInfo User`.
-  - `User.cs`: Entity bảng `users` đơn giản trong PostgreSQL gồm `Id` (string Uid `usr_...`), `Username`, `Password`.
-  - `Program.cs`: Đã bật CORS cho `http://localhost:5173`.
+  - `AuthController.cs`: Có các endpoint:
+    - `POST /api/auth/login`: Xác thực tài khoản, trả về `LoginResponse` (AccessToken, RefreshToken, UserInfo).
+    - `POST /api/auth/refresh`: Tiếp nhận `RefreshTokenRequest`, nhưng hiện tại đang trả về dữ liệu mẫu tĩnh (`refreshed_user`) chứ chưa tra cứu và xác thực user thật trong database.
+    - `POST /api/auth/logout`: Chưa có endpoint thu hồi (revoke) Refresh Token trong DB.
+  - `User.cs`: Thực thể đã có sẵn 2 cột `RefreshToken` và `RefreshTokenExpiryTime` trong PostgreSQL.
 - **Frontend (`MT_GRMS_FRONTEND`)**:
-  - `httpClient.ts`: Đang đặt `baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1'`.
-  - `authService.ts`: Đang gọi `httpClient.post('/auth/login', credentials)` với payload `{ email, password }` thay vì `usernameOrEmail`. Đồng thời có khối `catch` âm thầm fallback sang `DEMO_ACCOUNTS`, làm che giấu lỗi thật từ Backend.
-  - `authTypes.ts`: Kiểu `UserProfile` mong đợi trường `role`, trong khi Backend `UserInfo` trả về `roleName`.
-  - `vite.config.ts`: Chưa cấu hình `server.proxy` để chuyển tiếp `/api` sang backend `http://localhost:5232`.
+  - `httpClient.ts`: Đang cấu hình Axios Response Interceptor. Khi gặp bất kỳ lỗi `401 Unauthorized` nào, interceptor lập tức xóa `access_token` và `auth_user` trong `localStorage`, rồi cưỡng chế chuyển hướng `window.location.href = '/auth/login'`.
+  - Chưa lưu `refreshToken` vào `localStorage` hay `useAuthStore` khi login/register.
+  - Chưa có cơ chế Silent Refresh ngầm và hàng đợi (Request Queue) để xử lý các request song song khi Access Token hết hạn.
 
-## 2. Assumptions (Giả định)
-- Backend phục vụ môi trường phát triển cục bộ tại `http://localhost:5232` (hoặc `https://localhost:7216`).
-- Người dùng có thể đăng nhập bằng Username (ví dụ: `admin`) hoặc Email (ví dụ: `admin@mtgrms.vn`).
-- Token trả về là JWT/Bearer token hợp lệ, được lưu vào `localStorage` ở Frontend để đính kèm vào các request sau.
+---
 
-## 3. Non-Goals (Ngoài phạm vi)
-- Chưa triển khai đầy đủ OAuth2 Google/Facebook Login trong change này.
-- Chưa xử lý MFA (xác thực 2 yếu tố) hoặc SMS OTP lúc đăng nhập.
-- Không thay đổi cấu trúc bảng `users` trong database đã hoàn tất ở change trước.
+## 2. Phân Tích Kiến Trúc: Lưu Token Ở Đâu An Toàn Nhất? (localStorage vs HttpOnly Cookie vs In-Memory)
 
-## 4. Các Phương Án Kỹ Thuật (Trade-off Matrix)
+### 2.1. Tại sao mã nguồn trước đây lại lưu token vào `localStorage`?
+- **Tiện lợi & Nhanh chóng**: Trong các dự án SPA (React/Vite), `localStorage` là giải pháp nhanh nhất: dễ đọc ghi qua JS, dễ đính kèm vào header `Authorization: Bearer <token>`, không gặp vấn đề cấu hình cross-origin cookie / SameSite khi chạy dev khác port (`localhost:5173` vs `localhost:5232`).
+- **Nhược điểm nghiêm trọng (Lỗ hổng XSS)**:
+  - Bất kỳ mã JavaScript nào thực thi trên trang (qua thư viện npm độc hại, browser extension, hoặc lỗ hổng XSS) đều có thể gọi `localStorage.getItem('access_token')` và đánh cắp token gửi về server của kẻ tấn công.
+  - Không thể cấu hình hết hạn tự động từ phía client cho `localStorage`.
 
-### Phương án A: Chuẩn hóa Route và DTO 2 đầu, dùng Vite Proxy trung gian (KHUYẾN NGHỊ)
-- **Mô tả**:
-  1. Backend `AuthController` hỗ trợ cả 2 route prefix `api/auth/login` và `api/v1/auth/login`. DTO `UserInfo` bổ sung alias `Role` khớp với `roleName`.
-  2. Frontend `authService.ts` gửi `{ usernameOrEmail, password, tenantCode }`, map trường `role` an toàn.
-  3. `vite.config.ts` thêm `server.proxy` map `/api` -> `http://localhost:5232`.
-  4. Loại bỏ silent fallback của `authService.ts` trong chế độ kết nối thật, ném lỗi rõ ràng nếu sai tài khoản.
-- **Ưu điểm**:
-  - Không lo lỗi CORS khi test trên các môi trường localhost khác nhau.
-  - Tính tương thích ngược tuyệt đối (hỗ trợ cả client cũ gọi `/api` và client mới gọi `/api/v1`).
-  - Báo lỗi chính xác về UI khi người dùng nhập sai mật khẩu hoặc tài khoản.
-- **Nhược điểm**:
-  - Cần chỉnh sửa đồng bộ ở cả Backend controller và Frontend service.
+### 2.2. Các giải pháp lưu trữ bảo mật hơn
 
-### Phương án B: Giữ nguyên Backend, chỉ sửa Frontend gọi trực tiếp URL tuyệt đối
-- **Mô tả**: Cấu hình `VITE_API_BASE_URL=http://localhost:5232/api`, sửa payload frontend thành `usernameOrEmail`.
-- **Ưu điểm**: Không cần sửa code Backend.
-- **Nhược điểm**: Phụ thuộc CORS trực tiếp giữa các port trình duyệt, dễ bị block trên Safari hoặc môi trường dev network; không chuẩn hóa được versioning API (`/api/v1`).
+| Giải pháp | Cơ chế | Khả năng chống XSS | Khả năng chống CSRF | Độ phức tạp triển khai |
+|---|---|---|---|---|
+| **A. `localStorage`** (Hiện tại) | Lưu cả Access & Refresh Token trong LocalStorage | ❌ Kém (Bị đọc trộm qua XSS) | ✅ Tốt (Không tự gửi theo request) | Rất thấp |
+| **B. `HttpOnly Cookie`** (Toàn phần) | Lưu cả Access & Refresh Token trong HttpOnly Cookie | ✅ Tuyệt đối (JS không thể đọc) | ⚠️ Cần cấu hình `SameSite=Lax` & CSRF Token | Trung bình |
+| **C. Mô hình Hybrid (In-Memory + HttpOnly Cookie)** *(Chuẩn OWASP / Auth0)* | **Access Token trong Memory/Zustand** (sống ngắn 15p) + **Refresh Token trong HttpOnly Cookie** (sống dài 7-30 ngày) | ✅ Cực cao (JS không sờ được Refresh Token, Access Token mất khi tắt tab) | ✅ Tốt (Access Token gửi qua header Bearer, Refresh Token có SameSite=Lax) | Chuẩn mực cao cấp |
+| **D. Mô hình Token Rotation có Hàng đợi (In-Memory / Safe Storage + Rotating Refresh Token)** | Access Token sống ngắn (15-30p); Refresh Token xoay vòng (mỗi lần refresh sinh token mới, vô hiệu hóa token cũ, phát hiện token tái sử dụng) | ✅ Rất cao (Nếu Refresh Token bị lộ và dùng lại, toàn bộ phiên của tài khoản bị thu hồi ngay lập tức) | ✅ Rất tốt | Tối ưu cho SPA |
 
-### Phương án C: Dùng Mock Service Worker (MSW) chặn phía Frontend
-- **Mô tả**: Dùng MSW giả lập toàn bộ API tại client.
-- **Ưu điểm**: Test độc lập không cần backend chạy.
-- **Nhược điểm**: Không giải quyết được yêu cầu tích hợp thật giữa 2 dự án.
+---
 
-## 5. Phương Án Lựa Chọn & Lý Do
-- **Chọn Phương án A**: Đây là giải pháp tiêu chuẩn công nghiệp và chuẩn RESTful API, đảm bảo Frontend kết nối xuyên suốt tới Backend, chạy qua Vite proxy mượt mà, đồng bộ DTO và kiểm thử end-to-end tin cậy.
+## 3. Khảo Sát Kỹ Thuật Cơ Chế Xử Lý Hết Hạn Phiên (Session Lifecycle)
 
-## 6. Rủi ro & Cách Giảm Thiểu
-- **Rủi ro**: Port Backend thay đổi giữa các máy dev (ví dụ IIS Express 7216 vs Kestrel 5232).
-  - **Giảm thiểu**: Dùng biến môi trường `VITE_API_TARGET_URL` trong file cấu hình, mặc định `http://localhost:5232`.
-- **Rủi ro**: Lỗi CORS nếu gọi trực tiếp cross-origin.
-  - **Giảm thiểu**: Backend đã có policy `AllowFrontend` cho `http://localhost:5173` và `http://localhost:3000`.
+### 3.1. Kịch bản 1: Access Token hết hạn (Hết 15 - 30 phút)
+- **Vấn đề**: Người dùng đang thao tác (ví dụ: quét mã vạch bán hàng ở POS, hoặc tạo hóa đơn nhập hàng). Request gửi lên bị từ chối 401 do token hết hạn.
+- **Giải pháp**: **Silent Refresh với Axios Request Queue**:
+  1. Khi nhận 401, kiểm tra nếu URL không phải `/auth/login` hoặc `/auth/refresh`.
+  2. Sử dụng cờ `isRefreshing` (boolean). Nếu đang có request refresh đang chạy, các request tiếp theo được đẩy vào `failedQueue = []` (chờ đợi Promise).
+  3. Gọi `POST /api/auth/refresh`.
+  4. Khi thành công: Cập nhật Access Token mới, giải phóng `failedQueue` bằng cách retry tất cả request ban đầu với header Bearer mới.
+  5. Người dùng **hoàn toàn không bị gián đoạn**, không bị mất form nhập liệu.
+
+### 3.2. Kịch bản 2: Refresh Token hết hạn hoặc không hợp lệ (Sau 7 - 30 ngày)
+- **Vấn đề**: Phiên làm việc dài hạn kết thúc, hoặc tài khoản đã bị đổi mật khẩu / khóa tài khoản ở server.
+- **Giải pháp**: **Graceful Session Expiry**:
+  1. Request `POST /api/auth/refresh` trả về 401/403 (Invalid or Expired Refresh Token).
+  2. Interceptor giải phóng hàng đợi, xóa sạch session trong Storage/Store (`access_token`, `refresh_token`, `auth_user`).
+  3. Hiển thị thông báo Toast cảnh báo: *"Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."*
+  4. Lưu lại URL hiện tại vào query parameter: `/auth/login?redirect=${encodeURIComponent(currentPath)}`.
+  5. Điều hướng người dùng về trang đăng nhập. Sau khi đăng nhập lại, tự động đưa người dùng trở lại đúng màn hình đang làm việc dở.
+
+---
+
+## 4. Phương Án Lựa Chọn & Lý Do
+- **Lựa chọn**: **Mô hình Hybrid Token kết hợp Axios Interceptor Queue & Token Rotation**:
+  - **Backend**: Cập nhật `AuthService.cs` để lưu `RefreshToken` thật vào bảng `Users`, có hạn sử dụng (`RefreshTokenExpiryTime`) và cơ chế xoay vòng token mới mỗi lần refresh (One-time-use Refresh Token).
+  - **Frontend**: Cấu hình `httpClient.ts` bổ sung cơ chế Silent Refresh hàng đợi thông minh, bắt lỗi 401 và tự động phục hồi request; chuyển hướng đăng nhập khi refresh thất bại.
+- **Lý do**: Giải quyết triệt để vấn đề gián đoạn người dùng, bảo vệ an toàn tối đa chống tấn công XSS/Replay Token, và tuân thủ chặt chẽ tiêu chuẩn công nghiệp hiện đại.
