@@ -11,3 +11,7 @@ User duyệt exploration.md và specs.md (5 requirements REQ-DB-SYNC-01 đến R
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 18:45
 
 User duyệt Verify Spec (review/skeptic.md Chấp nhận, review/guardian.md An toàn, tasks.md gồm 12 task từ T1 đến T12).
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 19:34
+
+Hoàn tất 12/12 task (T1-T12): đồng bộ schema PostgreSQL (Tenants, OrderDetails.ConversionRate, BranchProducts, EmployeeSchedules), đồng bộ PBKDF2 password 123456 cho chủ cửa hàng 0918889999 và 2 nhân viên all-time Ba Đình (0917778888, 0914445555), thêm endpoint self-check-in + nút Vào màn hình Bán hàng POS, bỏ đóng/mở ca cho STORE_OWNER (hạch toán vào Safe), và lọc đúng sản phẩm theo chi nhánh đang chọn (5/5/3 SP). Pass 601 UnitTests, 47 IntegrationTests, oxlint 0 errors, vite build PASS và live PostgreSQL API smoke test PASS.
