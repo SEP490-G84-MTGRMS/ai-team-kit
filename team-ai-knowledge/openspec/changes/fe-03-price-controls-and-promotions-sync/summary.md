@@ -7,3 +7,7 @@ Duyệt đề xuất kiểm soát giá bán FE-03 (cảnh báo dưới giá vố
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:12
 
 Duyệt thiết kế bảng ProductPriceHistories, cảnh báo dưới giá vốn FE-03.1, Zero-Friction audit log FE-03.2 và đặc tả 5 requirements.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:17
+
+Duyệt kết quả thẩm định review/skeptic.md và kế hoạch tasks.md cho FE-03 và khuyến mãi/voucher.
