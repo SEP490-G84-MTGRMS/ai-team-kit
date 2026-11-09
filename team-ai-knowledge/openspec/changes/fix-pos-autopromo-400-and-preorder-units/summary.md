@@ -7,3 +7,7 @@ Duyệt phạm vi bug-fix: sửa lỗi 400 Bad Request trên evaluate-cart khi n
 ## Brainstorm — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 14:06
 
 Hoàn thành exploration.md và specs.md với 4 MODIFIED Requirements (REQ-FIX-PROMO-01, REQ-FIX-PROMO-02, REQ-FIX-PREUNIT-01, REQ-FIX-PREUNIT-02) cho tự động áp dụng khuyến mãi POS (hỗ trợ BranchId/CustomerId chuỗi), đồng bộ trạng thái Sắp diễn ra/Hết hạn + nạp chi nhánh thật, và khôi phục chọn Đơn vị quy đổi kèm giữ/hoàn kho FEFO theo ConversionRate trên Đơn đặt trước.
+
+## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 14:42
+
+Người dùng đã Approve bước Verify Spec sau khi hoàn tất review/skeptic.md (5/5), review/guardian.md (An toàn), tasks.md (T1-T6), đồng bộ thành công nhánh dev và xác nhận toàn bộ 632/632 tests Backend cùng Frontend build sạch sẽ.
