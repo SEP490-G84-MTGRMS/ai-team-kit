@@ -14,9 +14,9 @@
 - [x] T8 — Hoàn thiện logic xử lý tách riêng đơn CheckInIncident (2) mở ca tức thì và CheckOutIncident (5) kèm luồng duyệt/từ chối (REQ-ATT-06)
 - [x] T9 — Củng cố Graceful Fallback khi chi nhánh chưa cấu hình AttendancePolicy (REQ-ATT-05)
 
-## Frontend
+## Frontend & Thuật toán Đa ảnh
 - [x] T10 — Tải và tích hợp models `@vladmandic/face-api` vào thư mục `public/models` và cấu hình service tải model client-side (REQ-ATT-01)
-- [x] T11 — Tích hợp thuật toán `FaceMatcher`, `LabeledFaceDescriptors` đa vector (`Float32Array[]`), ngưỡng khớp 65% (`MIN_MATCH_SCORE = 65`, `DISTANCE_THRESHOLD = 0.6`), đồng bộ canvas `matchDimensions`, vẽ bounding box và độ khớp % (REQ-ATT-01)
+- [x] T11 — Nâng cấp thuật toán so khớp đa ảnh: chuẩn hóa L2-norm (`normalizeDescriptor`), phân giải đệ quy chuỗi mảng 2 chiều đa vector, nạp `Float32Array[]` vào `LabeledFaceDescriptors`, và thuật toán ánh xạ khoảng cách Euclid sang điểm số % (`calculateMatchScore`) đồng bộ chuẩn xác với mốc 65% tại khoảng cách 0.60 (REQ-ATT-01)
 - [x] T12 — Nâng cấp Modal FaceID Check-in/Check-out với ngưỡng nhận diện 65%, nút Xác nhận vào/ra ca mặc định luôn hiển thị rõ ràng (REQ-ATT-01, REQ-ATT-02)
 - [x] T13 — Nâng cấp `EmployeeFormModal.tsx` hỗ trợ huấn luyện đa ảnh (tối đa 4 ảnh mẫu góc mặt khác nhau), trích xuất mảng vector 128 số và lưu trữ `FaceImageUrls`, `FaceDescriptor` (REQ-ATT-04)
 - [x] T14 — Hoàn thiện Modal Chấm công thủ công 3 tiêu chí trong Lịch làm việc (REQ-ATT-03)
