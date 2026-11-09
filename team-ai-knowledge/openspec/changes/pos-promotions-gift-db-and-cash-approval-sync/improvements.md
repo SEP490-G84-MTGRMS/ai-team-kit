@@ -15,3 +15,7 @@ Phân chia 8 tasks theo đúng luồng Backend -> Frontend -> Test.
 ## Apply · 2026-11-09 09:33
 
 Đã hoàn thành toàn bộ 8/8 tasks: hỗ trợ lọc toàn bộ chi nhánh khi duyệt két, tích hợp chọn quà tặng từ kho và chọn ĐVT, lưu đầy đủ các bậc thang khuyến mãi lên CSDL, tải mã voucher thực tế khi mở rộng đợt, và thêm nút quay lại Dashboard cho nhân viên.
+
+## Test · 2026-11-09 09:34
+
+Đã kiểm thử toàn bộ 6/6 kịch bản yêu cầu, Backend test suites 577/577 PASS, Frontend build thành công 0 lỗi.
