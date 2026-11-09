@@ -1,11 +1,11 @@
 # Tasks: pos-bank-cashbook-promo-conflict-and-ui-polish
 
 ## Test tái hiện lỗi (TDD — Red Phase)
-- [ ] T1 — Bổ sung unit test trong `CashbookServiceTests.cs` và `PromotionEvaluationTests.cs` tái hiện kịch bản khởi tạo quỹ `Bank` cho tenant thứ 2 đã có `Till`, đọc bậc thang `[TIERS_JSON]` cao nhất và giải quyết xung đột Best-Offer không cộng dồn (`REQ-POS-BANK-01`, `REQ-POS-PROMO-02`)
+- [x] T1 — Bổ sung unit test trong `CashbookServiceTests.cs` và `PromotionEvaluationTests.cs` tái hiện kịch bản khởi tạo quỹ `Bank` cho tenant thứ 2 đã có `Till`, đọc bậc thang `[TIERS_JSON]` cao nhất và giải quyết xung đột Best-Offer không cộng dồn (`REQ-POS-BANK-01`, `REQ-POS-PROMO-02`)
 
 ## Backend (Domain / Application)
-- [ ] T2 — Bổ sung `GetOrCreateBankAccountAsync` vào `ICashbookService` & `CashbookService` (sinh `Guid.NewGuid()`, gán `TenantId`, chuẩn hóa `GetAccountsAsync` không trùng PK tĩnh) và cập nhật `OrderService.CreateOrderAsync` tự phân giải quỹ `Bank` kèm thông tin `StorePaymentConfig`, bỏ qua thu quỹ khi `finalAmount == 0` (`REQ-POS-BANK-01`)
-- [ ] T3 — Cập nhật `PromotionService.EvaluateCartAsync` giải mã `[TIERS_JSON]` lấy bậc cao nhất thỏa `SubTotal`, kẹp trần ngân sách còn lại (`BudgetLimit - TotalDiscountGiven`) và chọn duy nhất 1 chương trình tự động tốt nhất theo nguyên tắc Best-Offer (`REQ-POS-PROMO-02`)
+- [x] T2 — Bổ sung `GetOrCreateBankAccountAsync` vào `ICashbookService` & `CashbookService` (sinh `Guid.NewGuid()`, gán `TenantId`, chuẩn hóa `GetAccountsAsync` không trùng PK tĩnh) và cập nhật `OrderService.CreateOrderAsync` tự phân giải quỹ `Bank` kèm thông tin `StorePaymentConfig`, bỏ qua thu quỹ khi `finalAmount == 0` (`REQ-POS-BANK-01`)
+- [x] T3 — Cập nhật `PromotionService.EvaluateCartAsync` giải mã `[TIERS_JSON]` lấy bậc cao nhất thỏa `SubTotal`, kẹp trần ngân sách còn lại (`BudgetLimit - TotalDiscountGiven`) và chọn duy nhất 1 chương trình tự động tốt nhất theo nguyên tắc Best-Offer (`REQ-POS-PROMO-02`)
 
 ## Frontend (POS, Product & Navigation)
 - [ ] T4 — Cập nhật `PosCheckoutPage.tsx`, `PosPaymentPanel.tsx` và `OrderDiscountModal.tsx` để tự động trừ `autoPromoDiscount` trên dòng `Giảm giá [KM]`, xử lý chiết khấu tay không cộng chồng, thay số `5%` giả lập bằng số thực tế và khóa dùng điểm khi `allowPointsWithPromotions == false` (`REQ-POS-PROMO-02`)
