@@ -11,3 +11,7 @@ Chạy song song 2 persona độc lập (Skeptic và Guardian) kết hợp đố
 ## Apply · 2026-11-09 16:02
 
 Đã bảo toàn tính đúng đắn khi quy đổi đơn vị nhiều lô FEFO và đối khớp chi nhánh dạng chuỗi chống lỗi 400.
+
+## Test · 2026-11-09 16:05
+
+Bộ test hồi quy tự động kiểm soát chặt chẽ đối khớp token chi nhánh và tính toán số lượng quy đổi theo lô FEFO.
