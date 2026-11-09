@@ -15,3 +15,7 @@
 ## Brainstorm · 2026-11-09 11:21
 
 Chuyển đổi toàn diện sang HttpOnly Cookie cho cả Access Token và Refresh Token, loại bỏ 100% localStorage khỏi client, tích hợp GET /api/auth/me và Silent Refresh Axios Queue.
+
+## Verify Spec · 2026-11-09 11:25
+
+Đã hoàn tất rà soát skeptic review và lập danh sách tasks chi tiết cho cả Backend và Frontend loại bỏ 100% localStorage sang HttpOnly Cookie.

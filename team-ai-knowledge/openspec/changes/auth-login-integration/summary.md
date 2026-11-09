@@ -15,3 +15,7 @@ Phê duyệt kết quả verify-spec, sẵn sàng tiến hành code và tick che
 ## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-09 11:21
 
 Đã cập nhật exploration.md, design-brief.md và specs.md loại bỏ hoàn toàn localStorage và chuyển sang HttpOnly Cookie theo yêu cầu của user.
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-09 11:25
+
+Duyệt kế hoạch triển khai HttpOnly Cookie, Silent Refresh Axios Queue, và các tasks T1-T12.
