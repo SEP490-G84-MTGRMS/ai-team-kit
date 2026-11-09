@@ -7,3 +7,7 @@ Thống nhất xóa bỏ khối xét hạng thành viên, rà soát backend, vi�
 ## Brainstorm · 2026-11-09 05:58
 
 Đảm bảo các thay đổi giao diện gỡ bỏ phân hạng thẻ đồng bộ hoàn toàn với API Backend hiện có.
+
+## Verify Spec · 2026-11-09 06:02
+
+Bổ sung các unit test tạo đơn hàng kèm voucher và loyalty points để tăng độ tin cậy.
