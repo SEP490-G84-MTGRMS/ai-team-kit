@@ -11,3 +11,7 @@ Duyệt thiết kế bảng ProductPriceHistories, cảnh báo dưới giá vố
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:17
 
 Duyệt kết quả thẩm định review/skeptic.md và kế hoạch tasks.md cho FE-03 và khuyến mãi/voucher.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 10:44
+
+Hoàn tất 8/8 tasks: FE-03 kiểm soát giá bán & lịch sử giá, sửa bậc thang khuyến mãi, chọn quà tặng Mua X tặng Y và sửa ngày hiệu lực voucher. 577/577 test pass, frontend build pass.

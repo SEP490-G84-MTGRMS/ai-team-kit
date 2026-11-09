@@ -11,3 +11,7 @@ Hoàn thành exploration, design-brief và delta specs chi tiết cho FE-03 và 
 ## Verify Spec · 2026-11-09 10:17
 
 Hoàn thành review skeptic 5/5 điểm và lập tasks.md 8 nhiệm vụ cụ thể từ CSDL đến UI.
+
+## Apply · 2026-11-09 10:44
+
+Tự động serialize metadata bậc thang khuyến mãi và cơ chế zero-friction cho lịch sử giá bán.
