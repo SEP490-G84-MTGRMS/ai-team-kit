@@ -11,3 +11,7 @@ Phê duyệt phương án kết nối Vite proxy, chuẩn hóa route Backend và
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-10-13 04:29
 
 Phê duyệt kết quả verify-spec, sẵn sàng tiến hành code và tick checklist tasks
+
+## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-09 11:21
+
+Đã cập nhật exploration.md, design-brief.md và specs.md loại bỏ hoàn toàn localStorage và chuyển sang HttpOnly Cookie theo yêu cầu của user.

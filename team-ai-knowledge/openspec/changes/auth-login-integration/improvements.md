@@ -11,3 +11,7 @@
 ## Verify Spec · 2026-10-13 04:29
 
 Đã phản biện theo persona skeptic và bóc tách 9 task chi tiết trong tasks.md
+
+## Brainstorm · 2026-11-09 11:21
+
+Chuyển đổi toàn diện sang HttpOnly Cookie cho cả Access Token và Refresh Token, loại bỏ 100% localStorage khỏi client, tích hợp GET /api/auth/me và Silent Refresh Axios Queue.
