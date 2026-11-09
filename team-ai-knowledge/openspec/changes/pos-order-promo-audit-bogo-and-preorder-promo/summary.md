@@ -15,3 +15,7 @@
 ## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 13:09
 
 Hoàn thành 8/8 tasks (T1-T8): mở rộng cột truy vết KM/Voucher/Điểm & Note trên Orders, đồng bộ nguyên tử UsedCount/TotalDiscountGiven và mở khóa Voucher khi hủy đơn, đánh giá BUY_X_GET_Y theo buyProductId + Best-Offer toàn cục, trừ kho FEFO ưu tiên hàng mua trước quà tặng 0đ kèm cảnh báo tồn kho, khóa hoàn 0đ khi đổi trả quà tặng, tự động áp KM và chặn Voucher trên Đơn đặt trước. Đã pass 588/588 Backend tests, npm run build và oxlint 0 lỗi.
+
+## Test — ✅ Approve bởi @sonnguyenn10 · 2026-11-09 13:32
+
+Xác nhận PASS toàn bộ 6 Requirements trên test-report.md: 588/588 Backend tests pass (56/56 trên bộ test trọng tâm Promotion & POS Order), Frontend tsc + vite build và oxlint đạt 0 lỗi, 0 lỗi tồn đọng.
