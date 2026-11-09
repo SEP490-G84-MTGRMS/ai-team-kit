@@ -11,3 +11,7 @@ Thống nhất xóa bỏ khối xét hạng thành viên, rà soát backend, vi�
 ## Verify Spec · 2026-11-09 06:02
 
 Bổ sung các unit test tạo đơn hàng kèm voucher và loyalty points để tăng độ tin cậy.
+
+## Apply · 2026-11-09 06:14
+
+Các test kiểm thử tạo đơn hàng có loyalty points và voucher đã được tích hợp chặt chẽ vào PosOrderServiceTests.
