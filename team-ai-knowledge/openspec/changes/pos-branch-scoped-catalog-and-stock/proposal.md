@@ -26,18 +26,21 @@ POS đang hiển thị và cho phép bán sản phẩm **không bám theo chi nh
 
 ## 5. Mục tiêu
 - POS chỉ hiển thị và chỉ bán được sản phẩm nằm trong `BranchProducts` Active của chi nhánh đang chọn; tồn kho hiển thị và bị trừ là `BranchStocks` của đúng chi nhánh.
-- **Quyết định đã thống nhất với user (phương án A)**: sản phẩm có tồn trong `BranchStocks` nhưng chưa được gán `BranchProducts` Active thì **không bán được**, phải gán vào danh mục chi nhánh trước.
+- **Quyết định 1 (đã thống nhất với user, phương án A)**: sản phẩm có tồn trong `BranchStocks` nhưng chưa được gán `BranchProducts` Active thì **không bán được**, phải gán vào danh mục chi nhánh trước.
+- **Quyết định 2 (quy tắc giá, đã thống nhất với user)**: sản phẩm đã thuộc chi nhánh nhưng **không đặt giá riêng** thì dùng giá chung (`Product.SellingPrice`, và `ProductUnit.Price` với đơn vị quy đổi); **có đặt giá riêng** (`BranchProduct.SellingPriceOverride` hoặc `UnitPriceOverrides`) thì dùng giá theo chi nhánh đó. Đây là thứ tự ưu tiên hiện tại của `OrderService`, giữ nguyên.
+- **Quyết định 3**: tồn kho hiển thị và bị trừ lấy từ `BranchStocks` (cộng các lô, trừ FEFO) của đúng chi nhánh; `BranchProducts` quyết định sản phẩm có được bán hay không, không chứa số lượng.
 
 ## 6. Phạm vi
 **In scope**
 - Frontend: `posOrderApi.getAllProducts` bỏ fallback `/products` khi đã có chi nhánh; lỗi API thì báo lỗi.
 - Frontend: POS Checkout, Tạo đơn đặt trước, Đổi/Trả hàng dùng `branchId` thật; "Tất cả chi nhánh" phải chọn 1 chi nhánh trước khi bán/đặt trước.
 - Backend: `CreateOrderAsync`, `CreatePreOrderAsync`, chiều `NewItems` của `ProcessReturnExchangeAsync` từ chối sản phẩm chưa có `BranchProduct` Active ở chi nhánh; giữ trừ tồn `BranchStocks` FEFO theo chi nhánh.
-- Test hồi quy cho các kịch bản trên.
+- Test hồi quy cho các kịch bản trên, gồm cả hai trường hợp giá (có / không có giá riêng của chi nhánh).
 
 **Out of scope**
 - Thay đổi màn hình gán sản phẩm vào chi nhánh (`BranchProducts`) và nhập kho.
 - Thay đổi thuật toán FEFO, khuyến mãi, đơn vị quy đổi đã làm ở change `fix-pos-autopromo-400-and-preorder-units`.
+- Thay đổi quy tắc chọn giá (giữ nguyên thứ tự ưu tiên hiện tại).
 - Migration dữ liệu tự động gán `BranchProducts` cho tồn kho cũ.
 
 ## 7. Người dùng liên quan
@@ -46,6 +49,7 @@ Thu ngân POS, Quản lý chi nhánh, Chủ cửa hàng (STORE_OWNER).
 ## 8. Tiêu chí coi là đã sửa
 - Sản phẩm không thuộc `BranchProducts` Active của chi nhánh A không xuất hiện trên POS/Tạo đơn đặt trước tại A, và không còn fallback sang danh mục chung.
 - Gửi trực tiếp sản phẩm đó qua `POST /orders` / pre-order / đổi trả bị backend từ chối với thông báo rõ ràng và không trừ tồn.
+- Sản phẩm thuộc chi nhánh nhưng không đặt giá riêng → bán bằng giá chung; có đặt giá riêng → bán bằng giá chi nhánh.
 - Tồn và giá của chi nhánh A không lẫn sang chi nhánh B.
 - Đơn tạo đúng chi nhánh đã chọn, trừ tồn đúng `BranchStocks` của chi nhánh đó (FEFO).
 - Backend test + frontend build pass.
