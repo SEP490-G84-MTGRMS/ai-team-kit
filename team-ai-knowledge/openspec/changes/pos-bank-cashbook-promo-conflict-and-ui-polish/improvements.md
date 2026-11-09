@@ -7,3 +7,7 @@ Chọn schema bug-fix tinh gọn (không dư design-brief) bao phủ trọn vẹ
 ## Brainstorm · 2026-11-09 11:42
 
 Luôn đối chiếu dữ liệu seed tĩnh (DefaultBankId) với Global Query Filter đa tenant trước khi viết hàm thu/chi quỹ trên POS.
+
+## Verify Spec · 2026-11-09 11:46
+
+Kiểm tra kỹ PromotionEvaluationTests.cs ngay trong bước Verify Spec giúp đồng bộ đặc tả Best-Offer và giữ tương thích 100% với hành vi cộng gộp Voucher hiện có.
