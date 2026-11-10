@@ -11,3 +11,7 @@ Duyệt bước brainstorm: Hoàn tất exploration.md, design-brief.md, và spe
 ## Verify Spec — ✅ Approve bởi @sonnguyenn10 · 2026-11-10 07:37
 
 Duyệt bước verify-spec: Review skeptic đạt 5/5 cho D1-D5, thống nhất kế hoạch 11 task trong tasks.md bao quát DB, Backend, Frontend và Test.
+
+## Apply — ✅ Approve bởi @sonnguyenn10 · 2026-11-10 07:48
+
+Duyệt bước apply: Hoàn thành 11/11 tasks trong tasks.md. Code Backend (OrderService, ShiftService), Frontend (OwnerShiftModeModal, PosHeader, PosCheckoutPage, PosShiftPage) và chuẩn hóa font số đều biên dịch thành công 100%.
