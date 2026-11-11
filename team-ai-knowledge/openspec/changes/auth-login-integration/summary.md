@@ -39,3 +39,7 @@ Duyệt hướng khảo sát: giữ nguyên luồng Email OTP đăng nhập/đă
 ## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-11 16:25
 
 User duyệt Brainstorm: khôi phục đầy đủ delta auth-login-integration, thiết kế 2FA tùy chọn và challenge bảo mật cho Settings.
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 16:28
+
+Đã review skeptic, guardian, codebase; bổ sung 9 task cho 2FA tùy chọn, ownership, challenge gắn tài khoản/hành động, CSRF, chống replay và audit.
