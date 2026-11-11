@@ -1,74 +1,152 @@
-# Design Brief: Đăng Nhập, Quản Lý Phiên Bằng HttpOnly Cookie & Silent Refresh
+# Design Brief: Đăng Nhập 2FA & Đăng Ký Cửa Hàng Xác Thực Toàn Diện Qua Email OTP
 
 ## 1. Luồng Người Dùng & Tương Tác (User & API Flow)
 
-### 1.1. Luồng Đăng Nhập Ban Đầu
-1. Người dùng nhập `phoneOrEmail` (Username/Email/SĐT) và `password`.
-2. Frontend gọi `POST /api/auth/login` (kèm `withCredentials: true`).
-3. Backend xác thực thành công:
-   - Ghi Cookie `access_token` (`HttpOnly; Secure; SameSite=Lax; Path=/`).
-   - Ghi Cookie `refresh_token` (`HttpOnly; Secure; SameSite=Lax; Path=/api/auth`).
-   - Cập nhật `RefreshToken` và `RefreshTokenExpiryTime` trong bảng `Users`.
-   - Trả về HTTP 200 OK kèm payload `UserInfo` (`id`, `fullName`, `roleName`, `storeName`, `tenantId`). Body **không** chứa chuỗi token nhạy cảm.
-4. Frontend nhận thông tin người dùng:
-   - Cập nhật `useAuthStore` (`user: UserInfo`, `isAuthenticated: true`).
-   - **Tuyệt đối không lưu token vào `localStorage` hay bất kỳ bộ nhớ nào ở client**.
-   - Điều hướng người dùng theo vai trò (`CASHIER` -> `/pos`, `ADMIN` -> `/admin/dashboard`).
+### 1.1. Luồng Đăng Nhập 2 Bước Bảo Mật (Login 2FA via Email OTP)
+1. **Bước 1 (Nhập thông tin)**:
+   - Người dùng nhập Email/Tài khoản và Mật khẩu trên `LoginPage.tsx`.
+   - Bấm nút "Đăng nhập".
+   - Frontend gửi `POST /api/auth/login` kèm `{ usernameOrEmail, password }`.
+2. **Bước 2 (Xác thực mật khẩu & Sinh mã OTP)**:
+   - Backend xác thực: Nếu sai mật khẩu -> trả lỗi 401.
+   - Nếu mật khẩu hợp lệ:
+     - Sinh mã OTP ngẫu nhiên 6 chữ số (TTL: 5 phút, lưu cache với key `otp:login:{tempToken}`).
+     - Gửi email HTML chứa mã OTP tới địa chỉ email của tài khoản.
+     - *(Nếu chưa cấu hình SMTP, in mã ra terminal console log kèm ghi chú dev fallback)*.
+     - Trả về JSON:
+       ```json
+       {
+         "requiresOtp": true,
+         "tempToken": "guid-tam-thoi-36-ky-tu",
+         "emailMasked": "n***@gmail.com",
+         "expiresInSeconds": 300,
+         "devOtp": "123456" // chỉ kèm khi Environment == Development
+       }
+       ```
+3. **Bước 3 (Nhập OTP & Cấp quyền)**:
+   - `LoginPage.tsx` nhận `requiresOtp: true` -> Mở `LoginOtpModal.tsx`.
+   - Modal hiển thị: Email đã nhận mã (`emailMasked`), 6 ô nhập số OTP, nút đếm ngược 60s để gửi lại, nút "Điền nhanh OTP Dev" (khi ở local/dev).
+   - Khi nhập đủ 6 số, Frontend gửi `POST /api/auth/login/verify-otp` kèm `{ tempToken, otpCode }`.
+   - Backend xác minh khớp:
+     - Xóa OTP khỏi cache.
+     - Thiết lập HttpOnly Cookie `access_token` và `refresh_token` (hoặc trả token trong body).
+     - Trả về HTTP 200 OK kèm `UserInfo`.
+   - Frontend lưu `user` vào `useAuthStore` và điều hướng thông minh theo vai trò:
+     - `ADMIN` -> `/admin/dashboard`
+     - `STORE_OWNER` -> `/store-owner/dashboard`
+     - `STAFF` -> `/employee/schedule` hoặc `/pos`
 
-### 1.2. Luồng Kiểm Tra Trạng Thái Đăng Nhập Khi Mở Trang / F5
-1. Khi người dùng tải lại trang hoặc mở tab mới:
-   - `useAuthStore` gọi `GET /api/auth/me` (với `withCredentials: true`).
-   - Nếu Cookie `access_token` hợp lệ: Backend trả về `UserInfo`, Frontend duy trì phiên làm việc.
-   - Nếu `access_token` hết hạn: Axios kích hoạt luồng Silent Refresh (Mục 1.3).
-   - Nếu không có cookie hoặc phiên không hợp lệ: Frontend coi như chưa đăng nhập, chuyển hướng `/auth/login`.
-
-### 1.3. Luồng Silent Refresh Bằng HttpOnly Cookie
-1. Khi gọi API nghiệp vụ (ví dụ: `GET /api/branches`), Backend phát hiện `access_token` cookie hết hạn -> Phản hồi HTTP `401 Unauthorized`.
-2. Axios Response Interceptor chặn 401:
-   - Nếu `isRefreshing === false`:
-     - Đặt `isRefreshing = true`.
-     - Gửi ngầm `POST /api/auth/refresh` với `withCredentials: true`. Trình duyệt tự động đính kèm Cookie `refresh_token`.
-   - Nếu `isRefreshing === true` (các request khác đồng thời):
-     - Đưa request vào hàng đợi `failedQueue` chờ xử lý.
-3. Backend xử lý `/api/auth/refresh`:
-   - Lấy `refresh_token` từ Cookie.
-   - Tra cứu trong CSDL PostgreSQL bảng `Users`, kiểm tra `RefreshTokenExpiryTime > DateTime.UtcNow`.
-   - Sinh cặp token mới (Token Rotation), ghi đè lại 2 HttpOnly Cookies mới qua `Response.Cookies.Append()`.
-4. Frontend nhận phản hồi thành công:
-   - Giải phóng `failedQueue`, thực thi lại toàn bộ request trong hàng đợi với cookie mới.
-   - Đặt `isRefreshing = false`.
-   - Người dùng hoàn toàn không cảm nhận thấy sự gián đoạn.
-
-### 1.4. Luồng Xử Lý Hết Hạn Phiên (Session Expiry)
-1. Khi `POST /api/auth/refresh` nhận HTTP 401 (Refresh Token hết hạn hoặc không hợp lệ):
-   - Backend xóa sạch các cookies bằng cách đặt `Max-Age=0` hoặc gọi `Response.Cookies.Delete()`.
-   - Axios Interceptor hủy bỏ các request trong hàng đợi.
-   - Xóa `user` khỏi `useAuthStore` (`isAuthenticated = false`).
-   - Hiển thị Toast thông báo: *"Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."*
-   - Ghi nhớ URL hiện tại: `const redirectUrl = window.location.pathname + window.location.search`.
-   - Điều hướng về `/auth/login?redirect=${encodeURIComponent(redirectUrl)}`.
-2. Sau khi người dùng đăng nhập lại thành công:
-   - Hệ thống tự động chuyển tiếp người dùng về đúng `redirectUrl` ban đầu để tiếp tục công việc.
-
-### 1.5. Luồng Đăng Xuất Chủ Động (`POST /api/auth/logout`)
-1. Người dùng bấm nút "Đăng xuất" trên Topbar hoặc Menu.
-2. Frontend gọi `POST /api/auth/logout` (với `withCredentials: true`).
-3. Backend:
-   - Thu hồi Refresh Token trong DB (`User.RefreshToken = null`).
-   - Xóa bỏ cả 2 Cookies `access_token` và `refresh_token`.
-4. Frontend dọn dẹp state và điều hướng về `/auth/login`.
+### 1.2. Luồng Đăng Ký Cửa Hàng Mới (Register via Email OTP)
+1. **Bước 1 (Điền form đăng ký)**:
+   - Người dùng nhập: Họ tên, Tên cửa hàng, SĐT, Email, Mật khẩu trên `RegisterPage.tsx`.
+   - Bấm "Tạo tài khoản & Mở cửa hàng".
+2. **Bước 2 (Gửi mã OTP Email)**:
+   - Frontend gọi `POST /api/auth/register/send-otp` với `{ email, fullName, storeName }`.
+   - Backend sinh OTP 6 số lưu cache `otp:register:{cleanEmail}`, gửi email qua `IEmailService` (hoặc log console dev).
+   - Trả về `{ success: true, message: "Mã OTP đã được gửi về email...", devOtp: "..." }`.
+3. **Bước 3 (Xác thực hoàn tất mở cửa hàng)**:
+   - Mở `RegistrationOtpModal.tsx` hiển thị địa chỉ Email.
+   - Người dùng nhập 6 số OTP và nhấn "Xác nhận & Mở cửa hàng".
+   - Frontend gọi `POST /api/auth/register` kèm payload đăng ký và `otpCode`.
+   - Backend kiểm tra OTP khớp: Tạo Tenant, Branch, StoreOwner và cấp phiên đăng nhập tự động.
 
 ---
 
-## 2. Giao Diện & Trạng Thái Màn Hình (UI States)
-- **Normal State**: Form đăng nhập sắc nét, nút bo tròn Full Pill (`border-radius: 9999px`), icon Monochrome SVG.
-- **Silent Refresh State**: Không có bất kỳ dialog hay popup khó chịu nào hiện lên gây phiền nhiễu cho người dùng.
-- **Session Expired Alert**: Khi bị logout cưỡng chế do hết hạn phiên, hiển thị Toast cảnh báo để người dùng hiểu lý do vì sao họ bị đưa về màn hình Đăng nhập.
+## 2. Quy Chuẩn Thiết Kế Giao Diện (KiotViet Design System Compliance)
+- **Bo tròn**:
+  - Toàn bộ nút CTA ("Đăng nhập", "Xác nhận mã OTP", "Gửi lại mã"): Full Pill `border-radius: 9999px`.
+  - Các ô nhập số OTP: Bo góc mềm mại `12px - 14px`, phông `JetBrains Mono` chữ to rõ ràng `24px`, căn giữa.
+  - Hộp thoại Modal: Bo góc lớn `24px - 28px`, đổ bóng mềm tự nhiên `box-shadow: 0 16px 40px rgba(0, 30, 90, 0.12)`.
+- **Màu sắc thương hiệu**:
+  - Xanh chủ đạo KiotViet Blue `#0066FF`, nền xanh dịu `#F7FAFF`.
+  - Nút bấm trạng thái hover chuyển nhẹ `#0052CC`, không đổi kích thước hay dịch chuyển pixel.
+- **🚨 CẤM HIỆU ỨNG NHÚNG NHẢY & ICON MÀU MÈ**:
+  - Thẻ Modal nằm tĩnh hoàn toàn (Static & Grounded), không rung lắc (no shake/pulse/floatBounce).
+  - 100% Monochrome SVG Icons đơn sắc thanh mảnh (`stroke-width: 1.8`, `stroke="currentColor"`). Cấm tuyệt đối emoji.
+- **Tính Module hóa Component**:
+  - `LoginOtpModal.tsx` tách thành file độc lập tại `src/features/auth/components/LoginOtpModal.tsx`.
+  - `RegistrationOtpModal.tsx` cập nhật hiển thị Email tại `src/features/auth/components/RegistrationOtpModal.tsx`.
 
 ---
 
-## 3. Endpoints & Cookie Contracts Hợp Nhất
-- `POST /api/auth/login`: Xác thực credentials -> Trả về `Set-Cookie: access_token=...; HttpOnly` và `Set-Cookie: refresh_token=...; HttpOnly`, Response Body: `ApiResponse<UserInfo>`.
-- `POST /api/auth/refresh`: Đọc `refresh_token` từ Cookie -> Ghi mới 2 Cookies (Token Rotation), Response Body: `ApiResponse<UserInfo>`.
-- `GET /api/auth/me`: Đọc `access_token` từ Cookie -> Trả về `ApiResponse<UserInfo>`.
-- `POST /api/auth/logout`: Xóa Cookies, thu hồi Refresh Token trong CSDL -> `ApiResponse<{ success: true }>`.
+## 3. Endpoints & Data Contracts (API Specifications)
+
+### 3.1. `POST /api/auth/login`
+- **Request**:
+  ```json
+  {
+    "usernameOrEmail": "owner@mtgrms.vn",
+    "password": "Password@123"
+  }
+  ```
+- **Response (200 OK - Yêu cầu OTP 2FA)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "requiresOtp": true,
+      "tempToken": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "emailMasked": "o***@mtgrms.vn",
+      "expiresInSeconds": 300,
+      "devOtp": "654321"
+    }
+  }
+  ```
+
+### 3.2. `POST /api/auth/login/verify-otp`
+- **Request**:
+  ```json
+  {
+    "tempToken": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "otpCode": "654321"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "accessToken": "ey...",
+      "refreshToken": "...",
+      "user": {
+        "id": "user-guid",
+        "email": "owner@mtgrms.vn",
+        "fullName": "Nguyễn Văn Chủ",
+        "role": "STORE_OWNER",
+        "tenantId": "tenant-guid"
+      }
+    }
+  }
+  ```
+
+### 3.3. `POST /api/auth/register/send-otp`
+- **Request**:
+  ```json
+  {
+    "email": "storeowner@gmail.com",
+    "fullName": "Nguyễn Văn Chủ",
+    "storeName": "Siêu Thị Mini Mart"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Mã xác thực đã được gửi về email storeowner@gmail.com",
+    "devOtp": "123456"
+  }
+  ```
+
+### 3.4. `POST /api/auth/register`
+- **Request**:
+  ```json
+  {
+    "fullName": "Nguyễn Văn Chủ",
+    "storeName": "Siêu Thị Mini Mart",
+    "phone": "0912345678",
+    "email": "storeowner@gmail.com",
+    "password": "Password@123",
+    "otpCode": "123456"
+  }
+  ```
+- **Response (200 OK)**: Trả về `AuthResponse` với tài khoản mới và điều hướng vào `/store-owner/dashboard`.
