@@ -1,9 +1,12 @@
 # Specs: auth-login-integration
 
 ## API / Contract
-| Method | Path | Request Body | Response Body | Set-Cookie Header | HTTP Lỗi |
+| Method | Path | Request Body | Response Body | Cookie / Header | HTTP Lỗi |
 |---|---|---|---|---|---|
-| POST | `/api/v1/auth/login` (hoặc `/api/auth/login`) | `LoginRequest` (`usernameOrEmail`, `password`, `tenantCode?`) | `ApiResponse<UserInfo>` (`id`, `fullName`, `roleName`, `storeName`, `tenantId`) | `access_token` (HttpOnly, SameSite=Lax), `refresh_token` (HttpOnly, SameSite=Lax, Path=/api/auth) | 400 Bad Request, 401 Unauthorized |
+| POST | `/api/v1/auth/login` (hoặc `/api/auth/login`) | `LoginRequest` (`usernameOrEmail`, `password`, `tenantCode?`) | `ApiResponse<LoginInitResponse>` (`requiresOtp: true`, `tempToken`, `emailMasked`, `expiresInSeconds`, `devOtp?`) | - | 400 Bad Request, 401 Unauthorized |
+| POST | `/api/v1/auth/login/verify-otp` (hoặc `/api/auth/login/verify-otp`) | `VerifyLoginOtpRequest` (`tempToken`, `otpCode`) | `ApiResponse<UserInfo>` (`id`, `fullName`, `roleName`, `storeName`, `tenantId`, `accessToken?`) | `access_token` (HttpOnly), `refresh_token` (HttpOnly) | 400 Bad Request, 401 Unauthorized |
+| POST | `/api/v1/auth/register/send-otp` (hoặc `/api/auth/register/send-otp`) | `SendEmailOtpRequest` (`email`, `fullName?`, `storeName?`) | `ApiResponse<{ success: true, message: string, devOtp?: string }>` | - | 400 Bad Request |
+| POST | `/api/v1/auth/register` (hoặc `/api/auth/register`) | `RegisterTenantRequest` (`fullName`, `storeName`, `phone`, `email`, `password`, `otpCode`) | `ApiResponse<AuthResponse>` | `access_token`, `refresh_token` | 400 Bad Request |
 | POST | `/api/v1/auth/refresh` (hoặc `/api/auth/refresh`) | Không có body (Đọc từ Cookie) | `ApiResponse<UserInfo>` | Cặp cookie `access_token` và `refresh_token` mới | 401 Unauthorized |
 | GET | `/api/v1/auth/me` (hoặc `/api/auth/me`) | Không có body | `ApiResponse<UserInfo>` | - | 401 Unauthorized |
 | POST | `/api/v1/auth/logout` | Không có body | `ApiResponse<{ success: true, message: string }>` | Xóa cookies (`Max-Age=0`) | 400 Bad Request |
@@ -22,100 +25,71 @@ Hệ thống Backend MUST cung cấp API xác thực tài khoản qua username/e
   3. Đính kèm header `Set-Cookie` cho `refresh_token` với các thuộc tính `HttpOnly`, `SameSite=Lax`, `Path=/api/auth`.
   4. Response body MUST NOT chứa bất kỳ trường token nào (`accessToken`, `refreshToken`).
 
-#### Scenario: Đăng nhập không truyền mã chi nhánh/tenant (TenantCode null)
-- GIVEN tài khoản hợp lệ tồn tại trong cơ sở dữ liệu
-- WHEN người dùng gửi yêu cầu đăng nhập và bỏ trống `tenantCode` (`null`)
-- THEN hệ thống MUST tự động gán tenant mặc định (`"DEFAULT"`), cấp HttpOnly cookies và trả về HTTP 200 OK.
+---
+
+### Requirement: REQ-AUTH-08 Xác thực 2 bước (2FA) qua Email OTP khi Đăng nhập
+Hệ thống MUST triển khai cơ chế xác thực hai bước (2FA) bằng mã OTP gửi về Email khi đăng nhập:
+1. Khi gọi `POST /api/auth/login`, Backend kiểm tra thông tin đăng nhập. Nếu hợp lệ, sinh mã OTP 6 chữ số lưu trong cache (TTL 5 phút) và gửi email qua `IEmailService`.
+2. Trả về `{ requiresOtp: true, tempToken: "...", emailMasked: "..." }`.
+3. Khi gọi `POST /api/auth/login/verify-otp` với đúng `tempToken` và `otpCode`, Backend xác thực thành công, hủy mã OTP khỏi cache, cấp token/cookie và trả về thông tin `user`.
+
+#### Scenario: Đăng nhập bước 1 đúng mật khẩu
+- GIVEN tài khoản hợp lệ có email `"owner@mtmart.vn"`
+- WHEN gửi `POST /api/auth/login` với đúng mật khẩu
+- THEN hệ thống MUST sinh mã OTP 6 chữ số, gửi email tới `"owner@mtmart.vn"` (kèm in console log nếu chưa có SMTP) và trả về `requiresOtp: true` cùng `tempToken`.
+
+#### Scenario: Xác thực OTP đăng nhập bước 2 thành công
+- GIVEN `tempToken` hợp lệ và mã OTP còn trong thời hạn 5 phút
+- WHEN gửi `POST /api/auth/login/verify-otp` với mã OTP chính xác
+- THEN hệ thống MUST trả về HTTP 200 OK, thiết lập phiên đăng nhập và điều hướng người dùng tới Dashboard theo đúng vai trò.
+
+#### Scenario: Nhập sai mã OTP quá 5 lần
+- GIVEN người dùng cố tình nhập sai mã OTP 5 lần liên tiếp
+- WHEN gửi lần thử thứ 6
+- THEN hệ thống MUST hủy mã OTP trong cache và trả về lỗi 400 yêu cầu đăng nhập lại từ đầu.
 
 ---
 
-### Requirement: REQ-02 Tương thích Route, Vite Proxy & Cấu hình CORS Credentials
-Hệ thống Frontend MUST cấu hình Axios `httpClient` với `withCredentials: true` để tự động trao đổi Cookie với Backend qua Vite Proxy; đồng thời Backend ASP.NET Core MUST cấu hình CORS policy cho phép `AllowCredentials()` với nguồn gốc xác định (`http://localhost:5173`).
+### Requirement: REQ-AUTH-09 Xác thực Email OTP khi Đăng ký Cửa hàng Mới
+Hệ thống MUST xác thực quyền sở hữu Email của chủ cửa hàng thông qua mã OTP trước khi cho phép tạo Cửa hàng (`Tenant`), Chi nhánh (`Branch`) và Tài khoản chủ sở hữu (`StoreOwner`).
 
-#### Scenario: Frontend gọi API qua Vite Proxy kèm HttpOnly Cookie
-- GIVEN Backend đang chạy tại `http://localhost:5232` và Frontend chạy tại `http://localhost:5173`
-- WHEN Frontend gửi request tới `/api/v1/auth/login` hoặc các endpoint nghiệp vụ
-- THEN trình duyệt MUST tự động đính kèm cookie hợp lệ mà mã nguồn JavaScript không cần can thiệp hay đọc token từ bộ nhớ.
+#### Scenario: Gửi mã OTP kích hoạt đăng ký
+- GIVEN người dùng nhập thông tin đăng ký hợp lệ với Email `"newstore@gmail.com"`
+- WHEN gọi `POST /api/auth/register/send-otp`
+- THEN hệ thống MUST tạo mã OTP 6 số, lưu vào cache `otp:register:newstore@gmail.com` và gửi email kích hoạt qua `IEmailService`.
 
----
-
-### Requirement: REQ-03 Điều hướng Người dùng Theo Vai trò (Role-based Navigation)
-Frontend MUST điều hướng người dùng tới đúng phân hệ màn hình phù hợp sau khi đăng nhập thành công dựa trên trường vai trò `role` / `roleName` trong `UserInfo`.
-
-#### Scenario: Thu ngân (CASHIER) đăng nhập thành công
-- GIVEN tài khoản người dùng có vai trò là `"CASHIER"`
-- WHEN đăng nhập thành công
-- THEN hệ thống Frontend MUST lưu thông tin `user` vào Zustand store (không lưu token vào `localStorage`) và điều hướng người dùng tới màn hình Bán hàng tại quầy `/pos`.
-
-#### Scenario: Quản lý hoặc Quản trị viên (ADMIN / MANAGER / STORE_OWNER) đăng nhập thành công
-- GIVEN tài khoản người dùng có vai trò quản lý (`"ADMIN"`, `"MANAGER"`, `"STORE_OWNER"`)
-- WHEN đăng nhập thành công
-- THEN hệ thống Frontend MUST lưu thông tin `user` vào Zustand store (không lưu token vào `localStorage`) và điều hướng người dùng tới Bảng điều khiển `/admin/dashboard`.
+#### Scenario: Hoàn tất đăng ký với mã OTP Email hợp lệ
+- GIVEN mã OTP hợp lệ trong cache
+- WHEN gọi `POST /api/auth/register` kèm đầy đủ thông tin và `otpCode` chính xác
+- THEN hệ thống MUST:
+  1. Tạo mới Tenant, Branch mặc định và User chủ cửa hàng (Role `StoreOwner`).
+  2. Xóa mã OTP khỏi cache.
+  3. Cấp phiên đăng nhập tự động và trả về HTTP 200 OK.
 
 ---
 
-### Requirement: REQ-AUTH-04 Loại Bỏ Hoàn Toàn `localStorage` Khỏi Cơ Chế Xác Thực
-Mã nguồn Frontend MUST loại bỏ 100% việc lưu trữ, đọc hoặc ghi Access Token và Refresh Token trong `localStorage` hoặc `sessionStorage`. Toàn bộ việc xác thực danh tính phụ thuộc hoàn toàn vào HttpOnly Cookies do trình duyệt quản lý.
-
-#### Scenario: Khởi tạo phiên làm việc khi tải lại trang (F5 / Mở tab mới)
-- GIVEN người dùng đã đăng nhập và đang mở tab trình duyệt
-- WHEN người dùng nhấn F5 hoặc mở tab mới trong cùng trình duyệt
-- THEN Frontend MUST gọi `GET /api/auth/me` với `withCredentials: true` để lấy thông tin `UserInfo` từ cookie hiện hữu; nếu hợp lệ thì duy trì phiên làm việc; nếu nhận HTTP 401 thì tự động kích hoạt Silent Refresh hoặc chuyển về trang đăng nhập.
+### Requirement: REQ-AUTH-10 Loại Bỏ Hoàn Toàn SMS & TextBee Gateway
+Hệ thống Backend và Frontend MUST gỡ bỏ toàn bộ sự phụ thuộc vào SMS, Twilio, Firebase Phone Auth và TextBee Gateway:
+- Gỡ bỏ `TextBeeSmsService.cs`, `TextBeeSettings.cs`, `ISmsService.cs`.
+- Xóa các biến môi trường `TextBeeSettings__*` trong `.env`.
+- Toàn bộ việc gửi mã xác thực đều đi qua `IEmailService`.
 
 ---
 
-### Requirement: REQ-AUTH-05 Cơ Chế Silent Refresh Bằng HttpOnly Cookie & Axios Request Queue
-Hệ thống Frontend MUST triển khai Axios Response Interceptor chặn mã lỗi HTTP `401 Unauthorized` từ các API nghiệp vụ, tự động gọi `POST /api/auth/refresh` (trình duyệt tự đính kèm cookie `refresh_token`) và xử lý hàng đợi các request đồng thời mà không làm gián đoạn trải nghiệm người dùng.
-
-#### Scenario: Access Token Cookie hết hạn khi đang gọi API nghiệp vụ
-- GIVEN người dùng đang thao tác tại trang POS hoặc Quản lý chi nhánh với Access Token cookie đã hết hạn
-- WHEN một API nghiệp vụ (ví dụ: `GET /api/branches`) gửi lên nhận phản hồi HTTP 401
-- THEN Frontend MUST giữ request trong trạng thái chờ (pending Promise) và phát lệnh ngầm `POST /api/auth/refresh` với `withCredentials: true`.
-
-#### Scenario: Nhiều API đồng thời gặp lỗi 401 (Concurrent 401 Requests)
-- GIVEN có nhiều request API nghiệp vụ cùng phát sinh và nhận 401 trong cùng một khoảnh khắc
-- WHEN request đầu tiên kích hoạt quá trình refresh (`isRefreshing = true`)
-- THEN các request sau MUST được đưa vào hàng đợi `failedQueue` mà không gửi thêm request refresh trùng lặp
-- WHEN quá trình refresh hoàn tất thành công (Backend đã ghi đè cookies mới), toàn bộ các request trong `failedQueue` MUST được tự động thực thi lại (retry) và trả kết quả chính xác về cho các component.
-
----
-
-### Requirement: REQ-AUTH-06 Điều Hướng Hết Hạn Phiên & Đăng Xuất An Toàn
-Khi Refresh Token hết hạn hoặc không hợp lệ (API `/api/auth/refresh` phản hồi HTTP 401), hệ thống Backend MUST xóa bỏ các cookies, và Frontend MUST dọn dẹp state, hiển thị thông báo rõ ràng và điều hướng về trang đăng nhập kèm tham số ghi nhớ trang đích.
-
-#### Scenario: Refresh Token hết hạn hoặc bị thu hồi
-- GIVEN phiên làm việc của người dùng đã quá hạn Refresh Token
-- WHEN Frontend gọi `POST /api/auth/refresh` và nhận phản hồi HTTP 401
-- THEN:
-  1. Backend MUST gửi header `Set-Cookie` xóa bỏ các cookies (`Max-Age=0`).
-  2. Frontend MUST hủy bỏ các request đang đợi trong `failedQueue`.
-  3. Frontend xóa sạch thông tin `user` trong Zustand store.
-  4. Frontend hiển thị thông báo Toast cảnh báo: *"Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."*
-  5. Frontend điều hướng về `/auth/login?redirect={encodeURIComponent(currentPath)}`.
-
-#### Scenario: Người dùng chủ động đăng xuất
-- GIVEN người dùng nhấn nút "Đăng xuất"
-- WHEN Frontend gọi `POST /api/auth/logout`
-- THEN Backend xóa cookies và đặt `User.RefreshToken = null` trong CSDL, Frontend dọn dẹp state và chuyển hướng về `/auth/login`.
-
----
-
-### Requirement: REQ-AUTH-07 Xác Thực & Xoay Vòng Refresh Token Ở Backend (Token Rotation)
-Backend `AuthService.cs` MUST quản lý Refresh Token an toàn trong CSDL PostgreSQL bảng `Users`, xác thực tính hợp lệ của token và hạn sử dụng `RefreshTokenExpiryTime`, đồng thời áp dụng cơ chế xoay vòng Refresh Token (Token Rotation) để phòng chống tấn công Replay Attack.
-
-#### Scenario: Refresh Token hợp lệ và còn hạn
-- GIVEN người dùng gửi `POST /api/auth/refresh` kèm cookie `refresh_token` hợp lệ khớp với giá trị lưu trong CSDL và `RefreshTokenExpiryTime > DateTime.UtcNow`
-- WHEN Backend xử lý yêu cầu refresh
-- THEN Backend MUST sinh mới cả Access Token và chuỗi Refresh Token ngẫu nhiên mới, lưu Refresh Token mới vào DB và cập nhật `RefreshTokenExpiryTime` mới, ghi đè lại 2 HttpOnly Cookies mới và trả về HTTP 200 OK.
+### Requirement: REQ-AUTH-11 Giao Diện Modal OTP Chuẩn KiotViet & Hỗ Trợ Dev Fallback
+Giao diện Modal OTP (`LoginOtpModal.tsx` và `RegistrationOtpModal.tsx`) MUST tuân thủ nghiêm ngặt `RULE_UI_DESIGN_SYSTEM.md`:
+- Nút bấm bo tròn Full Pill (`border-radius: 9999px`), ô nhập số phông `JetBrains Mono` bo góc `12px`.
+- Modal nằm tĩnh (Static & Grounded), tuyệt đối KHÔNG có animation nhún nhảy / rung lắc.
+- Sử dụng 100% Monochrome SVG Icons, không dùng emoji.
+- Khi chạy ở môi trường Development hoặc khi Backend trả về `devOtp`, hiển thị nút "Điền nhanh OTP Dev" để hỗ trợ kiểm thử và chấm đồ án thuận tiện.
 
 ---
 
 ## Acceptance checklist
-- [ ] REQ-01: API `POST /api/v1/auth/login` trả về HTTP 200 OK với `Set-Cookie` HttpOnly cho `access_token` và `refresh_token`, response body chỉ chứa `UserInfo` và không chứa chuỗi token.
-- [ ] REQ-02: `vite.config.ts` proxy `/api` tới backend port `5232`; Backend CORS policy cấu hình `AllowCredentials()`.
-- [ ] REQ-03: `LoginPage.tsx` điều hướng chính xác: `CASHIER` -> `/pos`, `ADMIN`/khác -> `/admin/dashboard`.
-- [ ] REQ-AUTH-04: Loại bỏ 100% token khỏi `localStorage`; bổ sung `GET /api/auth/me` để kiểm tra phiên khi F5 hoặc mở tab mới.
-- [ ] REQ-AUTH-05: Axios Interceptor trong `httpClient.ts` tự động chặn HTTP 401, xếp hàng các request đồng thời, gọi `/api/auth/refresh` với `withCredentials: true` và retry các request thành công không gây reload trang.
-- [ ] REQ-AUTH-06: Khi Refresh Token hết hạn hoặc khi logout, cookies được xóa (`Max-Age=0`), hệ thống hiển thị Toast cảnh báo và chuyển hướng về `/auth/login?redirect=...`.
-- [ ] REQ-AUTH-07: `AuthService.cs` lưu `RefreshToken` và `RefreshTokenExpiryTime` vào CSDL `Users`, xác thực và sinh token mới xoay vòng (Token Rotation) khi gọi refresh.
-- [ ] BE-UT: Toàn bộ danh sách Unit Tests trong `UserAuthenticationTests.cs` đạt kết quả PASS 100%.
+- [ ] REQ-01: API login cấp phát HttpOnly cookies an toàn.
+- [ ] REQ-AUTH-08: Đăng nhập 2 bước (2FA) qua Email OTP: Step 1 trả về `tempToken` + gửi email; Step 2 `POST /api/auth/login/verify-otp` xác thực thành công.
+- [ ] REQ-AUTH-09: Đăng ký cửa hàng gửi OTP tới Email và hoàn tất mở cửa hàng khi nhập đúng mã.
+- [ ] REQ-AUTH-10: Gỡ bỏ hoàn toàn TextBee / SMS khỏi backend và frontend.
+- [ ] REQ-AUTH-11: `LoginOtpModal.tsx` và `RegistrationOtpModal.tsx` tuân thủ KiotViet Design System, có nút "Điền nhanh OTP Dev".
+- [ ] BE-UT: Toàn bộ Unit Tests trong `UserAuthenticationTests.cs` (login 2FA, register email OTP) đạt PASS 100%.
+- [ ] FE-BUILD: `npm run build` trên `MT_GRMS_FRONTEND` đạt 0 errors.
