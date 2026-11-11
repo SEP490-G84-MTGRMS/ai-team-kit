@@ -150,3 +150,19 @@
   }
   ```
 - **Response (200 OK)**: Trả về `AuthResponse` với tài khoản mới và điều hướng vào `/store-owner/dashboard`.
+
+## 4. Bổ sung: 2FA tùy chọn theo tài khoản trong Settings
+
+### Luồng UI và API
+- Settings > Bảo mật tải trạng thái bằng `GET /api/auth/me/2fa` (cookie xác thực). Hiển thị công tắc, trạng thái tải, thông báo lỗi và email nhận OTP đã che.
+- Khi đổi công tắc, người dùng nhập mật khẩu hiện tại; `POST /api/auth/me/2fa/challenge` với `{ enabled, currentPassword }`. Backend lấy UserId từ phiên, kiểm tra mật khẩu, email đã xác minh, giới hạn gửi mã và tạo challenge gắn với UserId, action, TTL 5 phút. Trả `challengeToken`, email che và thời gian hết hạn; không trả OTP ở production.
+- Người dùng nhập OTP; `POST /api/auth/me/2fa/confirm` với `{ challengeToken, otpCode }`. Backend kiểm tra phiên cùng UserId, action đã khóa trong challenge, giới hạn 5 lần sai, tiêu thụ challenge một lần và cập nhật trạng thái. UI chỉ đổi công tắc sau phản hồi thành công; nếu lỗi giữ nguyên trạng thái và cho thử lại đúng điều kiện.
+- `POST /api/auth/login` trả `requiresOtp: true` và `tempToken` nếu 2FA bật; nếu tắt, cấp cookie và UserInfo ngay. Registration Email OTP không phụ thuộc công tắc này.
+
+### Dữ liệu và bảo mật
+- Thêm cờ `IsTwoFactorEnabled` bền vững theo User, mặc định true/backfill true cho tài khoản hiện có. Tài khoản mới có mặc định true; không coi null là disabled.
+- Không nhận UserId mục tiêu ở hai API Settings; kiểm tra quyền từ cookie/claims. Nếu API có đường dẫn chứa userId thì phải so khớp và trả 403 khi khác.
+- OTP challenge độc lập với OTP đăng nhập/đăng ký, entropy bằng CSPRNG, lưu hash OTP, giới hạn gửi lại và thử sai, vô hiệu hóa challenge cũ khi tạo lại; không cho dùng lại sau thành công/hết hạn. Dùng CSRF protection phù hợp với cookie auth.
+- Kiểm tra email đã xác minh trước khi bật. Khi tắt cũng yêu cầu mật khẩu và Email OTP. Nếu không gửi được email, không tạo challenge khả dụng và không đổi trạng thái.
+- Thao tác confirm cập nhật trạng thái và ghi audit log trong cùng giao dịch; audit gồm UserId, tenant, hành động, thời gian UTC, IP, kết quả; không có mật khẩu/OTP/token. Retry challenge đã tiêu thụ không được đổi trạng thái hay ghi thêm audit thành công.
+- Rate limit theo user/IP với thông báo lỗi chung, không lộ email đầy đủ hoặc trạng thái tài khoản với người chưa xác thực.
