@@ -39,3 +39,10 @@ Chọn A. Backend là nguồn quyết định trạng thái 2FA; UI chỉ cho ph
 - Email chưa xác minh hoặc thiếu email: không cho bật 2FA; hiển thị lý do và cách cập nhật email đã xác minh.
 - CSRF/chiếm phiên có thể gây thay đổi thiết lập: xác minh lại mật khẩu và Email OTP, yêu cầu Backend lấy UserId từ phiên xác thực.
 - Sai lệch giữa UI/API và spec: bổ sung contract cụ thể và test scenarios cho bật, tắt, đăng nhập cả hai trạng thái, tài khoản khác và audit log.
+
+## Rà soát bảo mật sau cập nhật
+- Tách challenge Settings khỏi login/register; gắn UserId và hành động enable/disable, OTP một lần, TTL 5 phút, tối đa 5 lần sai.
+- Chỉ lấy người dùng từ session; không cho client chọn tài khoản đích. Với cookie auth phải chống CSRF.
+- Giới hạn gửi lại/nhập sai theo user và IP; gửi lại hủy challenge cũ. Không trả OTP/email đầy đủ ở production.
+- Xử lý replay và đồng thời bằng thao tác tiêu thụ challenge, cập nhật trạng thái và audit log nhất quán trong transaction. Không ghi bí mật.
+- Khi email chưa xác minh, không cho bật; khi gửi email lỗi, không thay đổi trạng thái.
