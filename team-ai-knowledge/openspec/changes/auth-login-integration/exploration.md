@@ -1,76 +1,41 @@
-# Exploration: Chuyển Đổi Sang HttpOnly Cookie & Xác Thực Email OTP Toàn Diện
+# Exploration: Email OTP, xác thực đăng nhập và cấu hình 2FA
 
-## 1. Hiện trạng Code Liên Quan
-- **Backend (`MT_GRMS_BACKEND`)**:
-  - `AuthController.cs`: 
-    - `POST /api/auth/login`: Xác thực tài khoản và trả về thông tin phiên. Cần nâng cấp hỗ trợ 2FA Email OTP.
-    - `POST /api/auth/register/send-otp` & `POST /api/auth/register`: Trước đây gọi `ISmsService` (TextBee / SMS). Cần chuyển sang gọi `IEmailService` để gửi OTP qua Email.
-    - `POST /api/auth/refresh` & `POST /api/auth/logout`: Xử lý phiên và thu hồi cookie.
-  - `EmailService.cs` & `IEmailService.cs`: Đã có sẵn nền tảng SMTP (Gmail App Password) và console fallback log. Cần mở rộng hỗ trợ template gửi mã OTP đăng nhập và OTP đăng ký cửa hàng.
-  - `TextBeeSmsService.cs` & `TextBeeSettings.cs`: Hiện tại không còn ổn định (lỗi 401 do sai/hết hạn API key, phụ thuộc máy Android & SIM vật lý) -> Cần loại bỏ.
-- **Frontend (`MT_GRMS_FRONTEND`)**:
-  - `LoginPage.tsx`: Nhập thông tin đăng nhập. Cần tích hợp bước xác thực thứ hai qua `LoginOtpModal.tsx`.
-  - `RegisterPage.tsx` & `RegistrationOtpModal.tsx`: Đã có modal nhập 6 số, cần cập nhật nội dung sang xác thực Email OTP thay vì SMS.
-  - `authService.ts`: Cần cập nhật các hàm `login`, `verifyLoginOtp`, `sendRegistrationEmailOtp`, `registerTenant`.
+## Hiện trạng
+- Change `auth-login-integration` đã triển khai luồng đăng nhập/đăng ký qua Email OTP; tasks hiện tại đánh dấu các phần này hoàn tất.
+- 2FA đăng nhập hiện được mô tả bắt buộc. Yêu cầu mới cần cho phép từng người dùng bật/tắt trong Settings.
+- Lần refactor trước đã ghi đè định dạng delta của `specs.md`, làm mất API Contract, REQ-01, REQ-AUTH-09/10/11 và Acceptance checklist. Cần khôi phục đầy đủ nội dung change trước khi triển khai phần mới.
+- Không có đủ bằng chứng trong artifact hiện tại để khẳng định backend đã có lưu trạng thái 2FA, UI Settings, xác minh lại khi đổi trạng thái hoặc audit log.
 
----
+## Giả định
+- 2FA tiếp tục dùng Email OTP hiện có.
+- Mỗi tài khoản tự quản lý thiết lập của chính mình; không mở quyền quản lý tài khoản khác cho Admin trong phạm vi này.
+- Tài khoản hiện hữu mặc định tiếp tục bật 2FA để tránh vô tình giảm bảo mật sau migration.
+- Việc bật/tắt cần xác minh mật khẩu hiện tại và OTP gửi tới email đã xác minh.
+- Chỉ ghi audit log hành động/thời gian/IP/user; không lưu mật khẩu hoặc OTP.
 
-## 2. Quyết Định Kiến Trúc 1: Loại Bỏ Hoàn Toàn `localStorage` & Dùng `HttpOnly Cookie`
-- **Kháng 100% tấn công XSS**: Cookie mang cờ `HttpOnly` ngăn chặn mọi mã độc JavaScript truy cập token.
-- **Phòng chống tấn công CSRF**: Cấu hình `SameSite=Lax` kết hợp kiểm tra nguồn gốc CORS và Origin/Referer.
-- **Tự động hết hạn**: Trình duyệt tự dọn dẹp khi hết hạn; khi refresh token hết hạn, tự động đưa người dùng về trang đăng nhập an toàn.
+## Ngoài phạm vi
+- TOTP ứng dụng xác thực, SMS OTP, WebAuthn/Passkeys, mã dự phòng và chính sách ép buộc 2FA theo vai trò.
+- Admin bật/tắt 2FA thay người dùng.
+- Thay đổi quy trình Email OTP đăng ký cửa hàng ngoài việc bảo toàn requirement đã có.
 
----
+## Phương án
+### A. Lưu trạng thái 2FA trên từng tài khoản, Settings tự phục vụ (chọn)
+Ưu điểm: trạng thái bền vững, điều khiển rõ ràng theo user, luồng login chỉ cần đọc cờ; phù hợp yêu cầu.
+Nhược điểm: cần migration/schema, API cấu hình, quy trình xác minh thao tác và audit log.
 
-## 3. Quyết Định Kiến Trúc 2: Thay Thế SMS Bằng Email OTP Toàn Diện
+### B. Dùng cấu hình hệ thống chung cho mọi tài khoản
+Ưu điểm: ít thay đổi dữ liệu.
+Nhược điểm: không đáp ứng bật/tắt theo tài khoản; một người thay đổi sẽ ảnh hưởng toàn hệ thống.
 
-### 3.1. So sánh phương án gửi mã xác thực OTP
+### C. Chỉ ẩn/hiện công tắc UI, không đổi hành vi Backend
+Ưu điểm: nhanh làm giao diện.
+Nhược điểm: không an toàn và không có hiệu lực thực tế; không chấp nhận.
 
-| Tiêu chí | Cổng SMS bên thứ ba (Twilio / Firebase / TextBee) | Email OTP (SMTP / IEmailService) (Lựa chọn) |
-| :--- | :--- | :--- |
-| **Chi phí** | Đắt đỏ, yêu cầu nạp tiền USD hoặc đặt cọc (VD: Firebase bắt cọc 800.000đ tại VN) | **Hoàn toàn miễn phí** (dùng SMTP Gmail hoặc máy chủ nội bộ) |
-| **Phụ thuộc phần cứng** | TextBee đòi hỏi 1 máy điện thoại Android luôn mở, kết nối wifi và có SIM vật lý | **Không phụ thuộc phần cứng**, hoạt động 100% trên server Backend |
-| **Độ ổn định** | Dễ rớt mạng, nghẽn mạng viễn thông, lỗi API Key, khoá vùng mã quốc gia (+84) | **Rất ổn định**, gửi thẳng tới hộp thư đến của người dùng |
-| **Môi trường Dev / Demo đồ án** | Khó test khi không có thiết bị hoặc hết tiền trong SIM | **Có sẵn Dev Console Fallback**: Tự động in mã OTP ra Terminal giúp demo mượt mà |
+## Phương án chọn và lý do
+Chọn A. Backend là nguồn quyết định trạng thái 2FA; UI chỉ cho phép người dùng hiện tại quản lý chính tài khoản của mình. Yêu cầu này giữ nguyên khả năng OTP hiện có và bổ sung trạng thái per-user, bảo vệ thao tác nhạy cảm, audit log.
 
-### 3.2. Cơ chế quản lý mã OTP an toàn trong Backend
-- Sử dụng **`IMemoryCache`**:
-  - Khóa cache: `otp:register:{cleanEmail}` và `otp:login:{tempToken}`.
-  - Thời gian hết hạn (TTL): **5 phút**.
-  - Mã OTP: Chuỗi ngẫu nhiên 6 chữ số an toàn bảo mật (`RandomNumberGenerator`).
-  - Giới hạn số lần thử (Brute-force protection): Tối đa **5 lần thử sai**; nếu vượt quá sẽ hủy mã OTP và bắt buộc yêu cầu gửi lại mã mới.
-  - Xóa mã ngay khi xác thực thành công (One-Time-Use).
-
-### 3.3. Quy trình Đăng nhập 2 bước (2FA via Email OTP)
-1. **Bước 1 (Credentials)**: Người dùng nhập Email/Tài khoản + Mật khẩu trên `LoginPage.tsx`.
-2. **Bước 2 (Gửi OTP)**: Backend kiểm tra mật khẩu. Nếu hợp lệ:
-   - Sinh chuỗi ngẫu nhiên `tempToken` (GUID an toàn) lưu tạm thời trong cache kèm UserId (thời hạn 5 phút).
-   - Sinh mã OTP 6 số và gửi tới Email của tài khoản qua `IEmailService`.
-   - Trả về: `{ requiresOtp: true, tempToken: "...", emailMasked: "n***@gmail.com" }`.
-3. **Bước 3 (Nhập OTP & Hoàn tất)**:
-   - Frontend hiển thị `LoginOtpModal.tsx`.
-   - Người dùng nhập 6 số OTP (hoặc bấm nút "Điền nhanh OTP Dev" nếu ở môi trường local).
-   - Frontend gọi `POST /api/auth/login/verify-otp` kèm `{ tempToken, otpCode }`.
-   - Backend xác minh khớp: Cấp JWT Cookie, trả về `user` profile và hoàn tất đăng nhập.
-
-### 3.4. Quy trình Đăng ký cửa hàng qua Email OTP
-1. Người dùng nhập thông tin: Họ tên, Tên cửa hàng, SĐT, Email, Mật khẩu.
-2. Bấm "Tạo tài khoản" -> Frontend gọi `POST /api/auth/register/send-otp` với `{ email, fullName, storeName }`.
-3. Backend sinh OTP 6 số, lưu vào cache `otp:register:{email}` và gửi email.
-4. Frontend mở `RegistrationOtpModal.tsx` hiển thị địa chỉ email nhận mã.
-5. Người dùng nhập mã OTP và bấm "Xác nhận & Mở cửa hàng".
-6. Frontend gọi `POST /api/auth/register` kèm `otpCode`.
-7. Backend kiểm tra OTP hợp lệ -> Tạo Tenant, Branch, StoreOwner và đăng nhập người dùng.
-
----
-
-## 4. Kế Hoạch Thay Đổi & Dọn Dẹp
-1. **Dọn dẹp**: Xóa bỏ `TextBeeSmsService.cs`, `TextBeeSettings.cs`, `ISmsService.cs` và các cấu hình TextBee trong `.env` / `appsettings.json`.
-2. **Backend**:
-   - Mở rộng `IEmailService` và `EmailService`: Thêm `SendLoginOtpAsync` và `SendRegistrationOtpAsync` với template HTML đẹp mắt chuẩn thương hiệu MT-GRMS.
-   - Thêm DTOs trong `AuthDtos.cs`: `VerifyLoginOtpRequest`, `LoginResponseDto`, `SendEmailOtpRequest`.
-   - Thêm logic xác thực 2FA trong `AuthService.cs` và `AuthController.cs`.
-3. **Frontend**:
-   - Tạo mới `LoginOtpModal.tsx` theo chuẩn KiotViet Design System (`RULE_UI_DESIGN_SYSTEM.md`), bo tròn pill, không animation nhún nhảy.
-   - Cập nhật `RegistrationOtpModal.tsx` thể hiện rõ nội dung xác thực Email.
-   - Cập nhật `LoginPage.tsx`, `RegisterPage.tsx` và `authService.ts`.
+## Rủi ro và xử lý
+- Tài khoản cũ có thể không có giá trị trạng thái: migration/backfill phải mặc định enabled.
+- Email chưa xác minh hoặc thiếu email: không cho bật 2FA; hiển thị lý do và cách cập nhật email đã xác minh.
+- CSRF/chiếm phiên có thể gây thay đổi thiết lập: xác minh lại mật khẩu và Email OTP, yêu cầu Backend lấy UserId từ phiên xác thực.
+- Sai lệch giữa UI/API và spec: bổ sung contract cụ thể và test scenarios cho bật, tắt, đăng nhập cả hai trạng thái, tài khoản khác và audit log.
