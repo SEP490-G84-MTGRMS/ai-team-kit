@@ -27,3 +27,7 @@ Chuyển đổi toàn diện sang HttpOnly Cookie cho cả Access Token và Refr
 ## Brainstorm · 2026-11-11 12:48
 
 Cập nhật đặc tả chi tiết cho Email OTP 2FA Đăng nhập và Đăng ký cửa hàng, bỏ TextBee SMS
+
+## Verify Spec · 2026-11-11 12:52
+
+Bóc tách 12 tasks rõ ràng cho luồng Email OTP 2FA đăng nhập và đăng ký cửa hàng

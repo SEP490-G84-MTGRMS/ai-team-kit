@@ -27,3 +27,7 @@ User duyệt cập nhật spec cũ auth-login-integration bổ sung toàn bộ l
 ## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-11 12:48
 
 Đã hoàn thành exploration, design-brief và specs delta cho Email OTP 2FA Đăng nhập và Đăng ký
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 12:52
+
+Đã duyệt review/skeptic.md và bảng tasks.md cho luồng Email OTP 2FA đăng nhập và đăng ký cửa hàng
