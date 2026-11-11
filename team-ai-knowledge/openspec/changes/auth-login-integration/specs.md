@@ -24,10 +24,10 @@
 Hệ thống Backend MUST cung cấp API xác thực tài khoản qua username/email và mật khẩu, cấp phát Access Token (thời hạn 15–60 phút) và Refresh Token (thời hạn 7–30 ngày) **dưới dạng HttpOnly Cookies**, tuyệt đối không trả chuỗi token nhạy cảm trong response body.
 
 #### Scenario: Đăng nhập thành công với tài khoản quản trị Admin
-- GIVEN tài khoản admin tồn tại trong bảng users với Username `"admin"` và Mật khẩu `"Admin@123"`
-- WHEN người dùng gửi yêu cầu POST tới `/api/v1/auth/login` với `{ usernameOrEmail: "admin", password: "Admin@123" }`
+- GIVEN tài khoản admin hợp lệ có 2FA tắt trong môi trường kiểm thử
+- WHEN người dùng gửi yêu cầu POST tới `/api/v1/auth/login` với credentials hợp lệ của admin
 - THEN hệ thống MUST:
-  1. Trả về HTTP 200 OK kèm payload `UserInfo` (`id == "usr_super_admin_01"`, `roleName == "ADMIN"`).
+  1. Trả về HTTP 200 OK với `requiresOtp: false` và payload `UserInfo` (`id == "usr_super_admin_01"`, `roleName == "ADMIN"`).
   2. Đính kèm header `Set-Cookie` cho `access_token` với các thuộc tính `HttpOnly`, `SameSite=Lax`, `Path=/`.
   3. Đính kèm header `Set-Cookie` cho `refresh_token` với các thuộc tính `HttpOnly`, `SameSite=Lax`, `Path=/api/auth`.
   4. Response body MUST NOT chứa bất kỳ trường token nào (`accessToken`, `refreshToken`).
