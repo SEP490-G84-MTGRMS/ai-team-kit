@@ -23,3 +23,7 @@ Duyệt kế hoạch triển khai HttpOnly Cookie, Silent Refresh Axios Queue, v
 ## Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 12:45
 
 User duyệt cập nhật spec cũ auth-login-integration bổ sung toàn bộ luồng Email OTP cho Đăng nhập 2FA và Đăng ký cửa hàng, bỏ TextBee SMS
+
+## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-11 12:48
+
+Đã hoàn thành exploration, design-brief và specs delta cho Email OTP 2FA Đăng nhập và Đăng ký
