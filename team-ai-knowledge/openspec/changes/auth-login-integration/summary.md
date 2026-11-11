@@ -19,3 +19,7 @@ Phê duyệt kết quả verify-spec, sẵn sàng tiến hành code và tick che
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-09 11:25
 
 Duyệt kế hoạch triển khai HttpOnly Cookie, Silent Refresh Axios Queue, và các tasks T1-T12.
+
+## Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 12:45
+
+User duyệt cập nhật spec cũ auth-login-integration bổ sung toàn bộ luồng Email OTP cho Đăng nhập 2FA và Đăng ký cửa hàng, bỏ TextBee SMS
