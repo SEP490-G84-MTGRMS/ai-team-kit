@@ -16,3 +16,11 @@
 
 ## Test & Verification
 - [x] T9 — Kiểm thử toàn diện API tính tiền mua gói, kiểm tra Quota tạo chi nhánh và xác nhận build Backend + Frontend pass 100%
+
+## REQ-01 / REQ-06: Dung lượng lưu trữ và mua thêm GB
+- [ ] T10 — Lưu quota/usage/GB mua thêm/tệp theo tenant và migration an toàn.
+- [ ] T11 — Tính giá addon 15k/GB/tháng + VAT khi mua gói, ghi giao dịch ví và chống thanh toán lặp.
+- [ ] T12 — API báo giá và mua GB giữa kỳ theo thời gian còn lại; kiểm tra quyền chủ gian hàng.
+- [ ] T13 — API đo usage, chặn upload vượt mức, xử lý upload/delete/expiry nhất quán.
+- [ ] T14 — UI hiển thị usage và mua thêm GB ở checkout và trang gói.
+- [ ] T15 — Test bảo mật tenant, thanh toán, hạn mức, expiry và build.
