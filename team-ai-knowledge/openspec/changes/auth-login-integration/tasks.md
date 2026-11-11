@@ -32,3 +32,21 @@
 - [x] T10 — Chạy `dotnet test` xác minh ban đầu (REQ-01)
 - [x] T11 — Chạy `npm run build` trên Frontend (REQ-AUTH-04)
 - [x] T12 — Kiểm thử End-to-End ban đầu
+
+## Bổ sung 2FA tùy chọn theo tài khoản (chưa triển khai)
+### DB
+- [ ] T-2FA-01 — Thêm cờ `IsTwoFactorEnabled` trên User, migration/backfill true cho tài khoản cũ và mặc định true cho tài khoản mới; entity mapping (REQ-AUTH-12).
+- [ ] T-2FA-02 — Thiết kế và lưu audit thay đổi 2FA gồm UserId, TenantId, action, timestamp UTC, IP, result; không lưu bí mật (REQ-AUTH-12).
+
+### Backend
+- [ ] T-2FA-03 — Sửa login để phân nhánh theo cờ: bật tiếp tục Email OTP, tắt cấp HttpOnly cookies ngay; xử lý response đồng nhất (REQ-AUTH-08, REQ-01).
+- [ ] T-2FA-04 — API GET trạng thái và POST challenge Settings: lấy UserId từ phiên, xác minh mật khẩu/email, tạo challenge riêng gắn UserId/action, giới hạn gửi lại user/IP, CSRF (REQ-AUTH-12).
+- [ ] T-2FA-05 — API confirm: OTP 5 phút/5 sai, chống replay/challenge khác action, update trạng thái và audit nhất quán trong transaction, trả 403 cho target khác (REQ-AUTH-12).
+
+### Frontend
+- [ ] T-2FA-06 — Cập nhật authService/authTypes/LoginPage cho response login bật/tắt 2FA (REQ-AUTH-08).
+- [ ] T-2FA-07 — Settings bảo mật tự phục vụ cho mọi vai trò: tải trạng thái, công tắc, xác minh mật khẩu/OTP, loading/error/success và email chưa xác minh (REQ-AUTH-12).
+
+### Kiểm chứng
+- [ ] T-2FA-08 — Kiểm chứng login bật/tắt, OTP dùng một lần/5 sai/hết hạn; settings ownership/action/CSRF/replay/rate limit/audit transaction; build frontend và backend (REQ-AUTH-08, REQ-AUTH-12).
+- [ ] T-2FA-09 — Cập nhật backend worklog và CHANGELOG theo quy tắc repo (REQ-AUTH-12).
