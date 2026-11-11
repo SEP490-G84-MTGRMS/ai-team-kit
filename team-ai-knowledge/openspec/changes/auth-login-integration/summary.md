@@ -31,3 +31,7 @@ User duyệt cập nhật spec cũ auth-login-integration bổ sung toàn bộ l
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 12:52
 
 Đã duyệt review/skeptic.md và bảng tasks.md cho luồng Email OTP 2FA đăng nhập và đăng ký cửa hàng
+
+## Brainstorm — ✅ Approve bởi @Ortus24 · 2026-11-11 16:12
+
+Duyệt hướng khảo sát: giữ nguyên luồng Email OTP đăng nhập/đăng ký hiện có; bổ sung trạng thái 2FA theo tài khoản, Settings tự phục vụ, xác minh lại mật khẩu và Email OTP, audit log, tài khoản hiện hữu mặc định bật 2FA.

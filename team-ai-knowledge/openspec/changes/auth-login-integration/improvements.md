@@ -31,3 +31,7 @@ Cập nhật đặc tả chi tiết cho Email OTP 2FA Đăng nhập và Đăng k
 ## Verify Spec · 2026-11-11 12:52
 
 Bóc tách 12 tasks rõ ràng cho luồng Email OTP 2FA đăng nhập và đăng ký cửa hàng
+
+## Brainstorm · 2026-11-11 16:12
+
+Sau refactor spec, kiểm tra định dạng delta và đủ requirement/API contract trước khi lưu artifact.
