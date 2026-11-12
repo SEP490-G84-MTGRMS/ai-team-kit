@@ -1,19 +1,20 @@
 # Guardian Review: homepage-trial-onboarding
 
-## Vấn đề
+## Kết quả vòng 1
 
-- [HIGH] Resolver hiện tin `X-Tenant-Id` và fallback tenant đầu tiên; có nguy cơ truy cập chéo tenant. Endpoint Trial chỉ được dùng tenant claim và membership Store Owner đang hoạt động.
-- [HIGH] Frontend route guard không đủ; backend phải chặn mọi API nghiệp vụ với `NO_PLAN` hoặc Trial hết hạn, chỉ allowlist account/auth/subscription/payment cần thiết.
-- [HIGH] Thiếu dấu `HasEverPaid`/`FirstPaidAt`; tenant từng trả phí hết hạn có thể quay lại Trial.
-- [HIGH] OTP có đường fail-open, email giả và `DevOtpCode`; production phải bắt buộc email thật, challenge hợp lệ và không lộ OTP.
-- [HIGH] OTP in-memory không an toàn đa instance, verify/remove không nguyên tử. Cần hash trong distributed cache/DB, TTL, counter và compare-and-consume nguyên tử.
-- [HIGH] Trial concurrency chưa có cơ chế DB cụ thể. Cần conditional update/lock theo thứ tự cố định, audit/idempotency cùng transaction.
-- [HIGH] Backfill Trial và paid-history đang trộn lẫn; phải tách `TrialConsumedAt` khỏi `HasEverPaid`, dry-run và cô lập dữ liệu mơ hồ.
-- [MEDIUM] Cần normalized email/phone và unique index kể cả soft-delete.
-- [MEDIUM] OTP chỉ consume sau commit hoặc có trạng thái reserved có thể rollback.
-- [MEDIUM] IP audit chỉ tin forwarded headers từ trusted proxy.
-- [MEDIUM] Không tiết lộ `TRIAL_ALREADY_USED` trước khi người dùng xác minh sở hữu định danh.
+Phát hiện HIGH về tenant spoofing qua header, thiếu backend gate, paid tenant quay lại Trial, OTP fail-open/in-memory, race condition và backfill trộn paid với Trial.
 
-## Kết luận
+## Xử lý
 
-Cần sửa.
+Specs/design đã bắt buộc tenant claim + membership, backend gate, `FirstPaidAt`, OTP distributed fail-closed, conditional update/lock và backfill độc lập có dry-run.
+
+## Re-review
+
+Không còn HIGH bảo mật. Các lưu ý MEDIUM phải được đưa vào task triển khai:
+
+- Idempotency scope theo actor + operation + tenant/challenge và request fingerprint.
+- OTP challenge bind `NormalizedEmail` và payload hợp lệ.
+- Payment callback vẫn xác minh chữ ký và chống replay, dù nằm trong allowlist.
+- Migration report không chứa email/phone đầy đủ.
+
+## Kết luận: An toàn
