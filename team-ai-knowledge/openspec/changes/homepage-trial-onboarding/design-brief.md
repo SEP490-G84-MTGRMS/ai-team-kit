@@ -13,14 +13,13 @@
 Áp dụng luồng lai theo trạng thái:
 
 1. Khách chưa đăng nhập bấm bất kỳ CTA Trial nào → chuyển tới `/auth/register?intent=trial`.
-2. Trang đăng ký dùng form và Email OTP hiện có; intent chỉ điều khiển nội dung UI, không quyết định PlanCode hay số ngày.
-3. Backend đăng ký thành công tạo user Store Owner, tenant, chi nhánh chính và kích hoạt duy nhất gói `TRIAL` trong 72 giờ trong cùng một giao dịch.
+2. Trang đăng ký dùng form và Email OTP hiện có; intent chỉ điều khiển nội dung UI/analytics, không quyết định PlanCode hay số ngày.
+3. Mọi đăng ký gian hàng thành công, kể cả truy cập `/auth/register` không có intent, đều tạo user Store Owner, tenant, chi nhánh chính và duy nhất một gói `TRIAL` trong 72 giờ trong cùng giao dịch.
 4. Store Owner đã đăng nhập bấm CTA → frontend hỏi trạng thái Trial từ backend:
    - `ACTIVE` → Dashboard;
-   - `ELIGIBLE` → popup xác nhận rồi gọi activate;
    - `EXPIRED` hoặc `PAID` → trang quản lý gói;
-   - role không phù hợp/không có tenant → không kích hoạt, điều hướng về khu vực hợp lệ hoặc đăng nhập lại.
-5. Endpoint kích hoạt Trial hiện có được siết chặt thành thao tác idempotent và không được đặt lại thời hạn.
+   - role không phù hợp/không có tenant → không cấp Trial, điều hướng về khu vực hợp lệ hoặc đăng nhập lại.
+5. Endpoint kích hoạt Trial hiện có trở thành endpoint tương thích: chỉ trả lại Trial ACTIVE hiện tại hoặc từ chối; tuyệt đối không tạo/kéo dài Trial.
 
 ## 3. Luồng người dùng
 
@@ -50,16 +49,15 @@ Trang đăng ký hiển thị banner:
 HomePage CTA
   → GET trial status
      ├─ ACTIVE  → Dashboard
-     ├─ ELIGIBLE → confirmation modal → POST activate → Dashboard
      ├─ EXPIRED → Subscription page
      └─ PAID    → Subscription page
 ```
 
 ### 3.3 Request lặp/đồng thời
 
-- Nếu Trial đang ACTIVE, POST lặp trả cùng `trialStartedAt` và `trialExpiresAt`, không đổi dữ liệu.
-- Nếu Trial đã EXPIRED hoặc tenant đã từng dùng Trial, trả lỗi nghiệp vụ; không đặt lại thời hạn.
-- Hai request đồng thời chỉ một request được chuyển từ ELIGIBLE sang ACTIVE.
+- Nếu Trial đang ACTIVE, POST legacy/lặp trả cùng `trialStartedAt` và `trialExpiresAt`, không đổi dữ liệu.
+- Nếu Trial đã EXPIRED hoặc tenant đã chuyển sang gói trả phí, trả lỗi nghiệp vụ; không đặt lại thời hạn.
+- Không có trạng thái tenant mới chờ kích hoạt: Trial được ghi nguyên tử trong đăng ký.
 
 ## 4. Frontend
 
@@ -69,7 +67,7 @@ HomePage CTA
 |---|---|
 | `HomePage.tsx` | Thay state mở `TrialModal` bằng handler dùng chung cho tất cả CTA |
 | `Navbar.tsx`, `HeroSection.tsx`, `CtaBanner.tsx`, floating CTA | Gọi cùng `onStartTrial`; nội dung thống nhất 3 ngày |
-| `TrialModal.tsx` | Loại bỏ form đăng ký giả; có thể thay bằng modal xác nhận nhỏ chỉ cho trạng thái ELIGIBLE |
+| `TrialModal.tsx` | Loại bỏ form đăng ký giả; không cần modal xác nhận kích hoạt riêng |
 | `RegisterPage.tsx` | Đọc `intent=trial`, hiển thị banner Trial và điều hướng Dashboard sau đăng ký thành công |
 | `authService` / store API | Thêm hàm lấy trạng thái và kích hoạt Trial có typed response |
 | Router | Giữ route chuẩn `/auth/register`; query intent không tạo route mới |
@@ -81,6 +79,7 @@ HomePage CTA
 - **OTP pending**: giữ modal OTP và resend policy hiện có.
 - **Success**: cập nhật auth state và chuyển Dashboard.
 - **Expired/Paid**: chuyển trang Subscription, hiển thị lựa chọn STANDARD/PRO.
+- **Đăng ký trực tiếp không có intent**: vẫn hiển thị/áp dụng cùng TRIAL 3 ngày sau khi OTP thành công.
 - **Unauthorized/role sai**: không hiển thị nút kích hoạt; đưa về login hoặc trang phù hợp role.
 
 ### Quy tắc UI
@@ -100,7 +99,7 @@ HomePage CTA
 
 ```json
 {
-  "state": "ELIGIBLE | ACTIVE | EXPIRED | PAID",
+  "state": "ACTIVE | EXPIRED | PAID",
   "planCode": "TRIAL | STANDARD | PRO",
   "trialStartedAt": "UTC ISO-8601 hoặc null",
   "trialExpiresAt": "UTC ISO-8601 hoặc null",
@@ -113,12 +112,13 @@ HomePage CTA
 ### POST `/api/tenant/subscriptions/trial`
 
 - Auth: Store Owner.
+- Đây là endpoint tương thích cho client cũ; frontend mới không dùng để cấp Trial sau đăng ký.
 - Request body rỗng hoặc có `requestId` dùng cho correlation; không nhận PlanCode, số ngày hay tenant ID.
 - Hành vi:
-  - ELIGIBLE: đặt `CurrentPlan = TRIAL`, `SubscriptionStatus = TRIAL`, thời gian bắt đầu backend UTC và hết hạn đúng +72 giờ.
   - ACTIVE: trả 200 với thời gian Trial hiện tại, không thay đổi expiry.
   - EXPIRED/PAID/already used: trả 409 ProblemDetails với mã `TRIAL_ALREADY_USED` hoặc `TRIAL_NOT_ELIGIBLE`.
   - tenant/role sai: 403; không tìm thấy tenant: 404.
+- Endpoint MUST không có nhánh tạo mới hoặc đặt lại Trial.
 - Không tạo WalletTransaction và không thay đổi WalletBalance.
 
 ### Registration API hiện có
@@ -126,7 +126,7 @@ HomePage CTA
 - `POST /api/auth/register/send-otp`: giữ contract.
 - `POST /api/auth/register`: bắt buộc OTP hợp lệ, chưa dùng và còn TTL; không chấp nhận nhánh đăng ký thiếu OTP.
 - Việc tạo User, Tenant, Branch và Trial nằm trong một transaction.
-- Backend luôn gán PlanCode `TRIAL`; frontend không gửi PlanCode/thời hạn.
+- Backend luôn gán PlanCode `TRIAL` trong mọi đăng ký gian hàng mới, bất kể có `intent=trial` hay không; frontend không gửi PlanCode/thời hạn.
 
 ### Lỗi
 
@@ -162,26 +162,26 @@ Migration/backfill an toàn:
 ## 7. Transaction, Idempotency và đồng thời
 
 - Registration transaction bao gồm User, Tenant, TenantUser/role mapping và Branch.
-- Kích hoạt Trial dùng transaction mức cô lập phù hợp và khóa/cập nhật có điều kiện trên tenant.
-- Điều kiện ghi: `TrialStartedAt IS NULL` và tenant chưa ở gói trả phí.
-- Sau khi ghi, response luôn đọc lại thời gian đã lưu; không tính lại expiry ở frontend.
-- Request lặp khi ACTIVE trả cùng dữ liệu.
-- Ghi AuditLog `TRIAL_ACTIVATED` với tenant, user, timestamp, IP/correlation; không ghi OTP.
+- Trial được ghi trong transaction đăng ký; không có transaction kích hoạt thứ hai sau khi tạo tenant.
+- Endpoint tương thích chỉ đọc/trả lại dữ liệu ACTIVE hoặc từ chối EXPIRED/PAID.
+- Response luôn dùng thời gian đã lưu; không tính lại expiry ở frontend.
+- Ghi đúng một AuditLog `TRIAL_ACTIVATED` trong transaction đăng ký với tenant, user, timestamp, IP/correlation; không ghi OTP.
 
 ## 8. Quy tắc nghiệp vụ và phân quyền
 
 1. Trial chỉ có PlanCode `TRIAL`.
 2. Trial kéo dài đúng 72 giờ, tương ứng 3 ngày, tính từ UTC backend.
-3. Mỗi tenant chỉ có một Trial suốt vòng đời.
-4. Chỉ Store Owner của chính tenant được kiểm tra/kích hoạt.
-5. Email phải được xác minh trước khi Trial bắt đầu.
-6. Trial không yêu cầu thẻ, không trừ ví, không tự gia hạn.
-7. Hết Trial giữ nguyên dữ liệu; quyền truy cập nghiệp vụ được xử lý theo policy subscription hiện có và người dùng được hướng tới trang nâng cấp.
-8. Nâng cấp STANDARD/PRO không xóa `TrialStartedAt`/`TrialExpiresAt`.
+3. Mỗi tenant chỉ có một Trial suốt vòng đời và Trial luôn bắt đầu cùng đăng ký gian hàng thành công.
+4. `intent=trial` không quyết định eligibility; đăng ký trực tiếp cũng nhận cùng Trial.
+5. Chỉ Store Owner của chính tenant được kiểm tra trạng thái; endpoint legacy không được cấp Trial.
+6. Email phải được xác minh trước khi Trial bắt đầu.
+7. Trial không yêu cầu thẻ, không trừ ví, không tự gia hạn.
+8. Hết Trial giữ nguyên dữ liệu; quyền truy cập nghiệp vụ được xử lý theo policy subscription hiện có và người dùng được hướng tới trang nâng cấp.
+9. Nâng cấp STANDARD/PRO không xóa `TrialStartedAt`/`TrialExpiresAt`.
 
 ## 9. Test Strategy
 
 - Frontend: CTA ở Navbar/Hero/CTA banner cùng điều hướng; query intent; các nhánh ACTIVE/ELIGIBLE/EXPIRED/PAID; loading/error.
-- Backend unit: OTP bắt buộc; tính đúng +72 giờ; không thay đổi ví; active request idempotent.
-- Integration: transaction tạo user/tenant/branch; request đồng thời; tenant isolation; role sai; Trial đã hết/trả phí.
+- Backend unit: OTP bắt buộc; mọi đăng ký có/không intent đều nhận TRIAL đúng +72 giờ; không thay đổi ví; endpoint legacy không kéo dài Trial.
+- Integration: transaction tạo user/tenant/branch/trial; retry đăng ký; tenant isolation; role sai; Trial đã hết/trả phí.
 - Regression: login, registration OTP, dashboard navigation, purchase STANDARD/PRO.
