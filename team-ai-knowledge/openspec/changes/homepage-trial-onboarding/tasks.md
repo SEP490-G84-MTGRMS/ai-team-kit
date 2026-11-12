@@ -8,10 +8,10 @@
 
 ## Domain / Application
 
-- [ ] T4 — Thiết kế OTP challenge distributed dạng hash với TTL, counter, state `Pending/Reserved/Consumed`; bind challenge với `NormalizedEmail`, intent và request fingerprint; không trả OTP ở Production. (REQ-SUB-08)
+- [x] T4 — Thiết kế OTP challenge distributed dạng hash với TTL, counter, state `Pending/Reserved/Consumed`; bind challenge với `NormalizedEmail`, intent và request fingerprint; không trả OTP ở Production. (REQ-SUB-08)
 - [x] T5 — Sửa registration use case cho hai mode `NO_PLAN`/Trial, transaction User–Tenant–TenantUser–Branch–Trial–audit và retry an toàn khi rollback/mất response. (REQ-SUB-07, REQ-SUB-08)
 - [x] T6 — Cài đặt Trial eligibility/status/activation với `FirstPaidAt`, live expiry UTC, conditional update/lock theo User rồi Tenant và audit duy nhất. (REQ-SUB-09)
-- [ ] T7 — Cài đặt idempotency scope theo actor + operation + tenant/challenge, lưu request fingerprint và từ chối tái dùng key với payload khác. (REQ-SUB-08, REQ-SUB-09)
+- [x] T7 — Cài đặt idempotency scope theo actor + operation + tenant/challenge, lưu request fingerprint và từ chối tái dùng key với payload khác. (REQ-SUB-08, REQ-SUB-09)
 
 ## API / Security
 
@@ -31,7 +31,7 @@
 ## Test / Verification
 
 - [x] T17 — Viết unit tests cho eligibility, 72 giờ UTC, paid history, live expiry, normalized identity, OTP state và idempotency fingerprint. (REQ-SUB-08, REQ-SUB-09)
-- [ ] T18 — Viết integration tests cho rollback/retry, hai instance/concurrent register-activate, account qua tenant khác, tenant spoofing và audit duy nhất. (REQ-SUB-08, REQ-SUB-09, REQ-SUB-10)
-- [ ] T19 — Viết integration tests backend gate/allowlist, callback signature/replay và backfill Trial/paid/mơ hồ. (REQ-SUB-10, REQ-SUB-11)
-- [ ] T20 — Viết frontend tests cho hai intent, CTA, OTP retry, redirect, modal accessibility và trạng thái `NO_PLAN/ACTIVE/EXPIRED/PAID`. (REQ-SUB-07, REQ-SUB-10)
-- [ ] T21 — Chạy backend build + unit/integration tests, frontend typecheck/lint/build/test; ghi kết quả thật ở bước `/sep-test`. (REQ-SUB-07..11)
+- [x] T18 — Viết integration tests cho rollback/retry, hai instance/concurrent register-activate, account qua tenant khác, tenant spoofing và audit duy nhất. (REQ-SUB-08, REQ-SUB-09, REQ-SUB-10)
+- [x] T19 — Viết integration tests backend gate/allowlist, callback signature/replay và backfill Trial/paid/mơ hồ. (REQ-SUB-10, REQ-SUB-11)
+- [x] T20 — Viết frontend tests cho hai intent, CTA, OTP retry, redirect, modal accessibility và trạng thái `NO_PLAN/ACTIVE/EXPIRED/PAID`. (REQ-SUB-07, REQ-SUB-10)
+- [x] T21 — Chạy backend build + unit/integration tests, frontend typecheck/lint/build/test; ghi kết quả thật ở bước `/sep-test`. (REQ-SUB-07..11)
