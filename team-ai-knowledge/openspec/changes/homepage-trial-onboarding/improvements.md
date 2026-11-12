@@ -11,3 +11,7 @@ Bước verify-spec cần phản biện kỹ race condition khi hai request Tria
 ## Verify Spec · 2026-11-12 08:32
 
 Khi apply cần giữ idempotency theo actor/operation/tenant/challenge và request fingerprint; bind OTP với normalized email; xác minh chữ ký/chống replay callback; mask định danh trong báo cáo migration.
+
+## Apply · 2026-11-12 09:21
+
+Không để build output tạm (.codex-build) trong thư mục repo git; luôn dùng OutDir/OutputPath ngoài repo khi API đang chạy, và bổ sung kiểm tra Global Query Filter của BaseTenantEntity cho IdempotencyFilter khi áp dụng lên endpoint ẩn danh như /api/auth/register.

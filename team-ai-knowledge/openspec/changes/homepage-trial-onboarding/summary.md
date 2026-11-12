@@ -11,3 +11,7 @@ Duyệt mô hình hai luồng: đăng ký thường tạo tenant NO_PLAN và t�
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-12 08:32
 
 Đã review bằng Skeptic, Guardian, Advocate và Codebase; sửa toàn bộ HIGH về hai intent đăng ký, OTP fail-closed, tenant isolation, backend subscription gate, Trial concurrency, paid history và backfill; đã lập 21 task theo thứ tự DB → backend → frontend → test.
+
+## Apply — ✅ Approve bởi @Ortus24 · 2026-11-12 09:21
+
+Hoàn thành 21/21 task của bước Apply cho homepage-trial-onboarding: OTP challenge phân tán (Pending/Reserved/Consumed), IdempotencyFilter scoped theo actor/operation/challenge + ProblemDetails RFC 7807, Trial activation nguyên tử + AuditLog TRIAL_ACTIVATED, SubscriptionAccessMiddleware, ForwardedHeaders trusted proxy, TrialOnboardingBackfillService (dry-run/apply), cập nhật UI HomePage/RegisterPage/ProtectedRoute/StoreSettingsHubPage/SubscriptionCheckoutModal/TrialStatusBanner và bổ sung đầy đủ unit/integration/frontend tests.
