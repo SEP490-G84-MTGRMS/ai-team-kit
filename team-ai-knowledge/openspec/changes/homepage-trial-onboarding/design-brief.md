@@ -103,7 +103,7 @@ HomePage CTA
   "planCode": "TRIAL | STANDARD | PRO",
   "trialStartedAt": "UTC ISO-8601 hoặc null",
   "trialExpiresAt": "UTC ISO-8601 hoặc null",
-  "destination": "DASHBOARD | SUBSCRIPTIONS | CONFIRM"
+  "destination": "DASHBOARD | SUBSCRIPTIONS"
 }
 ```
 
@@ -181,7 +181,7 @@ Migration/backfill an toàn:
 
 ## 9. Test Strategy
 
-- Frontend: CTA ở Navbar/Hero/CTA banner cùng điều hướng; query intent; các nhánh ACTIVE/ELIGIBLE/EXPIRED/PAID; loading/error.
+- Frontend: CTA ở Navbar/Hero/CTA banner cùng điều hướng; query intent; các nhánh ACTIVE/EXPIRED/PAID; loading/error.
 - Backend unit: OTP bắt buộc; mọi đăng ký có/không intent đều nhận TRIAL đúng +72 giờ; không thay đổi ví; endpoint legacy không kéo dài Trial.
 - Integration: transaction tạo user/tenant/branch/trial; retry đăng ký; tenant isolation; role sai; Trial đã hết/trả phí.
 - Regression: login, registration OTP, dashboard navigation, purchase STANDARD/PRO.
