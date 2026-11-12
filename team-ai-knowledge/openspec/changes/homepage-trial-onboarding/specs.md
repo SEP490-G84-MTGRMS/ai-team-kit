@@ -6,209 +6,198 @@ Dependencies: `exploration.md`, `design-brief.md`
 
 | Method | Path | Request | Response | Lỗi |
 |---|---|---|---|---|
-| `POST` | `/api/auth/register/send-otp` | Thông tin định danh đăng ký hiện có | Email được che, trạng thái gửi OTP | 400 dữ liệu sai; 409 trùng; 429 rate limit |
-| `POST` | `/api/auth/register` | Thông tin Store Owner, gian hàng, mật khẩu, OTP | Phiên đăng nhập + user/tenant mới ở TRIAL | 400 OTP thiếu/sai/hết hạn; 409 dữ liệu trùng |
-| `GET` | `/api/tenant/subscriptions/trial-status` | Không nhận tenant ID | `state`, `planCode`, `trialStartedAt`, `trialExpiresAt`, `destination` | 401, 403, 404 |
-| `POST` | `/api/tenant/subscriptions/trial` | Endpoint tương thích; body rỗng/correlation, không nhận PlanCode/số ngày/tenant ID | Trả lại Trial ACTIVE hiện tại; không cấp mới/kéo dài | 401, 403, 404, 409 Trial đã hết/tenant trả phí |
+| `POST` | `/api/auth/register/send-otp` | Thông tin đăng ký hiện có | Email che và trạng thái gửi | 400, 409, 429 |
+| `POST` | `/api/auth/register` | Thông tin đăng ký, OTP, `startTrial` | Phiên + tenant `NO_PLAN` hoặc `TRIAL` | 400 OTP; 409 trùng/đã dùng Trial |
+| `GET` | `/api/tenant/subscriptions/trial-status` | Không nhận tenant ID | State và thời gian Trial | 401, 403, 404 |
+| `POST` | `/api/tenant/subscriptions/trial` | Body rỗng/correlation; không nhận PlanCode/số ngày/tenant ID | Trial ACTIVE hoặc conflict | 401, 403, 404, 409 |
 
 ## ADDED Requirements
 
-### Requirement: REQ-SUB-07 CTA dùng thử thống nhất trên HomePage
+### Requirement: REQ-SUB-07 CTA Trial và đăng ký thường là hai ý định khác nhau
 
-Tất cả CTA **Dùng thử miễn phí** trên HomePage MUST sử dụng cùng một luồng điều hướng theo trạng thái người dùng và MUST không báo kích hoạt thành công nếu backend chưa tạo hoặc cập nhật Trial thành công.
+Hệ thống SHALL phân biệt đăng ký gian hàng thông thường với đăng ký từ CTA dùng thử, nhưng MUST dùng chung validation, Email OTP và cơ chế tạo tài khoản an toàn.
 
-1. Khách chưa đăng nhập SHALL được chuyển tới `/auth/register?intent=trial`.
-2. Store Owner đang có Trial còn hiệu lực SHALL được chuyển tới Dashboard.
-3. Store Owner đã hết Trial, đã từng dùng Trial hoặc đang dùng STANDARD/PRO SHALL được chuyển tới trang quản lý gói.
-4. Không tồn tại bước kích hoạt Trial riêng sau đăng ký; mọi tenant mới đã nhận Trial trong transaction đăng ký.
-5. Role không phải Store Owner MUST không được thay đổi trạng thái Trial của tenant.
-6. Navbar, Hero, CTA banner và các điểm gọi Trial khác MUST dùng cùng handler và cùng chính sách.
-7. UI MUST thống nhất nội dung “Dùng thử miễn phí 3 ngày”, “Không cần thẻ” và “Không tự động gia hạn”; MUST loại bỏ nội dung 14 ngày và giá/gói cũ trong form Trial.
+1. CTA Trial trên Navbar, Hero, CTA banner và các điểm HomePage MUST dẫn tới `/auth/register?intent=trial`.
+2. Đăng ký trực tiếp tại `/auth/register` MUST không tự bắt đầu Trial.
+3. Query `intent=trial` chỉ điều khiển UI; backend MUST tự kiểm tra eligibility và tự quyết định PlanCode/thời hạn.
+4. UI MUST thống nhất nội dung “Dùng thử miễn phí 3 ngày”, “Không cần thẻ”, “Không tự động gia hạn”; MUST loại bỏ nội dung 14 ngày/form giả.
+5. Frontend MUST không báo thành công nếu backend chưa commit đăng ký/Trial.
 
-#### Scenario: Khách chưa đăng nhập bắt đầu dùng thử
+#### Scenario: Đăng ký thông thường
 
-- GIVEN người dùng chưa có phiên đăng nhập
-- WHEN bấm bất kỳ CTA Dùng thử miễn phí nào trên HomePage
-- THEN hệ thống SHALL chuyển tới `/auth/register?intent=trial`
-- AND SHALL không hiển thị thông báo kích hoạt thành công trước khi đăng ký hoàn tất.
+- GIVEN khách mở `/auth/register` không có intent Trial
+- WHEN hoàn tất Email OTP và đăng ký thành công
+- THEN hệ thống MUST tạo tenant `NO_PLAN`
+- AND MUST không ghi `TrialStartedAt`, `TrialExpiresAt` hoặc dấu Trial của account
+- AND SHALL chuyển tới trang chọn gói.
 
-#### Scenario: Store Owner đang Trial quay lại HomePage
+#### Scenario: Đăng ký từ CTA dùng thử
 
-- GIVEN Store Owner đã đăng nhập và gói TRIAL còn hiệu lực
-- WHEN bấm CTA Dùng thử
-- THEN hệ thống SHALL chuyển tới Dashboard
-- AND MUST không thay đổi `trialExpiresAt`.
+- GIVEN khách bấm CTA Dùng thử và tới `/auth/register?intent=trial`
+- WHEN hoàn tất Email OTP và đăng ký thành công
+- THEN Backend MUST tạo tenant với gói `TRIAL` đúng 72 giờ
+- AND SHALL chuyển tới Dashboard.
 
-#### Scenario: Tenant đã hết Trial hoặc đã trả phí
+#### Scenario: API đăng ký Trial lỗi
 
-- GIVEN Store Owner đã đăng nhập và Trial đã hết, đã được sử dụng, hoặc tenant đang ở STANDARD/PRO
-- WHEN bấm CTA Dùng thử
-- THEN hệ thống SHALL chuyển tới trang quản lý gói
-- AND MUST không gọi hành động cấp Trial mới.
-
-#### Scenario: Không đọc được trạng thái
-
-- GIVEN người dùng đã đăng nhập
-- WHEN API trạng thái Trial lỗi hoặc timeout
+- GIVEN khách đăng ký từ CTA
+- WHEN API lỗi hoặc transaction rollback
 - THEN UI MUST hiển thị lỗi có thể thử lại
-- AND MUST không giả lập thành công hoặc tự suy đoán thời hạn Trial.
+- AND MUST không hiển thị toast kích hoạt thành công giả.
 
-#### Scenario: Role không được phép
+### Requirement: REQ-SUB-08 Đăng ký bắt buộc OTP và tạo dữ liệu nguyên tử
 
-- GIVEN người dùng đăng nhập với role Staff hoặc SaaS Admin không sở hữu tenant
-- WHEN cố gọi CTA hoặc endpoint kích hoạt Trial
-- THEN Backend MUST từ chối với HTTP 403
-- AND MUST không thay đổi tenant nào.
+Backend MUST bắt buộc Email OTP hợp lệ và MUST tạo User, Tenant, ánh xạ Store Owner, Branch cùng trạng thái subscription được chọn trong một transaction.
 
-### Requirement: REQ-SUB-08 Mọi đăng ký gian hàng bắt buộc Email OTP và tự nhận Trial
-
-Khi đăng ký gian hàng, có hoặc không có query `intent=trial`, Backend MUST bắt buộc Email OTP hợp lệ và MUST tạo Store Owner, tenant, ánh xạ quyền, chi nhánh chính cùng gói `TRIAL` 3 ngày trong một transaction nguyên tử.
-
-1. OTP MUST tồn tại, đúng, còn TTL và chưa được sử dụng.
-2. Không có OTP challenge hợp lệ MUST không được phép đăng ký.
-3. Email sau OTP thành công MUST được đánh dấu đã xác minh.
-4. Backend MUST tự gán `CurrentPlan = TRIAL` cho mọi đăng ký gian hàng mới; `intent=trial` chỉ dùng cho nội dung UI/analytics và MUST không quyết định entitlement.
-5. Đăng ký trực tiếp tại `/auth/register` không có intent MUST nhận cùng gói TRIAL 3 ngày.
-6. Nếu bất kỳ bước tạo User/Tenant/Branch/quyền/Trial thất bại, transaction MUST rollback toàn bộ.
-7. Sau thành công, hệ thống SHALL cấp phiên đăng nhập hợp lệ và điều hướng Store Owner tới Dashboard.
-8. Request đăng ký lặp với cùng email/số điện thoại MUST không tạo thêm user, tenant hoặc branch.
-
-#### Scenario: Đăng ký từ CTA Trial thành công
-
-- GIVEN khách đi từ CTA với `intent=trial`, nhập thông tin hợp lệ và có Email OTP còn hiệu lực
-- WHEN gửi đúng OTP để hoàn tất đăng ký
-- THEN Backend MUST tạo đúng một Store Owner, một tenant và một chi nhánh chính trong cùng transaction
-- AND tenant MUST bắt đầu gói TRIAL 3 ngày
-- AND hệ thống SHALL cấp phiên đăng nhập rồi chuyển tới Dashboard.
-
-#### Scenario: Đăng ký trực tiếp không có intent
-
-- GIVEN khách mở `/auth/register` trực tiếp không có query intent
-- WHEN hoàn tất đăng ký bằng Email OTP hợp lệ
-- THEN Backend MUST tạo cùng gói `TRIAL` đúng 3 ngày
-- AND MUST không yêu cầu client gửi PlanCode hoặc số ngày.
+1. OTP MUST tồn tại, đúng, còn TTL và chưa dùng.
+2. Thiếu OTP challenge hợp lệ MUST bị từ chối.
+3. Email MUST được đánh dấu xác minh sau OTP thành công.
+4. `startTrial=false` hoặc thiếu MUST tạo `NO_PLAN`; `startTrial=true` MAY tạo `TRIAL` chỉ khi account/tenant đủ điều kiện.
+5. Backend MUST không nhận PlanCode, số ngày hoặc tenant ID do client quyết định.
+6. Lỗi bất kỳ bước nào MUST rollback toàn bộ.
+7. Retry/trùng email hoặc số điện thoại MUST không tạo user/tenant/branch thứ hai.
 
 #### Scenario: Thiếu OTP
 
-- GIVEN khách chưa xác thực Email OTP
-- WHEN gọi trực tiếp API đăng ký mà không có OTP
-- THEN Backend MUST từ chối với HTTP 400 và mã `OTP_REQUIRED`
-- AND MUST không tạo User, Tenant hoặc Branch.
+- GIVEN khách chưa xác thực OTP
+- WHEN gọi API đăng ký
+- THEN Backend MUST trả HTTP 400 mã `OTP_REQUIRED`
+- AND MUST không tạo dữ liệu.
 
 #### Scenario: OTP sai hoặc hết hạn
 
-- GIVEN OTP sai, hết TTL hoặc đã được sử dụng
-- WHEN khách hoàn tất đăng ký
-- THEN Backend MUST từ chối
-- AND MUST giữ nguyên dữ liệu
-- AND SHALL áp dụng giới hạn số lần thử theo chính sách OTP hiện có.
+- GIVEN OTP sai, hết TTL hoặc đã sử dụng
+- WHEN hoàn tất đăng ký
+- THEN Backend MUST từ chối và giữ nguyên dữ liệu
+- AND SHALL áp dụng giới hạn thử OTP hiện có.
 
-#### Scenario: Transaction đăng ký thất bại một phần
+#### Scenario: Transaction lỗi một phần
 
 - GIVEN OTP hợp lệ
-- WHEN việc tạo tenant hoặc chi nhánh phát sinh lỗi
-- THEN transaction MUST rollback user, tenant, quyền và branch
-- AND OTP/khả năng retry SHALL được xử lý nhất quán, không tạo bản ghi mồ côi.
-
-#### Scenario: Gửi lặp đăng ký
-
-- GIVEN một đăng ký đã hoàn tất với email hoặc số điện thoại đó
-- WHEN client gửi lại request do retry mạng
-- THEN Backend MUST không tạo tenant/branch/user thứ hai
-- AND SHALL trả lỗi trùng hoặc kết quả idempotent theo contract đã xác định.
-
-### Requirement: REQ-SUB-09 Vòng đời gói TRIAL duy nhất bắt đầu từ đăng ký
-
-Mỗi tenant mới MUST nhận duy nhất một gói `TRIAL` kéo dài đúng 72 giờ kể từ khi transaction đăng ký thành công; hệ thống MUST không có bước cấp Trial lần hai sau đăng ký.
-
-1. Backend MUST lưu bền vững `TrialStartedAt` và `TrialExpiresAt`; `TrialExpiresAt = TrialStartedAt + 72 giờ`.
-2. Thời gian MUST được tính và lưu UTC; frontend chỉ định dạng hiển thị theo Asia/Ho_Chi_Minh.
-3. Trial MUST không yêu cầu thẻ, không tạo giao dịch ví, không thay đổi WalletBalance và không tự động gia hạn.
-4. Khi nâng cấp STANDARD/PRO, lịch sử Trial MUST được giữ nguyên.
-5. Tenant đã dùng hoặc hết Trial MUST không thể kích hoạt lại.
-6. Endpoint kích hoạt Trial tương thích MUST chỉ trả lại cùng thời gian khi ACTIVE hoặc từ chối khi EXPIRED/PAID; MUST không tạo hoặc kéo dài Trial.
-7. Retry hoặc hai request đăng ký đồng thời MUST không tạo hai tenant, hai branch hoặc hai khoảng Trial.
-8. Tenant hiện hữu khi migration MUST được backfill theo hướng không cấp Trial mới ngoài ý muốn.
-9. Hết Trial MUST không xóa dữ liệu; hệ thống SHALL hướng Store Owner tới trang nâng cấp.
-
-#### Scenario: Trial bắt đầu cùng đăng ký
-
-- GIVEN khách có Email OTP hợp lệ
-- WHEN transaction đăng ký gian hàng commit thành công
-- THEN Backend MUST đặt PlanCode `TRIAL`
-- AND MUST lưu thời điểm hết hạn đúng 72 giờ sau thời điểm bắt đầu
-- AND MUST không thay đổi số dư ví.
-
-#### Scenario: Client cũ gọi endpoint Trial khi đang hoạt động
-
-- GIVEN tenant đang có Trial còn hiệu lực
-- WHEN client cũ gửi request tới endpoint Trial
-- THEN Backend SHALL trả trạng thái ACTIVE với cùng `TrialStartedAt` và `TrialExpiresAt`
-- AND MUST không kéo dài Trial.
-
-#### Scenario: Kích hoạt lại sau khi hết hạn
-
-- GIVEN tenant có `TrialStartedAt` và Trial đã hết hạn
-- WHEN Store Owner gọi API kích hoạt
-- THEN Backend MUST trả HTTP 409 với mã `TRIAL_ALREADY_USED`
-- AND MUST không thay đổi ngày hết hạn.
-
-#### Scenario: Tenant đang trả phí
-
-- GIVEN tenant đang sử dụng STANDARD hoặc PRO
-- WHEN gọi API kích hoạt Trial
-- THEN Backend MUST trả HTTP 409 với mã `TRIAL_NOT_ELIGIBLE`
-- AND MUST không hạ cấp tenant về TRIAL.
+- WHEN tạo tenant, quyền hoặc branch thất bại
+- THEN transaction MUST rollback User, Tenant, mapping, Branch và Trial
+- AND MUST không để dữ liệu mồ côi.
 
 #### Scenario: Hai request đăng ký đồng thời
 
-- GIVEN cùng email hoặc số điện thoại đang gửi hai request đăng ký đồng thời với OTP hợp lệ
-- WHEN Backend xử lý hai request
-- THEN hệ thống MUST chỉ tạo một user, một tenant, một chi nhánh và một khoảng Trial 72 giờ
-- AND MUST không tạo hai audit event kích hoạt thành công.
+- GIVEN cùng email hoặc số điện thoại gửi hai request đăng ký
+- WHEN Backend xử lý đồng thời
+- THEN chỉ một User, Tenant và Branch MUST được tạo
+- AND nếu có Trial thì chỉ một khoảng Trial được ghi.
 
-#### Scenario: Truy cập tenant khác
+### Requirement: REQ-SUB-09 Một account và một tenant chỉ được Trial một lần
 
-- GIVEN Store Owner có phiên thuộc tenant A
-- WHEN cố truyền hoặc giả mạo tenant B để đọc/kích hoạt Trial
-- THEN Backend MUST bỏ qua tenant ID do client cung cấp hoặc từ chối HTTP 403
-- AND MUST không tiết lộ hay sửa trạng thái tenant B.
+Backend MUST giới hạn Trial một lần duy nhất theo cả tài khoản và tenant.
 
-### Requirement: REQ-SUB-10 Trạng thái Trial và audit an toàn
+1. Account MUST có dấu bền vững `TrialConsumedAt`.
+2. Tenant MUST lưu `TrialStartedAt` và `TrialExpiresAt`.
+3. Trial chỉ được bắt đầu khi account chưa có `TrialConsumedAt`, tenant chưa có `TrialStartedAt`, tenant đang `NO_PLAN`, email đã xác minh.
+4. Khi bắt đầu, backend MUST ghi account và tenant trong cùng transaction.
+5. `TrialExpiresAt` MUST bằng `TrialStartedAt + 72 giờ`, tính UTC.
+6. Account đã dùng Trial MUST không nhận Trial qua tenant khác.
+7. Tenant đã dùng Trial MUST không nhận Trial qua account khác.
+8. Request lặp khi ACTIVE MUST trả cùng thời gian, không cộng ngày.
+9. Trial MUST không yêu cầu thẻ, không trừ ví, không tạo WalletTransaction và không tự gia hạn.
+10. Nâng cấp STANDARD/PRO MUST giữ dấu lịch sử Trial.
 
-Backend MUST cung cấp trạng thái Trial đáng tin cậy cho chính tenant trong phiên và MUST ghi audit khi Trial được kích hoạt lần đầu.
+#### Scenario: Tenant NO_PLAN tự bắt đầu Trial
 
-1. Trạng thái SHALL là một trong `ACTIVE`, `EXPIRED`, `PAID`; không có `ELIGIBLE` cho tenant đã đăng ký.
-2. Response MUST chứa destination phù hợp để frontend điều hướng nhưng frontend không được dùng destination thay cho kiểm soát quyền backend.
-3. Audit log MUST gồm tenant, user, hành động, thời gian UTC, IP/correlation; MUST không ghi OTP, mật khẩu hoặc token.
-4. Endpoint MUST truy vấn theo claim tenant và role, không nhận tenant ID tùy ý.
-5. Trạng thái rỗng/mâu thuẫn MUST được xử lý theo hướng an toàn, không tự cấp Trial.
-6. Audit kích hoạt Trial MUST được tạo trong transaction đăng ký thành công.
+- GIVEN Store Owner có email xác minh, account chưa dùng Trial và tenant NO_PLAN chưa dùng Trial
+- WHEN bấm “Bắt đầu dùng thử 3 ngày”
+- THEN Backend MUST ghi Trial trên account và tenant
+- AND MUST cấp gói `TRIAL` đúng 72 giờ
+- AND MUST không thay đổi WalletBalance.
 
-#### Scenario: Đọc trạng thái của chính tenant
+#### Scenario: Account đã dùng Trial trên tenant khác
+
+- GIVEN account đã có `TrialConsumedAt`
+- WHEN cố kích hoạt Trial cho tenant khác
+- THEN Backend MUST trả HTTP 409 mã `TRIAL_ALREADY_USED`
+- AND MUST không sửa tenant.
+
+#### Scenario: Tenant đã dùng Trial
+
+- GIVEN tenant đã có `TrialStartedAt`
+- WHEN một account khác cố kích hoạt Trial cho tenant đó
+- THEN Backend MUST từ chối
+- AND MUST không đặt lại thời gian.
+
+#### Scenario: Request lặp khi Trial ACTIVE
+
+- GIVEN Trial đang hoạt động
+- WHEN client gửi lại request kích hoạt
+- THEN Backend SHALL trả cùng `TrialStartedAt` và `TrialExpiresAt`
+- AND MUST không kéo dài Trial hoặc tạo audit thứ hai.
+
+#### Scenario: Hai request kích hoạt đồng thời
+
+- GIVEN account và tenant đủ điều kiện
+- WHEN hai request kích hoạt đến đồng thời
+- THEN chỉ một transaction MUST ghi Trial
+- AND kết quả thành công nếu có MUST tham chiếu cùng một khoảng 72 giờ.
+
+#### Scenario: Tenant đang trả phí hoặc Trial đã hết
+
+- GIVEN tenant đang STANDARD/PRO hoặc Trial đã hết
+- WHEN gọi API Trial
+- THEN Backend MUST trả HTTP 409
+- AND MUST không hạ cấp hoặc cấp lại Trial.
+
+### Requirement: REQ-SUB-10 Tenant NO_PLAN và điều hướng theo trạng thái
+
+Tenant đăng ký thường MUST ở trạng thái `NO_PLAN` cho tới khi chủ động chọn Trial hoặc mua gói trả phí.
+
+1. `NO_PLAN` MUST không được truy cập chức năng Dashboard nghiệp vụ/POS/kho.
+2. `NO_PLAN` SHALL được truy cập trang tài khoản, đăng xuất và trang chọn gói.
+3. Trang chọn gói SHALL hiển thị nút Trial nếu state `ELIGIBLE`, cùng STANDARD/PRO.
+4. API trial-status MUST trả một trong `ELIGIBLE`, `ACTIVE`, `EXPIRED`, `PAID`.
+5. HomePage CTA với Store Owner đã đăng nhập:
+   - ELIGIBLE → popup xác nhận;
+   - ACTIVE → Dashboard;
+   - EXPIRED/PAID → trang quản lý gói.
+6. Mọi truy vấn MUST lấy tenant từ claim và kiểm tra Store Owner; không nhận tenant ID tùy ý.
+7. Trạng thái legacy mâu thuẫn MUST xử lý an toàn, không tự trả ELIGIBLE.
+8. Kích hoạt Trial lần đầu MUST ghi đúng một audit event, không chứa OTP/password/token.
+
+#### Scenario: NO_PLAN truy cập Dashboard
+
+- GIVEN tenant đang NO_PLAN
+- WHEN Store Owner mở Dashboard nghiệp vụ
+- THEN route guard MUST chuyển tới trang chọn gói
+- AND SHALL giải thích cần bắt đầu Trial hoặc mua gói.
+
+#### Scenario: NO_PLAN chọn gói trả phí
+
+- GIVEN tenant NO_PLAN chưa dùng Trial
+- WHEN mua STANDARD hoặc PRO thành công
+- THEN tenant SHALL chuyển sang PAID/ACTIVE
+- AND account/tenant chưa dùng Trial MUST không được tự đánh dấu đã Trial
+- AND tenant trả phí MUST không được quay lại Trial.
+
+#### Scenario: Đọc trạng thái chính tenant
 
 - GIVEN Store Owner có phiên hợp lệ
-- WHEN gọi API trial-status
-- THEN Backend SHALL trả trạng thái chỉ của tenant trong claim
-- AND SHALL trả thời gian Trial đã lưu nếu có.
+- WHEN gọi trial-status
+- THEN Backend SHALL trả state của tenant trong claim
+- AND MUST không tiết lộ tenant khác.
 
-#### Scenario: Dữ liệu trạng thái mâu thuẫn
+#### Scenario: Role hoặc tenant giả mạo
 
-- GIVEN tenant có dữ liệu legacy thiếu hoặc mâu thuẫn giữa CurrentPlan và thời gian Trial
-- WHEN Backend xác định trạng thái
-- THEN Backend MUST không cấp Trial hoặc trả trạng thái có thể kích hoạt
-- AND SHALL trả trạng thái an toàn để người dùng tới trang quản lý gói.
+- GIVEN Staff hoặc người dùng tenant A
+- WHEN cố đọc/kích hoạt Trial tenant B
+- THEN Backend MUST trả HTTP 403
+- AND MUST không sửa hoặc tiết lộ tenant B.
 
-#### Scenario: Audit kích hoạt
+#### Scenario: Backfill tenant hiện hữu
 
-- GIVEN Trial được kích hoạt lần đầu thành công
-- WHEN transaction commit
-- THEN hệ thống MUST có đúng một audit event `TRIAL_ACTIVATED`
-- AND event MUST không chứa OTP, mật khẩu hoặc token.
+- GIVEN dữ liệu tồn tại trước migration
+- WHEN migration/backfill chạy
+- THEN tenant/account có bằng chứng đã dùng Trial MUST được đánh dấu đã dùng
+- AND dữ liệu không rõ MUST không tự được cấp eligibility.
 
 ## MODIFIED Requirements
 
-Không sửa giá, quota hoặc hành vi thanh toán của STANDARD/PRO trong change này.
+Không thay đổi giá, quota hoặc thanh toán STANDARD/PRO.
 
 ## REMOVED Requirements
 
@@ -216,12 +205,11 @@ Không có.
 
 ## Acceptance checklist
 
-- [ ] REQ-SUB-07: Mọi CTA HomePage dùng cùng handler và không còn modal/toast Trial giả.
-- [ ] REQ-SUB-07: Nội dung toàn luồng thống nhất gói TRIAL 3 ngày, không cần thẻ, không tự gia hạn.
-- [ ] REQ-SUB-08: Mọi đăng ký có/không intent đều bắt buộc Email OTP và tạo User/Tenant/Branch/TRIAL nguyên tử.
-- [ ] REQ-SUB-08: Retry không tạo dữ liệu trùng hoặc mồ côi.
-- [ ] REQ-SUB-09: Mỗi tenant nhận một Trial đúng 72 giờ ngay khi đăng ký, không trừ ví và endpoint cũ không được cấp/kéo dài.
-- [ ] REQ-SUB-09: Concurrent requests và tenant isolation được kiểm thử.
-- [ ] REQ-SUB-10: Trial status chỉ đọc tenant trong phiên và có audit không chứa dữ liệu nhạy cảm.
-- [ ] Migration/backfill không cấp Trial mới cho tenant hiện hữu.
-- [ ] Build frontend/backend và test unit/integration/UI đều PASS.
+- [ ] REQ-SUB-07: Đăng ký thường tạo NO_PLAN; CTA Trial tạo TRIAL sau OTP.
+- [ ] REQ-SUB-07: Không còn modal 14 ngày/toast thành công giả.
+- [ ] REQ-SUB-08: OTP bắt buộc và transaction không tạo dữ liệu mồ côi.
+- [ ] REQ-SUB-09: Một account một Trial; một tenant một Trial; đúng 72 giờ.
+- [ ] REQ-SUB-09: Retry/concurrent không cộng ngày, không trừ ví.
+- [ ] REQ-SUB-10: NO_PLAN bị chặn nghiệp vụ và được đưa tới trang chọn gói.
+- [ ] Tenant isolation, role, legacy backfill và audit được kiểm thử.
+- [ ] Build frontend/backend và test unit/integration/UI PASS.
