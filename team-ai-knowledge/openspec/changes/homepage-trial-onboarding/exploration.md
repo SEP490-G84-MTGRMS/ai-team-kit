@@ -26,8 +26,9 @@ Trang chủ đang tạo kỳ vọng sai về việc dùng thử: CTA mở một 
 
 ## 4. Assumptions
 
-- **[ASSUMPTION]**: Mỗi tài khoản Store Owner mới tạo một tenant mới và một chi nhánh chính trong cùng giao dịch.
+- **[ASSUMPTION]**: Mỗi tài khoản Store Owner mới tạo một tenant mới, một chi nhánh chính và tự bắt đầu gói TRIAL trong cùng giao dịch, dù truy cập trang đăng ký trực tiếp hay từ CTA dùng thử.
 - **[ASSUMPTION]**: Email OTP đăng ký thành công đồng nghĩa email của tài khoản đã được xác minh.
+- **[ASSUMPTION]**: `intent=trial` chỉ là ngữ cảnh trình bày/analytics phía frontend; backend không dùng query này để quyết định quyền lợi.
 - **[ASSUMPTION]**: Tài khoản đã đăng nhập có thể xác định tenant và trạng thái subscription từ phiên/API hiện có.
 - **[ASSUMPTION]**: Tenant đã dùng Trial hoặc đã chuyển sang gói trả phí không được quay lại Trial.
 - **[ASSUMPTION]**: Ba ngày được tính theo 72 giờ từ thời điểm backend kích hoạt thành công, lưu UTC.
@@ -40,8 +41,8 @@ Trang chủ đang tạo kỳ vọng sai về việc dùng thử: CTA mở một 
 - Thống nhất hành vi của mọi CTA dùng thử trên HomePage.
 - Tái sử dụng luồng đăng ký và Email OTP thật.
 - Điều hướng theo trạng thái chưa đăng nhập, đang Trial, Trial đã hết và gói trả phí.
-- Ghi nhận bền vững việc Trial đã được sử dụng.
-- Ngăn kích hoạt/cộng ngày Trial lặp.
+- Ghi nhận bền vững việc Trial đã được cấp ngay trong đăng ký.
+- Ngăn mọi endpoint cũ kích hoạt/cộng ngày Trial lặp.
 - Chuẩn hóa nội dung thành Trial 3 ngày.
 
 ### Out of Scope (Non-Goals)
@@ -65,19 +66,19 @@ Trang chủ đang tạo kỳ vọng sai về việc dùng thử: CTA mở một 
 - **Ưu điểm**: Một nguồn biểu mẫu và validation, dùng lại Email OTP thật, giảm nhầm lẫn và chi phí bảo trì.
 - **Nhược điểm**: Cần truyền rõ ngữ cảnh Trial và xử lý người đã đăng nhập để tránh đưa họ quay lại form đăng ký.
 
-### Phương án C — Luồng lai theo trạng thái
+### Phương án C — Một quy tắc đăng ký, điều hướng theo trạng thái
 
-- Khách chưa đăng nhập đi tới đăng ký với intent Trial; người đã đăng nhập được chuyển tới Dashboard hoặc trang gói theo trạng thái subscription.
-- **Ưu điểm**: Dùng một luồng đăng ký thật, đồng thời mang trải nghiệm phù hợp cho người dùng quay lại.
-- **Nhược điểm**: Cần xác định trạng thái subscription đáng tin cậy và kiểm thử nhiều nhánh điều hướng.
+- Mọi đăng ký gian hàng mới đều tự nhận TRIAL 3 ngày; `intent=trial` chỉ đổi nội dung UI/analytics. Người đã đăng nhập được chuyển tới Dashboard hoặc trang gói theo trạng thái subscription, không có bước kích hoạt Trial lần hai.
+- **Ưu điểm**: Một nguồn đăng ký và một invariant backend; loại bỏ trạng thái trung gian và nguy cơ cộng lại ngày Trial.
+- **Nhược điểm**: Cần backfill lịch sử tenant cũ và vô hiệu hóa hành vi cấp Trial của endpoint cũ.
 
 ## 7. Phương án chọn và lý do
 
-Chọn **Phương án C**. Đây là phương án duy nhất vừa loại bỏ form giả/trùng lặp, vừa không bắt người đã có tài khoản đăng ký lại. Mọi quyết định về Trial vẫn do backend xác nhận, còn HomePage chỉ đóng vai trò điểm vào và điều hướng.
+Chọn **Phương án C** với invariant: mọi đăng ký gian hàng thành công đều nhận đúng một TRIAL 3 ngày ngay trong transaction đăng ký. Đây là phương án đơn giản nhất vì không tồn tại tenant mới ở trạng thái chờ kích hoạt; HomePage chỉ là điểm vào/điều hướng và endpoint cũ không còn quyền cấp hoặc kéo dài Trial.
 
 ## 8. Rủi ro và cách giảm
 
-- **Kích hoạt lại Trial**: lưu dấu đã dùng Trial và kiểm tra ở backend trong thao tác nguyên tử.
+- **Kích hoạt lại Trial**: lưu dấu Trial ngay khi đăng ký; endpoint cũ chỉ trả lại trạng thái ACTIVE hoặc từ chối, không cấp mới.
 - **Hai request đồng thời**: áp dụng idempotency và ràng buộc dữ liệu để chỉ một request thay đổi trạng thái.
 - **Tenant cũ thiếu dấu Trial**: backfill theo hướng an toàn, xem là đã dùng Trial.
 - **State frontend cũ**: luôn xác nhận trạng thái bằng API/session thay vì chỉ dùng local storage.
