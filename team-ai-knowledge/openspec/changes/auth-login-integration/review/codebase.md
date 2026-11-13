@@ -3,15 +3,20 @@
 ## Bản đồ ảnh hưởng
 | REQ | Code hiện có | Cần thêm/sửa |
 |---|---|---|
-| REQ-AUTH-08 | `MT_GRMS_BACKEND/src/MT_GRMS.Application/Auth/AuthService.cs`; `MT_GRMS_BACKEND/src/MT_GRMS.Api/Controllers/AuthController.cs`; `MT_GRMS_FRONTEND/src/pages/auth/LoginPage.tsx` | Nhánh login khi 2FA tắt; giữ OTP khi bật. |
-| REQ-AUTH-12 | `MT_GRMS_BACKEND/src/MT_GRMS.Domain/Entities/Identity/User.cs` có `IsEmailVerified` nhưng chưa có cờ 2FA; `MT_GRMS_FRONTEND/src/pages/store/StoreSettingsHubPage.tsx` | Cờ + migration, API Settings, challenge, audit, UI. |
+| REQ-01 | LoginRequestValidator đang rỗng | Thêm rules và bảo đảm validator được gọi |
+| REQ-AUTH-08 | OTP lifecycle đã có | Validate format trước lookup/attempt |
+| REQ-AUTH-09 | Service chỉ yêu cầu password >=6 | Policy 8–64, phone/email/name/terms |
+| REQ-AUTH-13 | Validation đang rải rác | Shared backend/frontend rules |
 
 ## Tái sử dụng được
-- `User.IsEmailVerified` cho điều kiện bật.
-- OTP login và EmailService hiện có cần đối chiếu trước khi dùng lại; Settings phải có challenge riêng.
+- `Auth/Validators/LoginRequestValidator.cs`
+- `UserAuthenticationTests.cs`
+- Frontend Vitest/Testing Library hiện có.
 
 ## Xung đột / rủi ro
-- [HIGH đã chuyển thành task] Tasks cũ đều tick, chưa bao phủ REQ-AUTH-12; thêm checklist mới chưa tick.
-- [MEDIUM] Settings hiện là hub của store; cần bảo đảm UI tự phục vụ của mọi vai trò có đường vào phù hợp.
+- [HIGH — Đã xử lý] Specs cũ bị mất → Đã phục hồi.
+- [HIGH — Theo task] `AgreeTerms = true` mặc định phải bỏ.
+- [HIGH — Theo task] Validator phải thực sự được gọi, không chỉ đăng ký DI.
+- [MEDIUM — Theo task] Sửa regex phone frontend và test malformed OTP không tiêu hao attempt.
 
-## Kết luận: Khả thi sau khi bổ sung tasks
+## Kết luận: Khả thi
