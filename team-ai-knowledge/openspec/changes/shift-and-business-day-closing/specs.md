@@ -15,7 +15,7 @@
 | POST | /api/pos/shifts/{id}/confirm-handover | Status, DisputeReason? | ShiftDetailResponse | INVALID_HANDOVER_STATE |
 | GET | /api/business-days/current | branchId | BusinessDateResponse | BRANCH_NOT_FOUND, 403 |
 | GET | /api/business-days/preview | branchId, businessDate | BusinessDayClosingPreview | INVALID_DATE, 403 |
-| POST | /api/business-days/close | BranchId, BusinessDate, ActualCashCounted/FundCounts, Note?, PreviewVersion | BusinessDayClosingResponse | OPEN_SHIFTS_EXIST, PENDING_TRANSACTIONS, STALE_PREVIEW |
+| POST | /api/business-days/close | BranchId, BusinessDate, FundCounts[] { FundId, ActualCashCounted }, Note?, PreviewToken | BusinessDayClosingResponse | OPEN_SHIFTS_EXIST, PENDING_TRANSACTIONS, STALE_PREVIEW |
 | GET | /api/business-days/{branchId}/{businessDate}/history | page, pageSize | Paged BusinessDayClosingVersion | 403 |
 | POST | /api/business-days/{id}/reopen | Reason | BusinessDayClosingVersion | REASON_REQUIRED, ALREADY_REOPENED, 403 |
 
@@ -117,7 +117,7 @@ Backend và frontend **MUST** áp dụng cùng quy tắc cho tiền thực đế
 
 ### Requirement: REQ-SBDC-04 Chênh lệch quỹ và lý do giải trình
 
-Hệ thống **MUST** hiển thị chênh lệch thừa/thiếu riêng và **MUST NOT** tự chuyển chênh lệch thành doanh thu hoặc phiếu chi. Khi chênh lệch khác 0 hoặc vượt ngưỡng cấu hình, hệ thống **MUST** yêu cầu lý do theo chính sách.
+Hệ thống **MUST** hiển thị chênh lệch thừa/thiếu riêng và **MUST NOT** tự chuyển chênh lệch thành doanh thu hoặc phiếu chi. Mọi chênh lệch khác 0 **MUST** yêu cầu thu ngân nhập lý do. Chỉ khi trị tuyệt đối của chênh lệch vượt ngưỡng cấu hình thì **MUST** yêu cầu quản lý phê duyệt trước khi hoàn tất.
 
 #### Scenario: Thiếu quỹ
 
@@ -369,6 +369,139 @@ Backend **MUST** có unit test cho công thức, validation, BusinessDate, block
 - **WHEN** chạy build và lint theo dự án
 - **THEN** không có lỗi TypeScript liên quan
 - **AND** validation UI khớp error contract backend
+
+## Quy tắc chuẩn hóa bắt buộc sau review
+
+Các quy tắc dưới đây là normative và thay thế mọi cách diễn đạt mơ hồ trước đó.
+
+### A. Nguồn và công thức doanh thu thuần
+
+- Chỉ đơn ở trạng thái Completed và phần thanh toán/đặt cọc đã thực nhận mới được tính.
+- Doanh thu thuần của đơn bằng tiền hàng sau giảm giá, trừ giá trị void, trả hàng toàn bộ hoặc một phần đã hoàn tất.
+- Đơn void trước hoàn tất không tạo doanh thu hoặc dòng tiền.
+- Refund làm giảm doanh thu theo giá trị hàng trả; quỹ chỉ giảm theo phương thức thực hoàn. Bán QR nhưng hoàn tiền mặt làm giảm doanh thu và giảm két tiền mặt, dù lần bán không tăng két.
+- FinalAmount, discount, return lines, refund status và payment records là nguồn tính; không suy ra doanh thu từ số tiền còn trong két.
+
+#### Scenario: Hoàn một phần khác phương thức
+- **GIVEN** đơn QR 1.000.000đ đã Completed và khách trả hàng 200.000đ, cửa hàng hoàn 200.000đ từ két
+- **WHEN** tính preview ca/ngày
+- **THEN** doanh thu thuần còn 800.000đ
+- **AND** két tiền mặt giảm 200.000đ
+- **AND** không sửa ngược doanh thu QR đã nhận thành tiền mặt
+
+### B. State machine phiếu tiền mặt
+
+- PendingApproval: chưa duyệt, chưa giao/nhận tiền, không ảnh hưởng két.
+- Recorded: tiền đã thực sự giao hoặc nhận; đây là trạng thái duy nhất ảnh hưởng két và chi phí/thu tương ứng.
+- Rejected và Cancelled: không ảnh hưởng két.
+- Với phiếu vượt hạn mức, thao tác approve và xác nhận giao tiền MUST diễn ra atomically để chuyển thẳng PendingApproval sang Recorded; không dùng trạng thái Approved chưa chi.
+- Nếu nghiệp vụ cần tách duyệt và giao tiền trong tương lai thì phải tạo change riêng, không diễn giải Recorded là chỉ mới duyệt.
+
+#### Scenario: Duyệt phiếu atomically
+- **GIVEN** phiếu chi đang PendingApproval
+- **WHEN** chủ duyệt và hệ thống chuyển thành Recorded trong transaction
+- **THEN** tiền két giảm đúng một lần và RecordedAtUtc/ApprovedBy/ApprovedAtUtc được lưu
+- **AND** transaction lỗi thì cả trạng thái và số két đều rollback
+
+### C. Aggregate và state machine chuyển quỹ
+
+- ShiftZReport handover với DroppedToSafeAmount là aggregate nguồn chuẩn cho chuyển tiền lúc chốt ca.
+- ShiftCashMovement category CASH_DRAW chỉ dùng cho lần rút két chủ động khi ca còn Open; số đã rút trước kiểm đếm phải nằm trong TotalCashOut/TransferredOut và MUST NOT được tạo lại khi đóng ca.
+- Mỗi lần chốt có tối đa một transfer document liên kết ClosingId duy nhất.
+- PendingReceipt: tiền giảm khỏi quỹ nguồn và tăng vào quỹ trung gian “Tiền đang bàn giao”.
+- Received: tiền giảm khỏi quỹ trung gian và tăng quỹ đích.
+- Cancelled/Disputed: không sửa/xóa ledger cũ; tạo reversal đưa tiền từ quỹ trung gian về quỹ nguồn hoặc adjustment được phê duyệt.
+- DestinationFundId MUST tồn tại, active, cùng tenant/branch, khác source fund; nếu chỉ có một quỹ hợp lệ frontend tự chọn read-only, nếu không có quỹ thì chặn DroppedToSafeAmount > 0.
+- Người xác nhận Received MUST có quyền quản lý quỹ đích.
+
+### D. Ma trận chốt ca, bàn giao và posting
+
+| ShiftState | HandoverStatus | CashbookPostingStatus | Chốt ngày |
+|---|---|---|---|
+| Open hoặc Closing | bất kỳ | bất kỳ | Chặn |
+| Closed | PendingReceipt | NotPosted | Chặn, trừ khi cấu hình AllowInTransitAcrossDay bật; khi bật phải tính vào quỹ trung gian |
+| Closed | Received/CONFIRMED | Posted | Cho phép |
+| ForceClosed | CONFIRMED | Posted | Cho phép |
+| Closed/ForceClosed | DISPUTED | bất kỳ | Chặn |
+| bất kỳ | bất kỳ | Failed/Partial | Chặn và yêu cầu recovery |
+
+- Posting giao dịch ca và transfer Received MUST hoàn tất cùng transaction với CashbookPostingStatus hoặc qua outbox idempotent; không được nuốt exception rồi coi ca thành công.
+- Chốt ngày chỉ tổng hợp ca Posted; không posting lại doanh thu, thu/chi hoặc transfer của ca.
+- Chốt ngày chỉ posting phần đơn ngoài ca chưa từng posting.
+- Route đóng ca legacy MUST bị deprecate hoặc gọi cùng application service/guards; không được bypass quy tắc mới.
+
+### E. Contract kiểm đếm ngày theo quỹ
+
+CloseBusinessDayRequest MUST chỉ dùng:
+
+~~~text
+FundCounts: [
+  { FundId: Guid, ActualCashCounted: decimal }
+]
+~~~
+
+- Không hỗ trợ song song tổng ActualCashCounted legacy trong UI mới.
+- Preview trả Funds gồm FundId, FundType, FundName, ExpectedCash, RequiresPhysicalCount và IsInTransit.
+- Mỗi FundId xuất hiện đúng một lần; quỹ phải active, cùng tenant/branch và thuộc preview token.
+- Quỹ RequiresPhysicalCount bắt buộc có count; quỹ trung gian IsInTransit không nhập đếm vật lý hai lần và dùng expected amount làm actual cho tổng phạm vi.
+- FundDiscrepancy = ActualCashCounted − ExpectedCash.
+- TotalDiscrepancy bằng tổng FundDiscrepancy của các quỹ trong phạm vi; TotalActualCash do backend cộng.
+- VND ở UI nhập số nguyên đồng không âm. Backend lưu decimal(18,2), scale phải bằng 0 cho input VND và MUST từ chối silent rounding, overflow hoặc tổng vượt giới hạn.
+
+### F. PreviewToken và đồng thời
+
+PreviewToken là chuỗi opaque/hash do backend tạo từ phiên bản của shift rows, order/payment/refund/return, movements, handovers, fund balances và BusinessDayClosing active version. Mọi mutation các nguồn trên MUST invalidate token. Confirm-close và close-day MUST kiểm tra token trong transaction với isolation/row locks phù hợp; mismatch trả HTTP 409 STALE_PREVIEW và không ghi một phần dữ liệu.
+
+Idempotency record MUST có scope TenantId + ActorId + Method + Route + Key, request payload hash và kết quả. Cùng key khác payload trả HTTP 409. Record nghiệp vụ và idempotency MUST commit atomically.
+
+### G. Tenant, branch và fund isolation
+
+Mọi repository query/command của shift và business day MUST nhận TenantId từ ITenantContext và lọc TenantId + BranchId. Trước preview, close, history, reopen và transfer, hệ thống MUST xác minh branch/fund thuộc tenant và phạm vi actor. Tài nguyên khác tenant trả 404 để không tiết lộ sự tồn tại. ADMIN trong requirement này là tenant/system admin có quyền trên tenant đích; platform admin không tự động có quyền dữ liệu tenant nếu không impersonate/audit theo cơ chế hiện có.
+
+### H. BusinessDate và khóa kỳ dùng chung
+
+- ShiftCashMovement phát sinh trong ca kế thừa Shift.BusinessDate, kể cả ca bất thường kéo qua cutoff; giao dịch ngoài ca resolve theo occurred UTC và Branch.BusinessDayStartTime.
+- Frontend luôn dùng BusinessDate backend trả.
+- BusinessDayLockGuard MUST được gọi trước mọi create/update/delete/approve/cancel/post có BranchId + BusinessDate tại các luồng: order, payment, void, return/refund, preorder create/fulfill/cancel, debt collection, ShiftCashMovement, handover, direct Cashbook adjustment và background jobs tương ứng.
+- Guard từ chối BUSINESS_DAY_LOCKED khi version active là Closed; chỉ cho phép adjustment được cấp quyền khi ngày Reopened.
+
+### I. Reopen và ledger bất biến
+
+Change này chọn mô hình reopen một bước có đặc quyền: STORE_OWNER có permission ReopenBusinessDay hoặc ADMIN trong tenant được tự mở lại; không có PendingReopenApproval và không yêu cầu người phê duyệt thứ hai. Audit MUST ghi rõ đây là self-authorized privileged action.
+
+- Snapshot Closed cũ bất biến và chuyển Superseded/Reopened.
+- Ledger entry đã posting không được sửa hoặc xóa.
+- Điều chỉnh tăng/giảm tạo adjustment hoặc reversal liên kết OriginalEntryId, ClosingId, ClosingVersion, reason và idempotency key.
+- Lần chốt lại tạo version tiếp theo và chỉ posting delta chưa posting.
+- Unique index là TenantId + BranchId + BusinessDate + Version; transaction bảo đảm tối đa một active version.
+- Audit append-only gồm tenant, branch, date, version, actor, UTC, reason, correlation/idempotency key, before/after hash và linked adjustment IDs.
+
+#### Scenario: Điều chỉnh giảm sau reopen
+- **GIVEN** version 1 đã posting thừa 200.000đ
+- **WHEN** owner mở lại, tạo adjustment giảm và chốt version 2
+- **THEN** entry version 1 vẫn bất biến
+- **AND** có reversal/adjustment -200.000đ liên kết entry gốc
+- **AND** retry không tạo adjustment thứ hai
+
+### J. Participants và ca sau
+
+Participant được upsert theo unique ShiftId + UserId khi user mở ca, tạo/hoàn tất đơn hoặc payment, tạo/duyệt movement, bắt đầu/hủy/hoàn tất đóng ca hoặc xác nhận handover. Chỉ login/xem màn hình không tạo participant.
+
+Ca sau lấy RetainedFloatAmount làm OpeningFloatExpected; người mở ca sau nhập OpeningFloat thực đếm. Chênh lệch đầu ca được lưu ở ca sau và MUST NOT sửa snapshot ca trước.
+
+### K. Giải trình và phê duyệt chênh lệch
+
+- Mọi chênh lệch khác 0 yêu cầu DiscrepancyReason đã trim, tối đa 500 ký tự.
+- Nếu trị tuyệt đối chênh lệch không vượt ngưỡng, thu ngân được hoàn tất với lý do.
+- Nếu vượt ngưỡng, ca giữ Closing/PendingManagerApproval và chỉ STORE_OWNER/ADMIN trong tenant được phê duyệt.
+- Phê duyệt, từ chối và retry MUST có audit/idempotency.
+
+### L. Blocker và trải nghiệm frontend
+
+Blocker DTO MUST có Code, EntityType, EntityId, DisplayName, Amount?, Status và ActionPath. UI hiển thị “Việc cần xử lý” cùng nút Xem/Xử lý.
+
+Khi STALE_PREVIEW, frontend giữ draft local của tiền đếm, phân bổ, lý do và ghi chú; chỉ refetch số hệ thống, đánh dấu các giá trị bị ảnh hưởng và yêu cầu xác nhận lại. UI phải có focus lỗi đầu tiên, label/aria, keyboard navigation, format VND không đổi raw value và modal cuộn được trên màn hình POS thấp/tablet. Mỗi dòng tổng SHALL cho phép drill-down chứng từ cấu thành.
+
 
 ## MODIFIED Requirements
 
