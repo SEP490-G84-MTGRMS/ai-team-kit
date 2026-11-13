@@ -1,146 +1,71 @@
-# Specs: auth-login-integration
+# Spec: identity
 
-## API / Contract
-| Method | Path | Request Body | Response Body | Cookie / Header | HTTP Lỗi |
-|---|---|---|---|---|---|
-| POST | `/api/v1/auth/login` (hoặc `/api/auth/login`) | `LoginRequest` (`usernameOrEmail`, `password`, `tenantCode?`) | `ApiResponse<LoginInitResponse>` (`requiresOtp: true`, `tempToken`, `emailMasked`, `expiresInSeconds`, `devOtp?`) nếu bật 2FA; `requiresOtp: false` + `UserInfo` nếu tắt | - | 400 Bad Request, 401 Unauthorized |
-| POST | `/api/v1/auth/login/verify-otp` (hoặc `/api/auth/login/verify-otp`) | `VerifyLoginOtpRequest` (`tempToken`, `otpCode`) | `ApiResponse<UserInfo>` (`id`, `fullName`, `roleName`, `storeName`, `tenantId`, `accessToken?`) | `access_token` (HttpOnly), `refresh_token` (HttpOnly) | 400 Bad Request, 401 Unauthorized |
-| POST | `/api/v1/auth/register/send-otp` (hoặc `/api/auth/register/send-otp`) | `SendEmailOtpRequest` (`email`, `fullName?`, `storeName?`) | `ApiResponse<{ success: true, message: string, devOtp?: string }>` | - | 400 Bad Request |
-| POST | `/api/v1/auth/register` (hoặc `/api/auth/register`) | `RegisterTenantRequest` (`fullName`, `storeName`, `phone`, `email`, `password`, `otpCode`) | `ApiResponse<AuthResponse>` | `access_token`, `refresh_token` | 400 Bad Request |
-| POST | `/api/v1/auth/refresh` (hoặc `/api/auth/refresh`) | Không có body (Đọc từ Cookie) | `ApiResponse<UserInfo>` | Cặp cookie `access_token` và `refresh_token` mới | 401 Unauthorized |
-| GET | `/api/v1/auth/me` (hoặc `/api/auth/me`) | Không có body | `ApiResponse<UserInfo>` | - | 401 Unauthorized |
-| POST | `/api/v1/auth/logout` | Không có body | `ApiResponse<{ success: true, message: string }>` | Xóa cookies (`Max-Age=0`) | 400 Bad Request |
+> Spec gốc / seed của capability. Delta nghiệp vụ nằm trong `openspec/changes/<change>/specs.md`. `/sep-archive` không merge vào đây; `/sep-refactor` sửa specs của change.
 
-## API bổ sung cho Settings
-| Method | Path | Request Body | Response Body | HTTP Lỗi |
-|---|---|---|---|---|
-| GET | `/api/auth/me/2fa` | Không | `{ enabled, emailMasked, emailVerified }` | 401 |
-| POST | `/api/auth/me/2fa/challenge` | `{ enabled, currentPassword }` | `{ challengeToken, emailMasked, expiresInSeconds }` | 400, 401, 429 |
-| POST | `/api/auth/me/2fa/confirm` | `{ challengeToken, otpCode }` | `{ enabled }` | 400, 401, 403, 429 |
+## Requirements
 
-## ADDED Requirements
+### Requirement: REQ-AUTH-13 Đồng bộ Validation Authentication
+Các quy tắc validation authentication MUST được định nghĩa tập trung và tái sử dụng giữa endpoint gửi OTP, xác minh OTP và hoàn tất đăng ký. Backend MUST luôn kiểm tra độc lập, không tin dữ liệu đã được Frontend kiểm tra.
+
+#### Scenario: Bỏ qua validation Frontend
+- GIVEN client gọi trực tiếp API với payload không hợp lệ
+- WHEN Backend tiếp nhận request
+- THEN Backend MUST từ chối theo cùng chính sách validation và không thay đổi dữ liệu.
 
 ### Requirement: REQ-01 Xác thực Đăng nhập & Cấp phát HttpOnly Cookies
-Hệ thống Backend MUST cung cấp API xác thực tài khoản qua username/email và mật khẩu, cấp phát Access Token (thời hạn 15–60 phút) và Refresh Token (thời hạn 7–30 ngày) **dưới dạng HttpOnly Cookies**, tuyệt đối không trả chuỗi token nhạy cảm trong response body.
+Ngoài cơ chế cấp HttpOnly Cookies hiện tại, Backend MUST validate request đăng nhập trước khi xác thực:
 
-#### Scenario: Đăng nhập thành công với tài khoản quản trị Admin
-- GIVEN tài khoản admin hợp lệ có 2FA tắt trong môi trường kiểm thử
-- WHEN người dùng gửi yêu cầu POST tới `/api/v1/auth/login` với credentials hợp lệ của admin
-- THEN hệ thống MUST:
-  1. Trả về HTTP 200 OK với `requiresOtp: false` và payload `UserInfo` (`id == "usr_super_admin_01"`, `roleName == "ADMIN"`).
-  2. Đính kèm header `Set-Cookie` cho `access_token` với các thuộc tính `HttpOnly`, `SameSite=Lax`, `Path=/`.
-  3. Đính kèm header `Set-Cookie` cho `refresh_token` với các thuộc tính `HttpOnly`, `SameSite=Lax`, `Path=/api/auth`.
-  4. Response body MUST NOT chứa bất kỳ trường token nào (`accessToken`, `refreshToken`).
+1. `usernameOrEmail` sau khi trim MUST dài từ 1–254 ký tự.
+2. `password` MUST dài từ 1–128 ký tự và không được trim hoặc biến đổi.
+3. Đăng nhập MUST NOT áp lại quy tắc độ mạnh mật khẩu của đăng ký, nhằm hỗ trợ tài khoản được tạo theo chính sách cũ.
+4. Request vượt giới hạn MUST trả HTTP 400; sai thông tin xác thực MUST trả thông báo chung, không tiết lộ tài khoản có tồn tại hay không.
 
----
+#### Scenario: Payload đăng nhập vượt giới hạn
+- GIVEN `usernameOrEmail` dài hơn 254 ký tự hoặc mật khẩu dài hơn 128 ký tự
+- WHEN gọi API đăng nhập
+- THEN Backend MUST trả HTTP 400 và không thực hiện truy vấn xác thực.
 
 ### Requirement: REQ-AUTH-08 Xác thực 2 bước (2FA) qua Email OTP khi Đăng nhập
-Sau khi kiểm tra đúng mật khẩu, Backend MUST đọc trạng thái 2FA của chính tài khoản từ dữ liệu bền vững.
-1. Nếu bật, sinh OTP 6 chữ số bằng CSPRNG, lưu hash trong challenge gắn UserId, TTL 5 phút, gửi qua `IEmailService`; trả `requiresOtp: true`, `tempToken`, `emailMasked`. Không cấp phiên trước khi xác minh OTP.
-2. Nếu tắt, hoàn tất đăng nhập và cấp HttpOnly cookies theo REQ-01; không sinh hoặc gửi OTP đăng nhập.
-3. `POST /api/auth/login/verify-otp` MUST giới hạn tối đa 5 lần nhập sai; challenge hết hạn hoặc đã dùng bị từ chối. Xác minh đúng MUST tiêu thụ challenge một lần trước khi cấp phiên. Không trả OTP/token nhạy cảm trong body production.
-4. Email OTP đăng ký ở REQ-AUTH-09 độc lập với trạng thái 2FA đăng nhập.
+Giữ nguyên toàn bộ cơ chế 2FA hiện tại và bổ sung:
 
-#### Scenario: Đăng nhập khi 2FA bật
-- GIVEN tài khoản hợp lệ có 2FA bật
-- WHEN đăng nhập bằng đúng mật khẩu
-- THEN gửi Email OTP, trả `requiresOtp: true` cùng `tempToken`, chưa cấp phiên.
+1. `otpCode` MUST gồm chính xác 6 chữ số ASCII.
+2. `tempToken` MUST không trống và dài tối đa 128 ký tự.
+3. Payload sai định dạng MUST bị từ chối trước khi tra cứu challenge.
+4. OTP hợp lệ vẫn MUST dùng một lần, có TTL 5 phút và tối đa 5 lần nhập sai.
 
-#### Scenario: Đăng nhập khi 2FA tắt
-- GIVEN tài khoản hợp lệ có 2FA tắt
-- WHEN đăng nhập bằng đúng mật khẩu
-- THEN cấp HttpOnly cookies và UserInfo, trả `requiresOtp: false`, không gửi OTP.
-
-#### Scenario: Xác thực OTP đăng nhập thành công
-- GIVEN challenge đúng tài khoản và OTP còn hiệu lực
-- WHEN gửi đúng OTP tới `POST /api/auth/login/verify-otp`
-- THEN cấp phiên và hủy challenge; gửi lại cùng challenge MUST bị từ chối.
-
-#### Scenario: OTP sai hoặc hết hạn
-- GIVEN OTP đã sai 5 lần hoặc challenge quá 5 phút
-- WHEN thử xác minh tiếp
-- THEN từ chối, hủy challenge và không cấp phiên.
-
----
+#### Scenario: OTP đăng nhập sai định dạng
+- GIVEN OTP chứa chữ, ký tự đặc biệt hoặc không đủ 6 chữ số
+- WHEN gọi `POST /api/auth/login/verify-otp`
+- THEN Backend MUST trả HTTP 400 và không tăng số lần thử của challenge hợp lệ.
 
 ### Requirement: REQ-AUTH-09 Xác thực Email OTP khi Đăng ký Cửa hàng Mới
-Hệ thống MUST xác thực quyền sở hữu Email của chủ cửa hàng thông qua mã OTP trước khi cho phép tạo Cửa hàng (`Tenant`), Chi nhánh (`Branch`) và Tài khoản chủ sở hữu (`StoreOwner`).
+Ngoài xác thực quyền sở hữu email, Backend MUST kiểm tra toàn bộ dữ liệu đăng ký:
 
-#### Scenario: Gửi mã OTP kích hoạt đăng ký
-- GIVEN người dùng nhập thông tin đăng ký hợp lệ với Email `"newstore@gmail.com"`
-- WHEN gọi `POST /api/auth/register/send-otp`
-- THEN hệ thống MUST tạo mã OTP 6 số, lưu vào cache `otp:register:newstore@gmail.com` và gửi email kích hoạt qua `IEmailService`.
+1. Họ tên sau khi trim dài 2–100 ký tự; cho phép chữ Unicode, khoảng trắng, dấu nháy đơn và dấu gạch nối.
+2. Tên cửa hàng sau khi trim dài 2–150 ký tự.
+3. Email sau khi trim và chuẩn hóa chữ thường dài tối đa 254 ký tự, đúng định dạng email.
+4. Số điện thoại được chuẩn hóa về 10 chữ số và MUST khớp `^(03|05|07|08|09)\d{8}$`.
+5. Mật khẩu dài 8–64 ký tự, không chứa khoảng trắng và có ít nhất một chữ hoa, một chữ thường, một chữ số và một ký tự đặc biệt.
+6. `agreeTerms` MUST được truyền rõ ràng và bằng `true`; Backend không được mặc định thành `true`.
+7. `otpCode` MUST gồm chính xác 6 chữ số.
+8. Frontend MUST kiểm tra cùng quy tắc để phản hồi sớm, nhưng Backend là nguồn kiểm tra có thẩm quyền.
+9. Backend MUST giới hạn độ dài trước khi chuẩn hóa, hash mật khẩu hoặc truy vấn database.
+10. Response validation MUST trả lỗi theo trường và không phản chiếu mật khẩu hoặc OTP.
 
-#### Scenario: Hoàn tất đăng ký với mã OTP Email hợp lệ
-- GIVEN mã OTP hợp lệ trong cache
-- WHEN gọi `POST /api/auth/register` kèm đầy đủ thông tin và `otpCode` chính xác
-- THEN hệ thống MUST:
-  1. Tạo mới Tenant, Branch mặc định và User chủ cửa hàng (Role `StoreOwner`).
-  2. Xóa mã OTP khỏi cache.
-  3. Cấp phiên đăng nhập tự động và trả về HTTP 200 OK.
+#### Scenario: Đăng ký bằng mật khẩu yếu
+- GIVEN mật khẩu thiếu một trong các nhóm chữ hoa, chữ thường, chữ số hoặc ký tự đặc biệt
+- WHEN gửi đăng ký
+- THEN cả Frontend và Backend MUST từ chối.
 
----
+#### Scenario: Chưa đồng ý điều khoản
+- GIVEN `agreeTerms` bị thiếu hoặc bằng `false`
+- WHEN gửi đăng ký
+- THEN Backend MUST trả HTTP 400 và không tạo Tenant, Branch hoặc User.
 
-### Requirement: REQ-AUTH-10 Loại Bỏ Hoàn Toàn SMS & TextBee Gateway
-Hệ thống Backend và Frontend MUST gỡ bỏ toàn bộ sự phụ thuộc vào SMS, Twilio, Firebase Phone Auth và TextBee Gateway:
-- Gỡ bỏ `TextBeeSmsService.cs`, `TextBeeSettings.cs`, `ISmsService.cs`.
-- Xóa các biến môi trường `TextBeeSettings__*` trong `.env`.
-- Toàn bộ việc gửi mã xác thực đều đi qua `IEmailService`.
+#### Scenario: Dữ liệu đăng ký sai định dạng
+- GIVEN email, số điện thoại, OTP hoặc độ dài trường không hợp lệ
+- WHEN gửi OTP hoặc hoàn tất đăng ký
+- THEN Backend MUST trả HTTP 400 với lỗi theo trường và không tạo dữ liệu.
 
----
-
-### Requirement: REQ-AUTH-11 Giao Diện Modal OTP Chuẩn KiotViet & Hỗ Trợ Dev Fallback
-Giao diện Modal OTP (`LoginOtpModal.tsx` và `RegistrationOtpModal.tsx`) MUST tuân thủ nghiêm ngặt `RULE_UI_DESIGN_SYSTEM.md`:
-- Nút bấm bo tròn Full Pill (`border-radius: 9999px`), ô nhập số phông `JetBrains Mono` bo góc `12px`.
-- Modal nằm tĩnh (Static & Grounded), tuyệt đối KHÔNG có animation nhún nhảy / rung lắc.
-- Sử dụng 100% Monochrome SVG Icons, không dùng emoji.
-- Khi chạy ở môi trường Development hoặc khi Backend trả về `devOtp`, hiển thị nút "Điền nhanh OTP Dev" để hỗ trợ kiểm thử và chấm đồ án thuận tiện.
-
----
-
-### Requirement: REQ-AUTH-12 Quản lý trạng thái 2FA trong Settings
-Hệ thống MUST hiển thị và cho người dùng đã đăng nhập bật/tắt 2FA của chính tài khoản.
-1. Backend MUST suy ra UserId từ phiên; không dùng UserId do client truyền làm mục tiêu. Nếu nhận target khác tài khoản hiện tại MUST trả 403.
-2. Trước mọi thay đổi MUST kiểm tra lại mật khẩu hiện tại và Email OTP của challenge riêng cho Settings, gắn UserId và action (enable/disable), TTL 5 phút, tối đa 5 lần sai, dùng một lần. Challenge cho action khác hoặc tài khoản khác MUST bị từ chối.
-3. Giới hạn tần suất cấp OTP/thử sai theo user/IP; gửi lại phải vô hiệu hóa challenge cũ. Nếu gửi email lỗi, không đổi trạng thái. API dùng cookie MUST có CSRF protection.
-4. Không cho bật nếu email chưa xác minh. Cờ 2FA lưu bền vững theo User; migration/backfill tài khoản hiện hữu và mặc định tài khoản mới là bật.
-5. Confirm MUST cập nhật trạng thái và ghi audit log cùng giao dịch, gồm UserId, TenantId, action, thời gian UTC, IP, kết quả; không lưu mật khẩu, OTP, challenge token. Retry challenge cũ không đổi trạng thái hay ghi thêm audit thành công.
-6. UI chỉ phản ánh trạng thái mới sau confirm thành công; xử lý loading, email chưa xác minh, sai mật khẩu/OTP, hết hạn và lỗi gửi email.
-
-#### Scenario: Bật 2FA
-- GIVEN người dùng đã đăng nhập, email đã xác minh và 2FA đang tắt
-- WHEN xác nhận đúng mật khẩu và OTP challenge enable của chính tài khoản
-- THEN bật 2FA và ghi một audit log thành công.
-
-#### Scenario: Tắt 2FA
-- GIVEN người dùng đã đăng nhập và 2FA đang bật
-- WHEN xác nhận đúng mật khẩu và OTP challenge disable của chính tài khoản
-- THEN tắt 2FA và ghi một audit log thành công.
-
-#### Scenario: Từ chối tài khoản/hành động khác
-- GIVEN challenge thuộc UserId hoặc action khác, hoặc client yêu cầu đổi tài khoản khác
-- WHEN gọi confirm
-- THEN từ chối (403 khi target khác), không đổi trạng thái hay ghi audit thành công.
-
-#### Scenario: Chống thử sai và replay
-- GIVEN challenge sai OTP 5 lần, hết hạn, đã dùng hoặc đã bị thay bằng lần gửi lại
-- WHEN gọi confirm
-- THEN từ chối, không thay đổi trạng thái hay ghi thêm audit thành công.
-
-#### Scenario: Email chưa xác minh hoặc gửi thất bại
-- GIVEN email chưa xác minh khi bật, hoặc dịch vụ email không gửi được challenge
-- WHEN yêu cầu bật/tắt
-- THEN trả lỗi phù hợp và giữ nguyên trạng thái.
-
----
-
-## Acceptance checklist
-- [ ] REQ-01: API login cấp phát HttpOnly cookies an toàn.
-- [ ] REQ-AUTH-08: Đăng nhập 2 bước (2FA) qua Email OTP: Step 1 trả về `tempToken` + gửi email; Step 2 `POST /api/auth/login/verify-otp` xác thực thành công.
-- [ ] REQ-AUTH-09: Đăng ký cửa hàng gửi OTP tới Email và hoàn tất mở cửa hàng khi nhập đúng mã.
-- [ ] REQ-AUTH-10: Gỡ bỏ hoàn toàn TextBee / SMS khỏi backend và frontend.
-- [ ] REQ-AUTH-11: `LoginOtpModal.tsx` và `RegistrationOtpModal.tsx` tuân thủ KiotViet Design System, có nút "Điền nhanh OTP Dev".
-- [ ] REQ-AUTH-12: Settings bật/tắt sau mật khẩu + OTP, giới hạn ownership, CSRF, chống replay và ghi audit transaction.
-- [ ] REQ-AUTH-08: Trạng thái tắt bỏ qua OTP và cấp cookie; trạng thái bật vẫn xác minh OTP một lần.
-- [ ] BE-UT: Toàn bộ Unit Tests trong `UserAuthenticationTests.cs` (login 2FA, register email OTP) đạt PASS 100%.
-- [ ] FE-BUILD: `npm run build` trên `MT_GRMS_FRONTEND` đạt 0 errors.
+## Lịch sử
+- 2026-11-13 · `sep-refactor:Bổ-sung-validation-đăng-nhập/đăng-ký-tập` · +1 ~3 -0
