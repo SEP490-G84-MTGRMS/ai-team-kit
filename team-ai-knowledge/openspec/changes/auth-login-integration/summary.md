@@ -43,3 +43,7 @@ User duyệt Brainstorm: khôi phục đầy đủ delta auth-login-integration,
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-11 16:28
 
 Đã review skeptic, guardian, codebase; bổ sung 9 task cho 2FA tùy chọn, ownership, challenge gắn tài khoản/hành động, CSRF, chống replay và audit.
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-13 07:41
+
+Đã khôi phục đầy đủ specs, review 4 persona, bổ sung validation authentication và 6 tasks gồm backend/frontend unit tests.

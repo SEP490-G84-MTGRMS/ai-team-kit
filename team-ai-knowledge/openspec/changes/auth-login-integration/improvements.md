@@ -35,3 +35,7 @@ Bóc tách 12 tasks rõ ràng cho luồng Email OTP 2FA đăng nhập và đăng
 ## Brainstorm · 2026-11-11 16:12
 
 Sau refactor spec, kiểm tra định dạng delta và đủ requirement/API contract trước khi lưu artifact.
+
+## Verify Spec · 2026-11-13 07:41
+
+Luôn kiểm tra số lượng requirement trước/sau sep-refactor; validation task phải kèm boundary tests và bypass tests.
