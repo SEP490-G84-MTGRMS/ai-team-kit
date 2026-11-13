@@ -50,3 +50,18 @@
 ### Kiểm chứng
 - [ ] T-2FA-08 — Kiểm chứng login bật/tắt, OTP dùng một lần/5 sai/hết hạn; settings ownership/action/CSRF/replay/rate limit/audit transaction; build frontend và backend (REQ-AUTH-08, REQ-AUTH-12).
 - [ ] T-2FA-09 — Cập nhật backend worklog và CHANGELOG theo quy tắc repo (REQ-AUTH-12).
+
+
+## Validation đăng nhập và đăng ký
+
+### Backend
+- [ ] T-VAL-01 — Tạo policy/validators dùng chung cho login, login OTP, registration send/verify OTP và register; bảo đảm validator được gọi trước repository/hash/challenge/email (REQ-01, REQ-AUTH-13).
+- [ ] T-VAL-02 — Áp dụng giới hạn identifier/password đăng nhập và OTP/tempToken; malformed OTP không tiêu hao attempt; lỗi credentials không gây account enumeration (REQ-01, REQ-AUTH-08).
+- [ ] T-VAL-03 — Áp dụng họ tên, tên cửa hàng, email tối đa 100, phone VN, password 8–64 mạnh và AgreeTerms bắt buộc; bỏ default true khỏi DTO (REQ-AUTH-09, REQ-AUTH-13).
+
+### Frontend
+- [ ] T-VAL-04 — Đồng bộ validation RegisterPage/LoginPage, sửa regex phone, chặn password yếu, giới hạn input, checkbox terms mặc định false và hiển thị lỗi theo trường (REQ-01, REQ-AUTH-09, REQ-AUTH-13).
+
+### Unit tests và kiểm chứng
+- [ ] T-VAL-05 — Viết backend unit tests cho boundary min/max, từng nhóm password thiếu, whitespace, email/phone/name, terms missing/false, OTP 5/6/7 và token 128/129; xác nhận payload sai không gọi repository/hash/email và malformed OTP không tiêu hao attempt (REQ-01, REQ-AUTH-08, REQ-AUTH-09, REQ-AUTH-13).
+- [ ] T-VAL-06 — Viết frontend unit tests xác nhận lỗi inline và không gọi API khi form sai; regression login tài khoản cũ, registration/OTP hợp lệ; chạy targeted tests và build hai project (REQ-01, REQ-AUTH-09, REQ-AUTH-13).
