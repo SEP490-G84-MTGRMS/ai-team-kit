@@ -1,15 +1,18 @@
-# Tasks: Màn Hình Tổng Quan Dành Riêng Cho Chủ Cửa Hàng (Store Owner Dashboard)
+# Tasks: Dashboard Admin SaaS — MRR, Tenant và Nâng cấp gói
 
-## Frontend Implementation
+## Backend
 
-- [x] T1 — Tạo kiểu dữ liệu TypeScript tại `src/features/store-owner-dashboard/types/dashboard.types.ts` (REQ-DASH-02, REQ-DASH-03)
-- [x] T2 — Tạo component `StoreOwnerHeader.tsx` hiển thị thông tin chi nhánh, ca bán và bộ lọc thời gian Pill button (REQ-DASH-01)
-- [x] T3 — Tạo component `StoreOwnerKpiRow.tsx` hiển thị 4 thẻ KPI bán lẻ (Doanh thu hôm nay, Hóa đơn, Tiền mặt/VietQR, Sổ nợ) (REQ-DASH-02)
-- [x] T4 — Tạo component `StoreRevenueChartCard.tsx` hiển thị biểu đồ doanh số trực quan 7 ngày (REQ-DASH-02)
-- [x] T5 — Tạo component `FefoWarningCard.tsx` hiển thị bảng cảnh báo hạn dùng FEFO 3 mức màu khẩn cấp/cảnh báo/an toàn (REQ-DASH-03)
-- [x] T6 — Tạo component `LowStockWarningCard.tsx` hiển thị cảnh báo tồn kho dưới ngưỡng an toàn (REQ-DASH-04)
-- [x] T7 — Tạo component `TopSellingProductsCard.tsx` hiển thị Top 5 mặt hàng bán chạy nhất (REQ-DASH-04)
-- [x] T8 — Tạo component `StoreQuickActionsCard.tsx` với các phím tắt mở POS, nhập hàng, kiểm kho (REQ-DASH-01)
-- [x] T9 — Tạo trang `StoreOwnerDashboardPage.tsx` tại `src/features/store-owner-dashboard/pages/StoreOwnerDashboardPage.tsx` lắp ráp layout (REQ-DASH-01)
-- [x] T10 — Cập nhật `src/app/router.tsx` và `src/layouts/StoreOwnerLayout/AppTopNav.tsx` trỏ đúng vào `StoreOwnerDashboardPage` (REQ-DASH-01)
-- [x] T11 — Chạy `npm run build` để xác thực 100% không có lỗi TypeScript (REQ-DASH-01)
+- [ ] T1 — Cập nhật luồng mua subscription để nhận diện chuyển từ plan hiện tại lên plan cao hơn và lưu `WalletTransaction.Type = UPGRADE_PLAN`, không đánh dấu gia hạn/mua lần đầu/dùng thử là nâng cấp (REQ-DASH-ADMIN-01).
+- [ ] T2 — Bổ sung truy vấn đếm giao dịch `UPGRADE_PLAN` có `Status = SUCCESS` và trả KPI tổng số tenant, MRR dự kiến, số nâng cấp thành công từ Admin Dashboard API (REQ-DASH-ADMIN-01).
+- [ ] T3 — Loại bỏ dữ liệu Dashboard Backend được sinh mô phỏng; trả dữ liệu thật hoặc tập rỗng phù hợp khi chưa có dữ liệu (REQ-DASH-ADMIN-01).
+
+## Frontend
+
+- [ ] T4 — Sửa `AdminDashboardPage` hiển thị ba KPI MRR dự kiến, tổng tenant và số nâng cấp thành công bằng API thật; không khởi tạo hoặc fallback sang mock (REQ-DASH-ADMIN-01).
+- [ ] T5 — Bổ sung trạng thái loading, empty, error và nút tải lại; giữ Dashboard Admin tách biệt KPI bán lẻ Store Owner (REQ-DASH-ADMIN-01, REQ-DASH-01).
+
+## Test và tài liệu
+
+- [ ] T6 — Viết/cập nhật Backend tests cho công thức MRR, tổng tenant và phân loại giao dịch nâng cấp; bao phủ gia hạn, mua lần đầu, nâng cấp thành công và giao dịch thất bại (REQ-DASH-ADMIN-01).
+- [ ] T7 — Viết/cập nhật Frontend tests cho dữ liệu thành công, giá trị 0, lỗi API và tải lại; chạy build/lint/test liên quan (REQ-DASH-ADMIN-01).
+- [ ] T8 — Cập nhật Backend worklog và `CHANGELOG.md` theo quy định repository, ghi rõ file thay đổi và kết quả test.
