@@ -74,58 +74,42 @@ Giao diện Modal OTP (`LoginOtpModal.tsx` và `RegistrationOtpModal.tsx`) MUST 
 - Khi chạy ở môi trường Development hoặc khi Backend trả về `devOtpCode`, hiển thị nút "Điền nhanh OTP Dev" để hỗ trợ kiểm thử và chấm đồ án thuận tiện.
 
 ### Requirement: REQ-AUTH-SESSION-01 Quản lý thời hạn và phiên đăng nhập
-
-- Sau khi hoàn tất xác thực, Backend MUST tạo phiên riêng cho từng lần đăng nhập, liên kết tài khoản và ngữ cảnh tenant.
-- Access token MUST có hạn 15 phút, chứa `sessionId`.
-- Refresh token MUST hết hạn sau 7 ngày kể từ lần cấp hoặc refresh thành công. Phiên MUST kết thúc tối đa 30 ngày tính từ lần đăng nhập ban đầu.
-- Refresh token MUST được sinh bằng bộ sinh số ngẫu nhiên mật mã. Backend MUST lưu hash cùng thời hạn và trạng thái phiên.
-- Token MUST được truyền bằng HttpOnly cookies, bật Secure trên HTTPS production. Cookie MUST hoạt động với các đường dẫn auth được hỗ trợ.
-- Backend MUST kiểm tra trạng thái phiên và quyền truy cập tài khoản, tenant khi xác thực yêu cầu.
-
-#### Scenario: Đăng nhập trên hai thiết bị
-- GIVEN tài khoản có một phiên hợp lệ
-- WHEN đăng nhập thành công trên thiết bị khác
-- THEN tạo phiên riêng và giữ phiên trước tiếp tục hoạt động.
-
-#### Scenario: Phiên đạt giới hạn tuyệt đối
-- GIVEN phiên đã đủ 30 ngày
-- WHEN yêu cầu refresh
-- THEN từ chối và yêu cầu đăng nhập lại.
+Hệ thống MUST dùng các trường RefreshToken và RefreshTokenExpiryTime hiện có trên Users để quản lý một refresh token cho mỗi tài khoản.
+- Access token mặc định có hạn 15 phút. Refresh token có hạn cố định 7 ngày tính từ lần đăng nhập hoặc đăng ký thành công.
+- Refresh token mới MUST được tạo bằng CSPRNG và lưu hash trong trường RefreshToken hiện có. Token dạng cũ còn hạn MUST tiếp tục được xử lý tương thích; giá trị hash lưu trong DB MUST không được sử dụng trực tiếp như bearer token.
+- Token MUST được truyền bằng HttpOnly cookies, Secure theo HTTPS. Cookie refresh MUST hoạt động với các đường dẫn auth được hỗ trợ.
+- Đăng nhập thành công MUST thay thế refresh token hiện tại của tài khoản.
+#### Scenario: Đăng nhập thành công
+- GIVEN tài khoản đã hoàn tất xác thực mật khẩu và OTP nếu bật 2FA
+- WHEN cấp thông tin đăng nhập
+- THEN cấp access token và refresh token, lưu hash cùng hạn refresh trong Users.
 
 ### Requirement: REQ-AUTH-SESSION-02 Refresh và xoay vòng token an toàn
-
-- Refresh thành công MUST cấp cặp token mới và vô hiệu hóa refresh token đã sử dụng bằng thao tác nguyên tử.
-- Các yêu cầu đồng thời dùng cùng refresh token MUST có tối đa một lần xoay vòng thành công.
-- Yêu cầu cạnh tranh MUST nhận kết quả xung đột riêng, cho phép client chờ phiên vừa được cập nhật rồi thử lại một lần.
-- Backend MUST lưu dấu vết token đã dùng. Việc sử dụng lại token sau khoảng xử lý cạnh tranh MUST thu hồi phiên liên quan.
-- Thời hạn refresh mới MUST nằm trong giới hạn tuyệt đối của phiên.
-- Token hết hạn, bị thu hồi hoặc không hợp lệ MUST trả HTTP 401 và xóa cookies tương ứng.
-
-#### Scenario: Hai yêu cầu refresh đồng thời
-- GIVEN hai yêu cầu cùng sử dụng một refresh token
-- WHEN Backend xử lý đồng thời
-- THEN chỉ một yêu cầu xoay vòng thành công và dữ liệu phiên nhất quán.
+- Khi refresh token hợp lệ và tài khoản còn quyền hoạt động, Backend MUST cấp access token mới, giới hạn thời hạn access trong thời hạn refresh còn lại.
+- Refresh thành công MUST giữ refresh token và thời hạn 7 ngày ban đầu. Refresh MUST không cập nhật ghi đè token trong Users.
+- Khi refresh token hết hạn, không hợp lệ hoặc đã bị xóa, Backend MUST trả HTTP 401 và xóa cookies.
+#### Scenario: Refresh thành công
+- GIVEN access token hết hạn và refresh token còn hiệu lực
+- WHEN gọi POST /api/auth/refresh
+- THEN cấp access token mới và giữ nguyên refresh token cùng thời hạn.
+#### Scenario: Refresh hết hạn
+- GIVEN refresh token đã hết hạn
+- WHEN gọi refresh
+- THEN từ chối với HTTP 401 và yêu cầu đăng nhập lại.
 
 ### Requirement: REQ-AUTH-SESSION-03 Tự khôi phục phiên và thu hồi phiên
-
-- Các API client, bao gồm API tài chính, MUST dùng chung cơ chế xử lý refresh.
-- Khi API trả HTTP 401, Frontend MUST thực hiện một yêu cầu refresh và cho các yêu cầu còn lại chờ kết quả. Mỗi yêu cầu ban đầu được gửi lại tối đa một lần.
-- Các tab cùng trình duyệt MUST phối hợp refresh để hạn chế cạnh tranh.
-- Refresh bị từ chối vì phiên hết hiệu lực MUST xóa trạng thái đăng nhập và chuyển tới trang đăng nhập, giữ đường dẫn quay lại hợp lệ trong ứng dụng.
-- Lỗi mạng, HTTP 429 hoặc HTTP 5xx khi refresh MUST hiển thị lỗi có thể thử lại và giữ trạng thái phiên phía client.
-- Đăng xuất MUST thu hồi phiên hiện tại. Đổi hoặc đặt lại mật khẩu, khóa tài khoản MUST thu hồi toàn bộ phiên của tài khoản.
-- Unit test MUST kiểm tra thời hạn, rotation, refresh đồng thời, gửi lại yêu cầu, lỗi mạng và thu hồi phiên.
-
-#### Scenario: Access token hết hạn
-- GIVEN refresh token còn hiệu lực
-- WHEN API trả HTTP 401
-- THEN Frontend refresh, cập nhật cookies và gửi lại yêu cầu ban đầu.
-
-#### Scenario: Máy chủ tạm thời lỗi
-- GIVEN refresh trả HTTP 503
-- WHEN Frontend xử lý kết quả
-- THEN hiển thị lỗi và cho phép thử lại.
+- Các API client thường và tài chính MUST dùng chung cơ chế refresh và chờ cùng yêu cầu refresh đang chạy trong một tab.
+- Khi API trả HTTP 401, Frontend MUST thử refresh và gửi lại yêu cầu ban đầu tối đa một lần. API đăng nhập, đăng ký, refresh và logout MUST được loại khỏi vòng tự refresh.
+- Refresh trả HTTP 401 MUST xóa trạng thái đăng nhập và chuyển đến trang đăng nhập, giữ đường dẫn quay lại nội bộ.
+- Lỗi mạng, HTTP 429 hoặc HTTP 5xx khi refresh MUST giữ trạng thái đăng nhập và hiển thị thông báo cho phép thử lại.
+- Đăng xuất và đặt lại mật khẩu MUST xóa refresh token trong Users. Đăng xuất MUST xử lý được refresh cookie khi access token đã hết hạn.
+- Theo yêu cầu thu gọn của người dùng, kiểm chứng bằng build backend/frontend; dừng bổ sung test chi tiết cho quản lý phiên.
+#### Scenario: Lỗi kết nối khi refresh
+- GIVEN refresh gặp lỗi mạng hoặc HTTP 503
+- WHEN Frontend xử lý lỗi
+- THEN giữ trạng thái đăng nhập và hiển thị thông báo thử lại.
 
 ## Lịch sử
 - 2026-11-13 · `sep-refactor:Cập-nhật-REQ-AUTH-08,-REQ-AUTH-09,-REQ-A` · +0 ~3 -0
 - 2026-11-14 · `sep-refactor:Bổ-sung-quản-lý-phiên-theo-thiết-bị,-acc` · +3 ~0 -0
+- 2026-11-14 · `sep-refactor:Theo-yêu-cầu-thu-gọn-của-người-dùng:-dùn` · +0 ~3 -0
