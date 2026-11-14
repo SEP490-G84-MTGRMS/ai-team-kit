@@ -2,16 +2,16 @@
 
 | Chiều | Điểm (1–5) | Nhận xét |
 |---|---:|---|
-| D1 Completeness | 3/5 | Đã có ba KPI và các trạng thái rỗng/lỗi, nhưng chưa định nghĩa nguồn dữ liệu cho yêu cầu nâng cấp. |
-| D2 Correctness | 2/5 | “Doanh thu đã thu” không khớp cách Backend hiện tính MRR dự kiến từ giá gói của tenant active. |
-| D3 Coherence | 4/5 | REQ-DASH-01 và REQ-DASH-ADMIN-01 thống nhất về việc tách Dashboard Admin khỏi Store Owner. |
-| D4 Constraints | 4/5 | Đã yêu cầu dữ liệu thật và không dùng mock; phân quyền route Admin đã có ở Backend. |
-| D5 Blast Radius | 3/5 | Cần sửa cả Backend API và Frontend; có thể cần bổ sung nơi lưu upgrade request nếu muốn đếm mọi yêu cầu. |
+| D1 Completeness | 5/5 | Ba KPI đã có định nghĩa, nguồn dữ liệu và scenario tải thành công/rỗng/lỗi. |
+| D2 Correctness | 5/5 | Đã phân biệt MRR dự kiến với doanh thu thực thu và phân biệt nâng cấp với gia hạn/mua lần đầu. |
+| D3 Coherence | 5/5 | REQ-DASH-01 và REQ-DASH-ADMIN-01 thống nhất về Dashboard Admin SaaS độc lập. |
+| D4 Constraints | 5/5 | Yêu cầu dữ liệu thật, không mock/fallback và chỉ Admin truy cập phù hợp constraint hiện có. |
+| D5 Blast Radius | 4/5 | Ảnh hưởng Backend purchase transaction, Dashboard API và Frontend Dashboard; không yêu cầu entity mới. |
 
 ## Vấn đề
-- [HIGH] REQ-DASH-ADMIN-01 dùng cụm “tổng doanh thu subscription thu được”, nhưng `AdminDashboardService` hiện chỉ tính MRR dự kiến bằng tổng `PriceMonthly` của tenant active; đây không phải tiền đã thu. → Đề xuất: chốt rõ KPI là MRR dự kiến hay tổng giao dịch subscription thành công, rồi quy định nguồn dữ liệu tương ứng.
-- [HIGH] REQ-DASH-ADMIN-01 yêu cầu “tổng số yêu cầu nâng cấp subscription plan”, nhưng code hiện xử lý mua/nâng cấp trực tiếp qua `POST /subscriptions/purchase` và không có entity/repository lưu mọi upgrade request để đếm. → Đề xuất: chốt đếm giao dịch nâng cấp thành công hiện có, hoặc bổ sung mô hình lưu upgrade request và trạng thái.
-- [MEDIUM] Frontend `AdminDashboardPage` khởi tạo bằng mock và Backend `GetMonthlyAnalyticsAsync` sinh chuỗi số liệu mô phỏng; điều này xung đột với yêu cầu “không sử dụng số liệu mock”. → Đề xuất: thêm task loại bỏ fallback/mock và hiển thị loading/empty/error đúng spec.
+- [ĐÃ XỬ LÝ] REQ-DASH-ADMIN-01 đã đổi “doanh thu thu được” thành MRR dự kiến và nêu công thức theo tenant active, không bị khóa.
+- [ĐÃ XỬ LÝ] REQ-DASH-ADMIN-01 đã định nghĩa giao dịch nâng cấp thành công bằng `Type=UPGRADE_PLAN`, `Status=SUCCESS`; loại trừ gia hạn, mua lần đầu, dùng thử, hạ cấp và giao dịch thất bại.
+- [ĐÃ XỬ LÝ] Specs yêu cầu loại bỏ mock/fallback giả lập và có loading/empty/error/retry.
 
-## Kết luận: Cần sửa
-Chưa sẵn sàng lập tasks cuối cùng cho phần Dashboard Admin cho đến khi hai KPI HIGH được chốt nghĩa nghiệp vụ.
+## Kết luận: Chấp nhận
+Không còn vấn đề HIGH; spec sẵn sàng lập tasks và chuyển sang Apply sau khi user duyệt.
