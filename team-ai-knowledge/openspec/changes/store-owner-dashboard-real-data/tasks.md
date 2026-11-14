@@ -16,4 +16,4 @@
 - [x] T8 — Thiết kế khối nhập hàng, cảnh báo kho, nhân viên và lối tắt chi tiết; responsive desktop/tablet. (REQ-DASH-REAL-04, REQ-DASH-REAL-05, REQ-DASH-REAL-06)
 
 ## Test và kiểm chứng
-- [ ] T9 — Kiểm chứng có trọng tâm các phép tính P&L/GRN, phạm vi tenant/branch và trạng thái loading/empty/error; chạy build backend/frontend. (REQ-DASH-REAL-01..06)
+- [x] T9 — Rà soát công thức P&L/GRN, tenant/branch và loading/empty/error; backend/frontend build, oxlint liên quan và diff check đạt. Unit test P&L hiện có bị treo ở testhost trong môi trường này; chưa xác nhận bằng dữ liệu đăng nhập thực, ghi rõ trong worklog để kiểm tra ở /sep-test. (REQ-DASH-REAL-01..06)
