@@ -15,3 +15,7 @@ Bắt đầu triển khai 11 task trong tasks.md theo chuẩn RULE_UI_DESIGN_SYS
 ## Apply · 2026-10-14 15:45
 
 Đã hoàn thiện Store Owner Dashboard bóc tách 7 component độc lập, tuân thủ RULE_UI_DESIGN_SYSTEM và build pass 100%
+
+## Verify Spec · 2026-11-14 20:00
+
+Khi refactor requirement sau bước Test, cần rollback về Verify Spec để đồng bộ lại review, tasks và test scope trước khi tiếp tục.
