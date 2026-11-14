@@ -70,4 +70,4 @@
 - [x] T-TOKEN-01 — Gỡ các bảng/entity/store/mapping/migration quản lý nhiều thiết bị vừa thêm; dùng RefreshToken và RefreshTokenExpiryTime hiện có trên Users.
 - [x] T-TOKEN-02 — Access mặc định 15 phút, refresh cố định 7 ngày, lưu hash token mới và hỗ trợ token cũ; refresh chỉ cấp access mới; đồng bộ hạn cookie, logout và reset password.
 - [x] T-TOKEN-03 — Chia sẻ cơ chế refresh giữa API thường và tài chính, replay tối đa một lần, giữ trạng thái và thông báo thử lại khi lỗi tạm thời.
-- [ ] T-TOKEN-04 — Build backend/frontend, rà diff, cập nhật worklog/CHANGELOG. Người dùng yêu cầu dừng viết và chạy thêm test.
+- [x] T-TOKEN-04 — Build backend/frontend, rà diff, cập nhật worklog/CHANGELOG. Người dùng yêu cầu dừng viết và chạy thêm test.
