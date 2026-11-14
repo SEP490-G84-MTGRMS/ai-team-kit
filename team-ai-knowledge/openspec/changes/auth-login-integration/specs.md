@@ -73,5 +73,59 @@ Giao diện Modal OTP (`LoginOtpModal.tsx` và `RegistrationOtpModal.tsx`) MUST 
 - Khi người dùng bấm nút gửi/gửi lại OTP, Frontend hiển thị spinner loading mượt mà trên nút bấm và phản hồi mở modal tức thì mà không khóa đơ trình duyệt.
 - Khi chạy ở môi trường Development hoặc khi Backend trả về `devOtpCode`, hiển thị nút "Điền nhanh OTP Dev" để hỗ trợ kiểm thử và chấm đồ án thuận tiện.
 
+### Requirement: REQ-AUTH-SESSION-01 Quản lý thời hạn và phiên đăng nhập
+
+- Sau khi hoàn tất xác thực, Backend MUST tạo phiên riêng cho từng lần đăng nhập, liên kết tài khoản và ngữ cảnh tenant.
+- Access token MUST có hạn 15 phút, chứa `sessionId`.
+- Refresh token MUST hết hạn sau 7 ngày kể từ lần cấp hoặc refresh thành công. Phiên MUST kết thúc tối đa 30 ngày tính từ lần đăng nhập ban đầu.
+- Refresh token MUST được sinh bằng bộ sinh số ngẫu nhiên mật mã. Backend MUST lưu hash cùng thời hạn và trạng thái phiên.
+- Token MUST được truyền bằng HttpOnly cookies, bật Secure trên HTTPS production. Cookie MUST hoạt động với các đường dẫn auth được hỗ trợ.
+- Backend MUST kiểm tra trạng thái phiên và quyền truy cập tài khoản, tenant khi xác thực yêu cầu.
+
+#### Scenario: Đăng nhập trên hai thiết bị
+- GIVEN tài khoản có một phiên hợp lệ
+- WHEN đăng nhập thành công trên thiết bị khác
+- THEN tạo phiên riêng và giữ phiên trước tiếp tục hoạt động.
+
+#### Scenario: Phiên đạt giới hạn tuyệt đối
+- GIVEN phiên đã đủ 30 ngày
+- WHEN yêu cầu refresh
+- THEN từ chối và yêu cầu đăng nhập lại.
+
+### Requirement: REQ-AUTH-SESSION-02 Refresh và xoay vòng token an toàn
+
+- Refresh thành công MUST cấp cặp token mới và vô hiệu hóa refresh token đã sử dụng bằng thao tác nguyên tử.
+- Các yêu cầu đồng thời dùng cùng refresh token MUST có tối đa một lần xoay vòng thành công.
+- Yêu cầu cạnh tranh MUST nhận kết quả xung đột riêng, cho phép client chờ phiên vừa được cập nhật rồi thử lại một lần.
+- Backend MUST lưu dấu vết token đã dùng. Việc sử dụng lại token sau khoảng xử lý cạnh tranh MUST thu hồi phiên liên quan.
+- Thời hạn refresh mới MUST nằm trong giới hạn tuyệt đối của phiên.
+- Token hết hạn, bị thu hồi hoặc không hợp lệ MUST trả HTTP 401 và xóa cookies tương ứng.
+
+#### Scenario: Hai yêu cầu refresh đồng thời
+- GIVEN hai yêu cầu cùng sử dụng một refresh token
+- WHEN Backend xử lý đồng thời
+- THEN chỉ một yêu cầu xoay vòng thành công và dữ liệu phiên nhất quán.
+
+### Requirement: REQ-AUTH-SESSION-03 Tự khôi phục phiên và thu hồi phiên
+
+- Các API client, bao gồm API tài chính, MUST dùng chung cơ chế xử lý refresh.
+- Khi API trả HTTP 401, Frontend MUST thực hiện một yêu cầu refresh và cho các yêu cầu còn lại chờ kết quả. Mỗi yêu cầu ban đầu được gửi lại tối đa một lần.
+- Các tab cùng trình duyệt MUST phối hợp refresh để hạn chế cạnh tranh.
+- Refresh bị từ chối vì phiên hết hiệu lực MUST xóa trạng thái đăng nhập và chuyển tới trang đăng nhập, giữ đường dẫn quay lại hợp lệ trong ứng dụng.
+- Lỗi mạng, HTTP 429 hoặc HTTP 5xx khi refresh MUST hiển thị lỗi có thể thử lại và giữ trạng thái phiên phía client.
+- Đăng xuất MUST thu hồi phiên hiện tại. Đổi hoặc đặt lại mật khẩu, khóa tài khoản MUST thu hồi toàn bộ phiên của tài khoản.
+- Unit test MUST kiểm tra thời hạn, rotation, refresh đồng thời, gửi lại yêu cầu, lỗi mạng và thu hồi phiên.
+
+#### Scenario: Access token hết hạn
+- GIVEN refresh token còn hiệu lực
+- WHEN API trả HTTP 401
+- THEN Frontend refresh, cập nhật cookies và gửi lại yêu cầu ban đầu.
+
+#### Scenario: Máy chủ tạm thời lỗi
+- GIVEN refresh trả HTTP 503
+- WHEN Frontend xử lý kết quả
+- THEN hiển thị lỗi và cho phép thử lại.
+
 ## Lịch sử
 - 2026-11-13 · `sep-refactor:Cập-nhật-REQ-AUTH-08,-REQ-AUTH-09,-REQ-A` · +0 ~3 -0
+- 2026-11-14 · `sep-refactor:Bổ-sung-quản-lý-phiên-theo-thiết-bị,-acc` · +3 ~0 -0
