@@ -65,3 +65,11 @@
 ### Unit tests và kiểm chứng
 - [ ] T-VAL-05 — Viết backend unit tests cho boundary min/max, từng nhóm password thiếu, whitespace, email/phone/name, terms missing/false, OTP 5/6/7 và token 128/129; xác nhận payload sai không gọi repository/hash/email và malformed OTP không tiêu hao attempt (REQ-01, REQ-AUTH-08, REQ-AUTH-09, REQ-AUTH-13).
 - [ ] T-VAL-06 — Viết frontend unit tests xác nhận lỗi inline và không gọi API khi form sai; regression login tài khoản cũ, registration/OTP hợp lệ; chạy targeted tests và build hai project (REQ-01, REQ-AUTH-09, REQ-AUTH-13).
+
+
+## Quản lý phiên và refresh token
+- [ ] T-SESSION-01 — Bảng phiên và lịch sử hash refresh token, mapping và migration (REQ-AUTH-SESSION-01, 02).
+- [ ] T-SESSION-02 — Cấp access 15 phút, refresh trượt 7 ngày, phiên tối đa 30 ngày; xoay vòng nguyên tử, xử lý cạnh tranh 10 giây và phát hiện tái sử dụng (REQ-AUTH-SESSION-01, 02).
+- [ ] T-SESSION-03 — Cookie auth, kiểm tra sessionId/tenant, thu hồi phiên hiện tại khi logout và mọi phiên khi đổi mật khẩu/khóa tài khoản (REQ-AUTH-SESSION-01, 03).
+- [ ] T-SESSION-04 — Refresh chung cho API thường và tài chính, một lần replay, phối hợp tab và phân biệt lỗi tạm thời với phiên hết hạn (REQ-AUTH-SESSION-03).
+- [ ] T-SESSION-05 — Unit tests backend/frontend, chạy build/test và cập nhật worklog/CHANGELOG (REQ-AUTH-SESSION-01, 02, 03).
