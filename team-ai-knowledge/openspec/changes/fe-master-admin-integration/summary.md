@@ -11,3 +11,7 @@ Người dùng xác nhận duyệt Brainstorm (exploration.md, design-brief.md, 
 ## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-10-30 14:17
 
 User phê duyệt review/skeptic và tasks.md để chuyển sang Apply.
+
+## Verify Spec — ✅ Approve bởi @Ortus24 · 2026-11-15 11:44
+
+Đã phê duyệt đặc tả REQ-FE-ADMIN-05 và danh mục tasks T8-T13 cho chức năng Cấu hình Nền tảng Toàn cục (/admin/settings)
