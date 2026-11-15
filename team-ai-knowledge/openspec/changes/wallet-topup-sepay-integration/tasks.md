@@ -26,6 +26,6 @@ Checklist các tác vụ triển khai chức năng Nạp ví gian hàng qua Viet
 - [x] T13 — Kiểm thử End-to-End: Chạy build Backend (.NET `dotnet build`), Frontend (`npm run build`), kiểm tra giao diện và API flow (REQ-WAL-01, REQ-WAL-02, REQ-WAL-03)
 
 ## Hợp nhất dữ liệu nạp tiền và sổ cái
-- [ ] T14 — Hợp nhất schema và migration đối soát dữ liệu cũ, bảo toàn số dư (REQ-WAL-01, REQ-WAL-06)
-- [ ] T15 — Chuyển luồng VietQR, tra cứu, webhook chống cộng trùng và lịch sử sang bảng hợp nhất, giữ hợp đồng API (REQ-WAL-01, REQ-WAL-03, REQ-WAL-05)
-- [ ] T16 — Kiểm thử migration, webhook lặp/đồng thời và lịch sử chỉ gồm giao dịch thành công (REQ-WAL-03, REQ-WAL-05, REQ-WAL-06)
+- [x] T14 — Hợp nhất schema và migration đối soát dữ liệu cũ, bảo toàn số dư (REQ-WAL-01, REQ-WAL-06)
+- [x] T15 — Chuyển luồng VietQR, tra cứu, webhook chống cộng trùng và lịch sử sang bảng hợp nhất, giữ hợp đồng API (REQ-WAL-01, REQ-WAL-03, REQ-WAL-05)
+- [x] T16 — Kiểm thử migration, webhook lặp/đồng thời và lịch sử chỉ gồm giao dịch thành công (REQ-WAL-03, REQ-WAL-05, REQ-WAL-06)
