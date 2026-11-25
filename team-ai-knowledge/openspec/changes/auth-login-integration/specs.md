@@ -127,8 +127,24 @@ Hệ thống MUST cung cấp API xác thực `POST /api/auth/me/change-password`
 - WHEN gửi sai `currentPassword`, hoặc `newPassword` trùng `currentPassword`, hoặc `newPassword` không đủ độ mạnh
 - THEN Backend trả HTTP 400 kèm thông báo lỗi rõ ràng, giữ nguyên mật khẩu, `SecurityStamp` và phiên hiện tại.
 
+### Requirement: REQ-AUTH-15 Cập nhật hồ sơ cá nhân tài khoản đang đăng nhập
+Hệ thống MUST cung cấp API xác thực `PUT /api/auth/me/profile` (`[Authorize]`) cho phép người dùng đã đăng nhập cập nhật thông tin hồ sơ cá nhân lưu trên bảng `Users` (`FullName`, `Phone`) và trả về `Phone` trong `UserInfo`.
+1. Backend MUST lấy `userId` từ JWT claims của phiên hiện tại, chuẩn hóa số điện thoại về 10 chữ số Việt Nam (`^(03|05|07|08|09)\d{8}$`), kiểm tra `FullName` từ 2–100 ký tự và từ chối nếu số điện thoại trùng với tài khoản khác đang tồn tại (`PHONE_EXISTS`).
+2. Frontend trang Tài khoản (`/store-owner/account`) MUST hiển thị thanh điều hướng `AccountSidebarNav`, không rò dữ liệu mẫu giả (`INITIAL_USER_PROFILE` / `INITIAL_STORE_INFO`), ẩn các trường không có trong CSDL (`dateOfBirth`, `note`), bỏ nút kiểm tra phiên giả và lưu thông tin cá nhân qua API thật.
+
+#### Scenario: Cập nhật họ tên và số điện thoại thành công
+- GIVEN người dùng đang đăng nhập hợp lệ
+- WHEN gửi `PUT /api/auth/me/profile` với `fullName` hợp lệ và `phone` 10 số chưa trùng tài khoản khác
+- THEN Backend cập nhật `FullName`, `Phone`, `NormalizedPhone` trong CSDL và trả về HTTP 200 kèm `UserInfo` mới nhất.
+
+#### Scenario: Trùng số điện thoại với tài khoản khác
+- GIVEN số điện thoại mới đã thuộc về một tài khoản khác
+- WHEN người dùng gửi `PUT /api/auth/me/profile`
+- THEN Backend trả về HTTP 400 `PHONE_EXISTS` và giữ nguyên thông tin cũ.
+
 ## Lịch sử
 - 2026-11-13 · `sep-refactor:Cập-nhật-REQ-AUTH-08,-REQ-AUTH-09,-REQ-A` · +0 ~3 -0
 - 2026-11-14 · `sep-refactor:Bổ-sung-quản-lý-phiên-theo-thiết-bị,-acc` · +3 ~0 -0
 - 2026-11-14 · `sep-refactor:Theo-yêu-cầu-thu-gọn-của-người-dùng:-dùn` · +0 ~3 -0
 - 2026-11-25 · `sep-refactor:Bổ-sung-REQ-AUTH-14-cho-tính-năng-đổi-mậ` · +1 ~0 -0
+- 2026-11-25 · `sep-refactor:Bổ-sung-REQ-AUTH-15-cho-cập-nhật-hồ-sơ-c` · +1 ~0 -0
