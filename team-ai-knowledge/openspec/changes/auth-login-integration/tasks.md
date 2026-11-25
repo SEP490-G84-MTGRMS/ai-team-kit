@@ -73,7 +73,7 @@
 - [x] T-TOKEN-04 — Build backend/frontend, rà diff, cập nhật worklog/CHANGELOG. Người dùng yêu cầu dừng viết và chạy thêm test.
 
 ## Đổi mật khẩu tài khoản đang đăng nhập (NHAT-V2-01 / REQ-AUTH-14)
-- [ ] T-PWD-01 — Backend DTO, Validator và `AuthService.ChangePasswordAsync` xác minh mật khẩu hiện tại, kiểm tra mật khẩu mới mạnh/khác mật khẩu cũ, xoay `SecurityStamp` + `RefreshToken` và cấp phiên mới (REQ-AUTH-14).
-- [ ] T-PWD-02 — Backend `AuthController`: bổ sung `POST /api/auth/me/change-password` (`[Authorize]`), đặt lại HttpOnly cookies mới cho phiên hiện tại và trả HTTP 400 rõ mã lỗi khi sai mật khẩu hiện tại/dữ liệu không hợp lệ (REQ-AUTH-14).
-- [ ] T-PWD-03 — Frontend `authService.changePassword`, `ChangePasswordModal.tsx` và `AccountProfileTab.tsx`: nối API thật, thêm ẩn/hiện mật khẩu, kiểm tra độ mạnh mật khẩu đồng bộ và thống nhất mô tả hủy phiên trên các thiết bị khác (REQ-AUTH-14).
-- [ ] T-PWD-04 — Viết unit tests Backend & Frontend cho luồng đổi mật khẩu, chạy pass test/build cả 2 repo và tạo worklog + cập nhật `CHANGELOG.md` (REQ-AUTH-14).
+- [x] T-PWD-01 — Backend DTO, Validator và `AuthService.ChangePasswordAsync` xác minh mật khẩu hiện tại, kiểm tra mật khẩu mới mạnh/khác mật khẩu cũ, xoay `SecurityStamp` + `RefreshToken` và cấp phiên mới (REQ-AUTH-14).
+- [x] T-PWD-02 — Backend `AuthController`: bổ sung `POST /api/auth/me/change-password` (`[Authorize]`), đặt lại HttpOnly cookies mới cho phiên hiện tại và trả HTTP 400 rõ mã lỗi khi sai mật khẩu hiện tại/dữ liệu không hợp lệ (REQ-AUTH-14).
+- [x] T-PWD-03 — Frontend `authService.changePassword`, `ChangePasswordModal.tsx` và `AccountProfileTab.tsx`: nối API thật, thêm ẩn/hiện mật khẩu, kiểm tra độ mạnh mật khẩu đồng bộ và thống nhất mô tả hủy phiên trên các thiết bị khác (REQ-AUTH-14).
+- [x] T-PWD-04 — Viết unit tests Backend & Frontend cho luồng đổi mật khẩu, chạy pass test/build cả 2 repo và tạo worklog + cập nhật `CHANGELOG.md` (REQ-AUTH-14).
