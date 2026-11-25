@@ -109,7 +109,26 @@ Hệ thống MUST dùng các trường RefreshToken và RefreshTokenExpiryTime h
 - WHEN Frontend xử lý lỗi
 - THEN giữ trạng thái đăng nhập và hiển thị thông báo thử lại.
 
+### Requirement: REQ-AUTH-14 Đổi mật khẩu tài khoản đang đăng nhập
+Hệ thống MUST cung cấp API xác thực `POST /api/auth/me/change-password` (`[Authorize]`) cho phép người dùng đã đăng nhập tự đổi mật khẩu của chính mình.
+1. Backend MUST lấy `userId` từ JWT claims của phiên hiện tại, tuyệt đối không nhận `userId` từ request body.
+2. Backend MUST xác minh `currentPassword` khớp mật khẩu hiện tại của tài khoản; nếu sai trả HTTP 400 `INVALID_CURRENT_PASSWORD` (không trả HTTP 401 để tránh kích hoạt luồng hết hạn phiên).
+3. `newPassword` MUST khác `currentPassword` và đạt chuẩn mật khẩu mạnh: 8–64 ký tự, không chứa khoảng trắng, có ít nhất chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+4. Khi hợp lệ, Backend MUST băm `newPassword` bằng `IPasswordHasher`, xoay mới `SecurityStamp` và `RefreshToken` để thu hồi tức thì mọi phiên đăng nhập trên các thiết bị khác (qua `SessionTokenValidator`), đồng thời cấp lại cặp HttpOnly cookies (`access_token`, `refresh_token`) mới cho phiên hiện tại.
+5. Frontend `ChangePasswordModal.tsx` MUST kiểm tra đồng bộ quy tắc mật khẩu mạnh, gọi API thật, hỗ trợ ẩn/hiện mật khẩu, hiển thị lỗi thật từ Backend và thống nhất thông báo hủy phiên trên các thiết bị khác.
+
+#### Scenario: Đổi mật khẩu thành công giữ phiên hiện tại và thu hồi thiết bị khác
+- GIVEN người dùng đang đăng nhập trên thiết bị A và thiết bị B
+- WHEN người dùng trên thiết bị A gửi đúng `currentPassword` và `newPassword` mạnh khác mật khẩu cũ tới `POST /api/auth/me/change-password`
+- THEN hệ thống cập nhật `PasswordHash`, xoay `SecurityStamp` và `RefreshToken`, cấp lại HttpOnly cookies mới cho thiết bị A (giữ đăng nhập) và từ chối mọi request/refresh tiếp theo từ thiết bị B.
+
+#### Scenario: Nhập sai mật khẩu hiện tại hoặc mật khẩu mới yếu/trùng cũ
+- GIVEN người dùng đang đăng nhập
+- WHEN gửi sai `currentPassword`, hoặc `newPassword` trùng `currentPassword`, hoặc `newPassword` không đủ độ mạnh
+- THEN Backend trả HTTP 400 kèm thông báo lỗi rõ ràng, giữ nguyên mật khẩu, `SecurityStamp` và phiên hiện tại.
+
 ## Lịch sử
 - 2026-11-13 · `sep-refactor:Cập-nhật-REQ-AUTH-08,-REQ-AUTH-09,-REQ-A` · +0 ~3 -0
 - 2026-11-14 · `sep-refactor:Bổ-sung-quản-lý-phiên-theo-thiết-bị,-acc` · +3 ~0 -0
 - 2026-11-14 · `sep-refactor:Theo-yêu-cầu-thu-gọn-của-người-dùng:-dùn` · +0 ~3 -0
+- 2026-11-25 · `sep-refactor:Bổ-sung-REQ-AUTH-14-cho-tính-năng-đổi-mậ` · +1 ~0 -0
