@@ -44,5 +44,17 @@ Dung lượng ảnh/tệp được tính theo byte thực tế của tài nguyê
 - WHEN Gửi request `GET /api/tenant/pricing-plans`
 - THEN Hệ thống trả về 2 gói `STANDARD` (99k) và `PRO` (249k) với đầy đủ giá tháng, giá năm, hạn mức chi nhánh và dung lượng gốc 2 GB.
 
+### Requirement: REQ-01 Chuẩn Hóa & Đồng Bộ Danh Mục Gói Cước SaaS Giữa Admin và Store Owner
+Hệ thống MUST khởi tạo sẵn các gói cước gốc (`STANDARD` 99.000 đ/tháng, `PRO` 249.000 đ/tháng, dung lượng mặc định 2 GB) và đồng bộ trực tiếp toàn bộ gói đang ở trạng thái `ACTIVE` từ phân hệ Admin sang màn hình mua gói của Chủ cửa hàng (`GET /api/tenant/pricing-plans`).
+1. Khi Admin tạo gói cước mới ở trạng thái mở bán (`IsActive = true`), gói mới MUST xuất hiện trên màn hình chọn gói của Store Owner và cho phép thanh toán qua Ví gian hàng.
+2. Khi Admin chuyển bất kỳ gói cước nào sang trạng thái tạm ngừng bán (`IsActive = false`), API `GET /api/tenant/pricing-plans` MUST ẩn gói đó (tuyệt đối không tự chèn lại gói mặc định đè lên gói đã tắt) và `POST /api/tenant/subscriptions/purchase` MUST từ chối mua mới gói đang tắt.
+3. Tên gói, mô tả, hạn mức (`MaxBranches`, `MaxEmployees`, `MaxStorageGb`) và cờ tính năng do Admin cấu hình MUST được bảo toàn xuyên suốt từ CSDL ra giao diện Store Owner, không bị ghi đè cứng.
+
+#### Scenario: Admin tạo gói mới hoặc tạm ngừng bán gói hiện có
+- GIVEN Admin tạo gói `ENTERPRISE` (`ACTIVE`) và chuyển gói `STANDARD` sang `INACTIVE`
+- WHEN Chủ cửa hàng gọi `GET /api/tenant/pricing-plans`
+- THEN danh sách trả về có `ENTERPRISE` với đúng tên/giá/hạn mức/tính năng Admin cấu hình và không còn gói `STANDARD`.
+
 ## Lịch sử
 - 2026-11-11 · `sep-refactor:Chốt-2-GB-dung-lượng-ảnh/tệp-gốc-cho-STA` · +1 ~1 -0
+- 2026-11-25 · `sep-refactor:Đồng-bộ-danh-mục-gói-cước-ACTIVE-giữa-Ad` · +0 ~1 -0
