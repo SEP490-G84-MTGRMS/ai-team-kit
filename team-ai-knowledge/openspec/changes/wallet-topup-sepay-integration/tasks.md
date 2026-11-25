@@ -20,6 +20,7 @@ Checklist các tác vụ triển khai chức năng Nạp ví gian hàng qua Viet
 - [x] T9 — Tái thiết kế giao diện `StoreWalletTopupModal.tsx`: áp dụng theme Deep Teal `#0F766E`, font `Be Vietnam Pro`, hiển thị VietQR động thật từ SePay, nút 1-click copy và cơ chế tự động Polling trạng thái (REQ-WAL-01, REQ-WAL-02)
 - [x] T10 — Đồng bộ `WalletLedgerTab.tsx` và `StoreSettingsHubPage.tsx`: hiển thị số dư ví thật từ backend, 3 thẻ tóm tắt và bảng lịch sử giao dịch nạp/chi (REQ-WAL-05)
 - [x] T11 — Đồng bộ `SubscriptionCheckoutModal.tsx`: kiểm tra số dư ví khả dụng thực tế khi chọn thanh toán bằng ví (REQ-WAL-04)
+- [x] T17 — Loại bỏ hoàn toàn fallback VietQR và STK cứng `1900 6522 8888` trong `StoreWalletTopupModal.tsx` khi lỗi mạng; bổ sung nút "Thử tạo lại mã QR" và unit test (REQ-WAL-02, NHAT-V2-02)
 
 ## Test & Verification
 - [x] T12 — Viết Unit Tests / Integration Tests kiểm thử Webhook Idempotency, cộng số dư ví, và khấu trừ số dư khi mua gói dịch vụ (REQ-WAL-01, REQ-WAL-03, REQ-WAL-04)
