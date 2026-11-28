@@ -27,7 +27,9 @@ Tên change = phần chữ user gõ sau `/sep-apply`; bỏ trống = change đan
    - Sau mỗi nhóm task: chạy build/lint liên quan và sửa lỗi.
    - Task xong → đọc tasks.md hiện tại, đổi `- [ ]` thành `- [x]`, lưu **toàn bộ** nội dung bằng `sep_luu_artifact` (file `tasks.md`).
    - Báo tiến độ ngắn. Hỏi user trước khi làm gì ngoài phạm vi specs.
-4. Phát sinh yêu cầu mới/specs sai → dừng, đề xuất cập nhật `specs.md` + `tasks.md` (qua `sep_luu_artifact`) và hỏi user.
+4. Phát sinh yêu cầu mới / cần sửa requirement khi đang code:
+   - **Thay đổi nhỏ** (thêm/chỉnh REQ phụ hoặc thêm task con, không đổi kiến trúc): dùng `/sep-refactor` (`sep_cap_nhat_capability` kèm `tasksBoSung`) để cập nhật chuẩn Delta + nối task mới vào `tasks.md` mà không làm hỏng cấu trúc file.
+   - **Thay đổi lớn** (đổi thiết kế/luồng cốt lõi): dùng `/sep-back brainstorm` (hoặc `/sep-back verify-spec`) để cập nhật thiết kế và duyệt lại an toàn.
 5. Mọi task đã tick → `sep_xem_change` xác nhận bước Apply ✅.
 6. **Gate**: tóm tắt file code chính đã đổi, lệnh build/lint đã chạy; hỏi "Approve hay Reject?".
    Reject → sửa, `sep_duyet_buoc` (`reject`, lý do), hỏi lại. Approve → `sep_duyet_buoc` (`buoc: "apply"`, `approve`, `tomTat`, `caiTien`).

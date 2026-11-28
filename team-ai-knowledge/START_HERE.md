@@ -14,7 +14,7 @@ team-ai-knowledge/
 │   ├── MT-GRMS/
 │   ├── document-workspace-hub/
 │   └── team-ai-knowledge/
-├── openspec/         ← Quy trình SEP: changes/ (đang làm), specs/ (spec gốc), schemas/, config.yaml
+├── openspec/         ← Quy trình SEP: changes/ (đang mở), archive/ (đã đóng), specs/ (spec gốc living truth), schemas/, config.yaml
 └── sep-kit/          ← Skills /sep-*, persona review, rules, hooks — cài bằng `npm run sep -- install`
 ```
 
@@ -23,19 +23,19 @@ team-ai-knowledge/
 ## 📌 Cho AI Agents: Đọc ngay những thứ này
 
 ### Bước 1 — Luôn làm đầu tiên
-Gọi tool `list_recent(days=3)` để biết team vừa làm gì gần đây.
+Gọi tool `danh_sach_phien_gan_day({ days: 3 })` để biết team vừa làm gì gần đây, và `sep_danh_sach_change` nếu liên quan đến tính năng đang mở.
 
 ### Bước 2 — Tuỳ theo task
 | Task của bạn | Tra cứu ở đâu |
 |---|---|
-| Viết code mới | `get_pattern("tên-pattern")` |
-| Thay đổi kiến trúc | `get_decision(scope="...")` |
-| Debug bug | `find_lessons("mô tả lỗi")` |
-| Cần hiểu project | `get_context("tên-doc")` |
-| Tìm kiếm chung | `search_knowledge("từ khoá")` |
+| Viết code mới | `xem_mau_thiet_ke({ patternId: "PAT-001" })` |
+| Thay đổi kiến trúc / tra CSDL | `xem_quyet_dinh({ decisionId: "..." })` · `xem_thiet_ke({ projectName: "MT-GRMS" })` |
+| Debug bug | `xem_bai_hoc({ lessonId: "từ khoá lỗi" })` |
+| Cần hiểu bối cảnh dự án / spec gốc | `xem_ngu_canh_du_an({ projectName: "MT-GRMS" })` · `xem_dac_ta({ specId: "<capability>" })` |
+| Tìm kiếm chung | `tim_kiem_kien_thuc({ query: "từ khoá" })` |
 
-### Bước 3 — Cuối phiên (BẮT BUỘC)
-Khi user nói "tổng kết", "summarize", hoặc kết thúc → Gọi `save_session(...)`.
+### Bước 3 — Cuối phiên (hỏi user trước khi lưu)
+Khi sửa xong lỗi khó → `luu_bai_hoc(...)`. Khi kết thúc phiên làm việc dài → `luu_phien_lam_viec(...)`.
 
 > Xem `AGENTS.md` để biết đầy đủ quy trình.
 

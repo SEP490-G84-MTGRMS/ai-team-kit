@@ -22,9 +22,9 @@ Tên change = phần chữ user gõ sau `/sep-verify-spec`; bỏ trống = chang
 
 ## Các bước
 1. **Review song song** — lấy prompt persona bằng `sep_xem_persona` (`skeptic`, `guardian`, `advocate`, `codebase`).
-   - **Có sub-agent** (Cursor Task tool / Claude Code agent): giao 4 sub-agent chạy **song song**, mỗi sub-agent nhận prompt persona
-     + tên change + đường dẫn thư mục change + đường dẫn repo code. Sub-agent đã cài sẵn tên `sep-skeptic`, `sep-guardian`, `sep-advocate`, `sep-codebase`.
-   - **Không có sub-agent** (Antigravity…): tự đóng vai lần lượt từng persona, độc lập với phần specs mình đã viết.
+   - **Cursor / Claude Code**: giao 4 sub-agent cài sẵn (`sep-skeptic`, `sep-guardian`, `sep-advocate`, `sep-codebase`) chạy **song song**, mỗi sub-agent nhận prompt persona + tên change + đường dẫn thư mục change + đường dẫn repo code.
+   - **Antigravity**: gọi `invoke_subagent` (`TypeName: "research"`, chỉ đọc) chạy **song song** các persona độc lập với prompt lấy từ `sep_xem_persona` + đường dẫn thư mục change + đường dẫn repo code.
+   - **Client MCP khác không có công cụ sub-agent**: tự đóng vai lần lượt từng persona, độc lập với phần specs mình đã viết.
    - Tối thiểu phải có **skeptic**. Việc nhỏ (`mode: fast|minimal`) có thể chỉ chạy skeptic.
 2. Lưu kết quả: `review/skeptic.md` (bắt buộc), `review/guardian.md`, `review/advocate.md`, `review/codebase.md` bằng `sep_luu_artifact`.
 3. **Vòng lặp sửa** (tối đa 3 vòng): gộp các vấn đề **HIGH** từ mọi persona → trình bày cho user → cập nhật `specs.md`

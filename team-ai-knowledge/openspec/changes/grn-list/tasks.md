@@ -1,21 +1,14 @@
-# Tasks: grn-list
+# Tasks: Màn hình Danh sách Phiếu nhập kho (GRN) & Lịch Nhận hàng Hôm nay (`grn-list`)
 
-## Backend
-- [x] B1 — Endpoint `GET /api/v1/goods-receipts`: Hỗ trợ lọc theo `branchId`, `supplierId`, `status` (`DRAFT`, `COMPLETED`, `CANCELLED`), tìm kiếm `keyword` theo mã phiếu, mã PO, tên NCC, phân trang `pageIndex`, `pageSize`
-- [x] B2 — Endpoint `GET /api/v1/goods-receipts/{id}`: Trả về chi tiết phiếu nhập kho
-- [x] B3 — Unit Test truy vấn danh sách phiếu nhập kho có phân trang và lọc chi nhánh
+## DB & Domain
+- [x] T1 — Chuẩn hóa thực thể Domain & cấu hình EF Core cho `GoodsReceipt`, `GoodsReceiptLine`, `PurchaseOrder` đảm bảo lọc `TenantId` (`REQ-GRN-LIST-01`).
 
-## Frontend
-- [x] T1 — Tạo kiểu dữ liệu `GoodsReceiptListItem`, `GrnItemDetail`, `GrnFilterState`, `GrnStatus` trong `src/features/goods-receipt/types/grn.types.ts` (REQ-01, REQ-02)
-- [x] T2 — Xây dựng API client `goodsReceiptApi.ts` & Mock Data `mockGrnData.ts` gồm 12 bản ghi chuẩn prototype với đầy đủ trạng thái TODAY, DRAFT, COMPLETED, MISMATCH, CANCELLED kèm chi tiết SKU và Lô hạn FEFO (REQ-01, REQ-05)
-- [x] T3 — Phát triển component `GrnQuickTabs.tsx` với 4 thẻ chuyển nhanh kèm badge đếm số lượng bản ghi tương ứng (REQ-03)
-- [x] T4 — Phát triển component `GrnFilterBar.tsx` dạng `po-unified-bar` gồm Ô tìm kiếm, Dropdown Chi nhánh (khóa khi ở role Employee), Nhà cung cấp, Trạng thái, Khoảng ngày, nút Tìm kiếm và Đặt lại (REQ-02, REQ-04)
-- [x] T5 — Phát triển component `GrnTable.tsx` hiển thị bảng 11 cột dữ liệu, sticky header, sắp xếp cột, semantic status badges và footer phân trang linh hoạt (REQ-01, REQ-06)
-- [x] T6 — Phát triển component `GrnDetailDrawer.tsx` trượt từ bên phải hiển thị đối soát số lượng đặt theo PO vs thực nhận, chênh lệch số lượng, đơn giá, thành tiền, Lô & HSD FEFO (REQ-05)
-- [x] T7 — Phát triển trang container `GoodsReceiptListPage.tsx` quản lý bộ lọc, phân trang, Drawer chi tiết, Toast thông báo và Role Switcher kiểm thử 2 vai trò Store Owner & Employee (REQ-01, REQ-02, REQ-03, REQ-04)
-- [x] T8 — Đăng ký route `/store-owner/goods-receipts` và `/employee/goods-receipts` trong `src/app/router.tsx`, cập nhật menu "Nhập hàng" trong `AppTopNav.tsx` (REQ-01, REQ-02)
+## Backend API
+- [x] T2 — Hiện thực hóa Application Service, DTOs & FluentValidation cho nghiệp vụ màn hình `grn-list` (`REQ-GRN-LIST-02`, `REQ-GRN-LIST-03`).
+- [x] T3 — Triển khai các RESTful endpoints tại `GoodsReceiptsController.cs` kèm kiểm soát phân quyền RBAC (StoreOwner, Employee) (`REQ-GRN-LIST-01`, `REQ-GRN-LIST-04`).
 
-## Verification & Build
-- [x] T9 — Kiểm tra biên dịch `npm run build` đảm bảo không có lỗi TypeScript hoặc lint (REQ-01 đến REQ-06)
-- [x] T10 — Kiểm thử đầy đủ các luồng nghiệp vụ trên UI: phân quyền theo vai trò, lọc nhanh theo tab, lọc đa tiêu chí, mở drawer đối soát PO, đóng drawer, phân trang (REQ-01 đến REQ-06)
-- [x] T11 — Chạy dotnet test MT_GRMS.UnitTests đạt 100% PASS (64/64 tests)
+## Frontend UI
+- [x] T4 — Xây dựng giao diện màn hình `src/features/goods-receipt/pages/GoodsReceiptListPage.tsx` tại route `/store-owner/goods-receipts` và kết nối API thời gian thực (`REQ-GRN-LIST-01` → `REQ-GRN-LIST-04`).
+
+## Test & Nghiệm thu
+- [ ] T5 — Chạy kiểm chứng build/test hai đầu (`dotnet test`, `npm run build`) và nghiệm thu trọn bộ kịch bản màn hình `UI-05-05` (`REQ-GRN-LIST-01` → `REQ-GRN-LIST-04`).

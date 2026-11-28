@@ -135,17 +135,18 @@ npm run sep -- init ../MT_GRMS_BACKEND
 npm run sep -- init ../MT_GRMS_FRONTEND
 ```
 
-### Bước 3: Phát triển tính năng mới
-Trong chat IDE (Cursor / Antigravity / Claude Code):
-- **Cách 1 (Khuyên dùng - Auto-Pilot & Grill-Me Mode)**:
-  ```bash
-  /sep-pilot <Mô tả chức năng/lỗi cần làm>
-  ```
-  AI sẽ tự động nhận diện bước, phỏng vấn chốt giải pháp (grill-me) và dắt qua từng bước. Khi cần sửa lại: `/sep-back`.
-- **Cách 2 (Thủ công từng lệnh)**:
+### Bước 3: Phát triển tính năng hoặc cập nhật yêu cầu
+Trong chat IDE (Cursor / Antigravity / Claude Code), phân loại đúng tình huống:
+- **Làm tính năng mới hoặc đợt Bug-fix/Nâng cấp sau khi change cũ đã `archived`**:
   ```bash
   /sep-spec <Mô tả chức năng/lỗi cần làm>
   ```
+  *(Hệ thống tự động chặn nếu capability đó đang có change mở để tránh đẻ change trùng lặp; với lỗi nhỏ có thể dùng `mode: "fast"` rút gọn còn 2 cổng duyệt ở `verify-spec` và `test`.)*
+- **Bổ sung task con / sửa requirement trên một Change ĐANG MỞ (`status != archived`)**:
+  ```bash
+  /sep-refactor <Mô tả thay đổi>
+  ```
+  *(Cập nhật chuẩn Delta vào `specs.md` + nối task vào `tasks.md`, sau đó đi tiếp `/sep-apply` → `/sep-test`; nếu đổi kiến trúc lớn thì dùng `/sep-back brainstorm`.)*
 
 ---
 
@@ -154,9 +155,9 @@ Trong chat IDE (Cursor / Antigravity / Claude Code):
 | Thư mục | Nội dung |
 |---|---|
 | [`team-ai-knowledge/`](./team-ai-knowledge/) | Toàn bộ Knowledge Base, OpenSpec, MCP Server `sep`, bộ công cụ CLI |
-| ├── [`openspec/`](./team-ai-knowledge/openspec/) | Quản lý vòng đời tính năng (changes, specs, tasks, reviews) |
+| ├── [`openspec/`](./team-ai-knowledge/openspec/) | Quản lý vòng đời tính năng (`changes/` đang mở, `archive/` đã đóng, `specs/` spec gốc living truth) |
 | ├── [`projects/MT-GRMS/`](./team-ai-knowledge/projects/MT-GRMS/) | Ngữ cảnh nghiệp vụ, lịch sử phiên làm việc, báo cáo đánh giá dự án MT-GRMS |
-| ├── [`sep-kit/`](./team-ai-knowledge/sep-kit/) | 9 Skills `/sep-*` (thêm `/sep-pilot`, `/sep-back`), 4 Persona Review, Rules mẫu và Git hooks |
+| ├── [`sep-kit/`](./team-ai-knowledge/sep-kit/) | Bộ Skills `/sep-*` (6 bước + `/sep-refactor`, `/sep-back`, `/sep-status`, `test-document-generator`), 4 Persona Review, Rules và Hooks |
 | └── [`docs/`](./team-ai-knowledge/docs/) | Tài liệu hướng dẫn chi tiết dành cho Admin và thành viên |
 
 ---

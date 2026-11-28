@@ -5,11 +5,11 @@
 
 import fs from 'fs';
 import path from 'path';
-import { KB_ROOT, IDE, buildMcp, info, isGitWorkTree, ok, tryOutput, warn } from './lib.js';
+import { KB_ROOT, IDE, buildMcp, info, isGitWorkTree, ok, tryOutput, upsertBlock, warn, writeText } from './lib.js';
 import { initProject } from './project.js';
 import { dbSync } from './db-sync.js';
 import { readInstallConfig } from './install.js';
-import { readSkills } from './render.js';
+import { agentFile, antigravityRule, copySkillForIde, readPersonas, readRules, readSkills, rulesBlock } from './render.js';
 
 /**
  * Runs git pull with rebase and autostash on a given directory.
@@ -53,30 +53,46 @@ export async function syncWorkspace(flags = {}) {
     }
   }
 
-  // 3. Rebuild MCP server and refresh IDE skills if installed
+  // 3. Rebuild MCP server and refresh IDE skills, global rules & personas if installed
   const cfg = readInstallConfig();
   if (cfg?.user) {
-    info('Cập nhật bản build MCP và skills cho IDE...');
+    info('Cập nhật bản build MCP, skills, rules và personas cho IDE...');
     try {
       buildMcp();
       const skills = readSkills();
+      const rules = readRules();
+      const personas = readPersonas();
       for (const ide of cfg.ides || ['cursor']) {
         const t = IDE[ide];
-        if (t?.skills && fs.existsSync(t.skills)) {
-          for (const s of skills) {
-            fs.cpSync(s.dir, path.join(t.skills, s.name), { recursive: true });
-          }
+        if (!t) continue;
+        if (t.skills) {
+          for (const s of skills) copySkillForIde(s, path.join(t.skills, s.name), ide);
+        }
+        if (t.agents && (ide === 'cursor' || ide === 'claude')) {
+          for (const p of personas) writeText(path.join(t.agents, `${p.name}.md`), agentFile(p, ide));
+        }
+        if (ide === 'antigravity' && t.rules) {
+          for (const r of rules) writeText(path.join(t.rules, `sep-kit-${r.name}.md`), antigravityRule(r));
+        }
+        if (ide === 'claude' && t.memory && fs.existsSync(t.root)) {
+          upsertBlock(t.memory, rulesBlock(rules));
         }
       }
-      ok('Đã cập nhật MCP server & skills mới nhất cho IDE.');
+      ok('Đã cập nhật MCP server, skills, global rules & personas mới nhất cho IDE.');
     } catch (err) {
       warn(`Cập nhật build MCP: ${err.message}`);
     }
   }
 
-  // 4. Refresh SEP rules in team-ai-knowledge
+  // 4. Refresh SEP rules in team-ai-knowledge & any initialized workspace repos
   info('Làm mới quy chuẩn SEP rules...');
   initProject(KB_ROOT, flags);
+  const candidateDirs = [workspaceRoot, ...neighborRepos.map(r => r.dir)];
+  for (const dir of candidateDirs) {
+    if (fs.existsSync(path.join(dir, '.agents', 'rules')) || fs.existsSync(path.join(dir, '.cursor', 'rules'))) {
+      initProject(dir, flags);
+    }
+  }
 
   // 5. Check database schema consistency
   try {

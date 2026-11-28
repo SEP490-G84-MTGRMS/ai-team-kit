@@ -98,3 +98,20 @@ export function rulesBlock(rules) {
       : '',
   ].filter(Boolean).join('\n\n');
 }
+
+/**
+ * Copies a skill directory into the target IDE's skills directory.
+ * On Antigravity, `disable-model-invocation: true` hides skills from the agent's `<skills>` index,
+ * so it is stripped on install/sync while keeping the source SKILL.md intact for Cursor & Claude Code.
+ */
+export function copySkillForIde(skill, destDir, ide) {
+  fs.rmSync(destDir, { recursive: true, force: true });
+  fs.cpSync(skill.dir, destDir, { recursive: true });
+  if (ide === 'antigravity') {
+    const skillFile = path.join(destDir, 'SKILL.md');
+    if (fs.existsSync(skillFile)) {
+      const cleaned = fs.readFileSync(skillFile, 'utf8').replace(/^disable-model-invocation:\s*true\r?\n/m, '');
+      fs.writeFileSync(skillFile, cleaned, 'utf8');
+    }
+  }
+}

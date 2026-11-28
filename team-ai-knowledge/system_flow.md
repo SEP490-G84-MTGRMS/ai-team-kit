@@ -38,7 +38,7 @@ graph TB
 
 ---
 
-## 2. Luồng ĐỌC dữ liệu (get_overview, search_knowledge, ...)
+## 2. Luồng ĐỌC dữ liệu (`xem_tong_quan`, `tim_kiem_kien_thuc`, ...)
 
 ### Mode A: Local (stdio)
 
@@ -48,7 +48,7 @@ sequenceDiagram
     participant MCP as MCP Server (stdio)
     participant FS as Filesystem
 
-    Client->>MCP: CallTool: get_overview
+    Client->>MCP: CallTool: xem_tong_quan
     MCP->>FS: fs.readFileSync("START_HERE.md")
     FS-->>MCP: file content
     MCP->>FS: fs.readFileSync("KNOWLEDGE_MAP.md")
@@ -90,7 +90,7 @@ sequenceDiagram
 
 ---
 
-## 3. Luồng GHI dữ liệu (save_session, save_lesson)
+## 3. Luồng GHI dữ liệu (`luu_phien_lam_viec`, `luu_bai_hoc`)
 
 ### Mode A: Local (stdio)
 
@@ -100,7 +100,7 @@ sequenceDiagram
     participant MCP as MCP Server (stdio)
     participant FS as Filesystem
 
-    Client->>MCP: CallTool: save_session
+    Client->>MCP: CallTool: luu_phien_lam_viec
     MCP->>MCP: Generate frontmatter + content
     MCP->>FS: fs.mkdirSync (nếu chưa có)
     MCP->>FS: fs.writeFileSync("projects/x/sessions/2026-09-16-xxx.md")

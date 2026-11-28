@@ -11,7 +11,7 @@ import {
   buildMcp, info, isGitWorkTree, ok, readJson, removeBlock, tryOutput, upsertBlock, warn, writeJson, writeText,
 } from './lib.js';
 import {
-  agentFile, antigravityRule,
+  agentFile, antigravityRule, copySkillForIde,
   readPersonas, readRules, readSkills, rulesBlock,
 } from './render.js';
 
@@ -79,7 +79,7 @@ function hookCommand(ide) {
 
 function installCursor(env, skills, personas) {
   const t = IDE.cursor;
-  for (const s of skills) copyDir(s.dir, path.join(t.skills, s.name));
+  for (const s of skills) copySkillForIde(s, path.join(t.skills, s.name), 'cursor');
   ok(`${skills.length} skill → ${t.skills}`);
   for (const p of personas) writeText(path.join(t.agents, `${p.name}.md`), agentFile(p, 'cursor'));
   ok(`${personas.length} persona sub-agent → ${t.agents}`);
@@ -98,7 +98,7 @@ function installCursor(env, skills, personas) {
 
 function installClaude(env, skills, personas, rules) {
   const t = IDE.claude;
-  for (const s of skills) copyDir(s.dir, path.join(t.skills, s.name));
+  for (const s of skills) copySkillForIde(s, path.join(t.skills, s.name), 'claude');
   ok(`${skills.length} skill → ${t.skills}`);
   for (const p of personas) writeText(path.join(t.agents, `${p.name}.md`), agentFile(p, 'claude'));
   ok(`${personas.length} persona agent → ${t.agents}`);
@@ -126,7 +126,7 @@ function installClaude(env, skills, personas, rules) {
 
 function installAntigravity(env, skills, rules) {
   const t = IDE.antigravity;
-  for (const s of skills) copyDir(s.dir, path.join(t.skills, s.name));
+  for (const s of skills) copySkillForIde(s, path.join(t.skills, s.name), 'antigravity');
   ok(`${skills.length} skill /sep-* → ${t.skills}`);
   if (removeLegacyWorkflows(t, skills)) ok('Đã gỡ workflow /sep-* kiểu cũ (skill thay thế, tránh lệnh trùng)');
   for (const r of rules) writeText(path.join(t.rules, `sep-kit-${r.name}.md`), antigravityRule(r));
@@ -137,7 +137,7 @@ function installAntigravity(env, skills, rules) {
     mergeMcpJson(t.legacyMcp, env);
     ok(`MCP "${SERVER_NAME}" → ${t.legacyMcp} (bản Antigravity cũ)`);
   }
-  info('Antigravity không có sub-agent tuỳ biến: /sep-verify-spec sẽ tự đóng vai persona qua sep_xem_persona.');
+  info('Trên Antigravity: /sep-verify-spec dùng invoke_subagent (research) chạy song song các persona qua sep_xem_persona.');
 }
 
 /** @returns true when at least one old workflow file was removed */

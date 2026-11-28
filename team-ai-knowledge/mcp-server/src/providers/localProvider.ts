@@ -109,6 +109,12 @@ export class LocalProvider implements DataProvider {
     const fullPath = this.full(relativePath);
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
       fs.unlinkSync(fullPath);
+      let dir = path.dirname(fullPath);
+      while (dir !== this.kbRoot && dir.startsWith(this.kbRoot) && fs.existsSync(dir)) {
+        if (fs.readdirSync(dir).length > 0) break;
+        fs.rmdirSync(dir);
+        dir = path.dirname(dir);
+      }
     }
   }
 }

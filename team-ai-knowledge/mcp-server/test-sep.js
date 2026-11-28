@@ -8,8 +8,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createSepWorkflow } from './dist/tools/sepWorkflow.js';
-import { mergeDeltaSpec } from './dist/tools/specMerge.js';
+import { createSepWorkflow, parseSpecsScenarios } from './dist/tools/sepWorkflow.js';
+import { mergeDeltaSpec, parseDelta } from './dist/tools/specMerge.js';
 import { LocalProvider } from './dist/providers/localProvider.js';
 
 const KB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,10 +87,12 @@ await test('reject spec → ghi summary, vẫn chặn', async () => {
   await rejects(save('exploration.md', '# E'), /chưa được duyệt/);
 });
 
-await test('approve spec → mở khoá brainstorm, ghi improvements', async () => {
+await test('approve spec → mở khoá brainstorm, ghi improvements, chưa nhảy .status sớm khi thiếu file', async () => {
   await approve('spec');
   assert.match(read(`${C}/improvements.md`), /bài học spec/);
   await save('exploration.md', '# E');
+  // Chưa đủ design-brief.md + specs.md nên .status vẫn ở spec
+  assert.equal(read(`${C}/.status`).trim(), 'spec');
 });
 
 await test('duyệt bước chưa xong bị từ chối', () => rejects(approve('brainstorm'), /chưa xong/));
@@ -101,10 +103,11 @@ await test('hướng dẫn bước có bối cảnh config.yaml + schema.yaml', 
   assert.match(out, /openspec\/schemas\/feature/);
 });
 
-await test('brainstorm đủ file + research tuỳ chọn → duyệt', async () => {
+await test('brainstorm đủ file + research tuỳ chọn → nâng .status = brainstorm & duyệt', async () => {
   await save('research.md', '# R');
   await save('design-brief.md', '# D');
   await save('specs.md', SPECS);
+  assert.equal(read(`${C}/.status`).trim(), 'brainstorm');
   await approve('brainstorm');
 });
 
@@ -137,20 +140,20 @@ await test('test-report thiếu verdict bị chặn; FAIL chưa cho archive', as
   await rejects(sep.handleChuyenTrangThai({ trangThai: 'archived' }), /Test chưa xong|verdict/);
 });
 
-await test('PASS + duyệt test → archive đổi tên folder, không merge specs', async () => {
+await test('PASS + duyệt test → archive merge vào openspec/specs/ & chuyển sang openspec/archive/', async () => {
   await save('test-report.md', '---\nverdict: PASS\n---\n# R');
   await rejects(sep.handleChuyenTrangThai({ trangThai: 'archived' }), /chưa được duyệt/);
   await approve('test');
-  const beforeSpec = read('openspec/specs/supplier/spec.md');
   const out = await sep.handleChuyenTrangThai({ trangThai: 'archived' });
-  assert.match(out, /archived-/);
-  assert.match(out, /Không.*merge/i);
-  assert.equal(read('openspec/specs/supplier/spec.md'), beforeSpec);
-  assert.ok(!fs.existsSync(path.join(tmp, 'openspec/changes/supplier-crud/.session.md')));
-  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/changes')).filter((d) => d.startsWith('supplier-crud-archived-'));
+  assert.match(out, /openspec\/archive\/supplier-crud-archived-/);
+  assert.match(out, /Đã merge Delta vào Spec gốc/);
+  assert.match(read('openspec/specs/supplier/spec.md'), /REQ-01 Tạo nhà cung cấp/);
+  assert.match(read('openspec/specs/supplier/spec.md'), /REQ-02 Xoá nhà cung cấp/);
+  // Thư mục cũ trong openspec/changes/ được dọn sạch hoàn toàn (kể cả folder rỗng)
+  assert.equal(fs.existsSync(path.join(tmp, 'openspec/changes/supplier-crud')), false);
+  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/archive')).filter((d) => d.startsWith('supplier-crud-archived-'));
   assert.equal(archivedDirs.length, 1);
-  assert.ok(fs.existsSync(path.join(tmp, 'openspec/changes', archivedDirs[0], '.status')));
-  assert.equal(fs.readFileSync(path.join(tmp, 'openspec/changes', archivedDirs[0], '.status'), 'utf8').trim(), 'archived');
+  assert.equal(fs.readFileSync(path.join(tmp, 'openspec/archive', archivedDirs[0], '.status'), 'utf8').trim(), 'archived');
 });
 
 await test('mergeDeltaSpec: MODIFIED + REMOVED trên base có sẵn', async () => {
@@ -183,7 +186,7 @@ Hệ thống MUST tạo nhà cung cấp và kiểm tra trùng mã số thuế.
 });
 
 await test('archived → không sửa artifact', async () => {
-  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/changes')).filter((d) => d.startsWith('supplier-crud-archived-'));
+  const archivedDirs = fs.readdirSync(path.join(tmp, 'openspec/archive')).filter((d) => d.startsWith('supplier-crud-archived-'));
   assert.equal(archivedDirs.length, 1);
   await rejects(save('specs.md', '# x', archivedDirs[0]), /đã archive/);
 });
@@ -226,26 +229,47 @@ await test('sep_chon_change đổi change đang làm', async () => {
   await rejects(sep.handleChonChange({ tenChange: 'khong-ton-tai' }), /Không tìm thấy/);
 });
 
-await test('sep_lui_buoc lùi về bước trước và reset cổng duyệt', async () => {
-  // Tạo change thử nghiệm rollback
+await test('Triage Gate: chặn tạo change trùng capability đang mở trừ khi taoChangeMoiKhiTrung=true', async () => {
+  await rejects(
+    sep.handleTaoChange({
+      moTa: 'Thêm bộ lọc nhà cung cấp',
+      tenChange: 'supplier-filter-dup',
+      capability: 'supplier',
+    }),
+    /đang có change mở chưa hoàn tất.*`tax-bug`/s,
+  );
+});
+
+await test('sep_lui_buoc lùi về đúng bước trước (giữ đúng .status = targetKey) và reset cổng duyệt', async () => {
+  // Tạo change thử nghiệm rollback (xác nhận tách riêng bằng taoChangeMoiKhiTrung: true)
   await sep.handleTaoChange({
     moTa: 'Test rollback feature',
     tenChange: 'rollback-demo',
     capability: 'supplier',
+    taoChangeMoiKhiTrung: true,
   });
   await save('proposal.md', '# Proposal', 'rollback-demo');
   await sep.handleDuyetBuoc({ tenChange: 'rollback-demo', buoc: 'spec', quyetDinh: 'approve', tomTat: 'Duyệt spec' });
+  await save('exploration.md', '# Exp', 'rollback-demo');
+  await save('design-brief.md', '# DB', 'rollback-demo');
+  await save('specs.md', SPECS, 'rollback-demo');
+  await sep.handleDuyetBuoc({ tenChange: 'rollback-demo', buoc: 'brainstorm', quyetDinh: 'approve', tomTat: 'Duyệt brainstorm' });
+  await save('review/skeptic.md', '# Skep', 'rollback-demo');
+  await save('tasks.md', '- [ ] T1', 'rollback-demo');
+  await sep.handleDuyetBuoc({ tenChange: 'rollback-demo', buoc: 'verify-spec', quyetDinh: 'approve', tomTat: 'Duyệt verify' });
+  await sep.handleChuyenTrangThai({ tenChange: 'rollback-demo', trangThai: 'apply' });
 
-  // Đang ở bước brainstorm
-  let info = await sep.inspectChange('rollback-demo');
-  assert.equal(info.next.step.key, 'brainstorm');
-  assert.equal(Boolean(info.state.approvals['spec']), true);
+  // Lùi từ apply về verify-spec → .status phải là 'verify-spec' (không bị tụt về 'spec')
+  const outBack = await sep.handleLuiBuoc({ tenChange: 'rollback-demo', buocMoi: 'verify-spec', lyDo: 'Tách lại tasks' });
+  assert.match(outBack, /về \*\*Verify Spec\*\* \(`verify-spec`\)/);
+  assert.equal(read('openspec/changes/rollback-demo/.status').trim(), 'verify-spec');
 
-  // Lùi về spec
-  const out = await sep.handleLuiBuoc({ tenChange: 'rollback-demo', lyDo: 'Sửa lại proposal' });
-  assert.match(out, /Đã lùi change `rollback-demo` từ \*\*Brainstorm\*\* \(`brainstorm`\) về \*\*Spec\*\* \(`spec`\)/);
+  // Lùi tiếp về spec
+  const out = await sep.handleLuiBuoc({ tenChange: 'rollback-demo', buocMoi: 'spec', lyDo: 'Sửa lại proposal' });
+  assert.match(out, /về \*\*Spec\*\* \(`spec`\)/);
+  assert.equal(read('openspec/changes/rollback-demo/.status').trim(), 'spec');
 
-  info = await sep.inspectChange('rollback-demo');
+  const info = await sep.inspectChange('rollback-demo');
   assert.equal(info.next.step.key, 'spec');
   // Cổng duyệt spec đã được reset
   assert.equal(Boolean(info.state.approvals['spec']), false);
@@ -277,20 +301,80 @@ await test('sep_tim_capability 0 match', async () => {
   assert.match(out, /Không tìm thấy/);
 });
 
-await test('sep_cap_nhat_capability merge delta vào change specs.md', async () => {
+await test('sep_cap_nhat_capability bảo toàn chuẩn Delta + API/Checklist và nối tasksBoSung', async () => {
+  await save(
+    'specs.md',
+    `# Specs: tax-bug\n\n## API / Contract\n| GET | /api/tax |\n\n## MODIFIED Requirements\n### Requirement: Thuế\nMUST đúng.\n\n## Acceptance checklist\n- [ ] Kiểm tra thuế\n`,
+    'tax-bug',
+  );
   const beforeSpec = read('openspec/specs/supplier/spec.md');
   const out = await sep.handleCapNhatCapability({
     tenChange: 'tax-bug',
-    tomTat: 'sua REQ thue',
+    tomTat: 'sua REQ thue va them REQ-03',
     reqsDaChot: ['Thuế'],
+    tasksBoSung: ['T3 — Cập nhật công thức thuế mới (REQ-03)'],
     delta: `## MODIFIED Requirements
 ### Requirement: Thuế
 MUST đúng (đã refactor).
+
+## ADDED Requirements
+### Requirement: REQ-03 Làm tròn thuế
+Hệ thống MUST làm tròn VND.
 `,
   });
-  assert.match(out, /Đã cập nhật specs của change/);
-  assert.match(read('openspec/changes/tax-bug/specs.md'), /đã refactor/);
+  assert.match(out, /Đã cập nhật Delta specs của change/);
+  const updatedSpecs = read('openspec/changes/tax-bug/specs.md');
+  assert.equal(parseDelta(updatedSpecs).isDelta, true);
+  assert.match(updatedSpecs, /## API \/ Contract/);
+  assert.match(updatedSpecs, /## Acceptance checklist/);
+  assert.match(updatedSpecs, /đã refactor/);
+  assert.match(updatedSpecs, /REQ-03 Làm tròn thuế/);
+  assert.match(read('openspec/changes/tax-bug/tasks.md'), /- \[ \] T3 — Cập nhật công thức thuế mới/);
   assert.equal(read('openspec/specs/supplier/spec.md'), beforeSpec);
+});
+
+await test('mode=fast trên bug-fix chỉ dừng ở 2 cổng duyệt chính (verify-spec & test)', async () => {
+  await sep.handleTaoChange({
+    moTa: 'Hotfix hiển thị tồn kho',
+    tenChange: 'inv-hotfix',
+    schema: 'bug-fix',
+    mode: 'fast',
+    capability: 'inventory',
+    taoCapabilityMoi: true,
+  });
+  await save('proposal.md', '# P', 'inv-hotfix');
+  // Không cần approve spec hay brainstorm, đi thẳng được tới verify-spec
+  await save('exploration.md', '# Root cause', 'inv-hotfix');
+  await save('specs.md', '## MODIFIED Requirements\n### Requirement: REQ-INV-01 Tồn kho\nMUST hiển thị đúng.\n#### Scenario: S1\n- GIVEN có 5 sp\n- WHEN mở trang\n- THEN hiện 5', 'inv-hotfix');
+  await save('review/skeptic.md', '# OK', 'inv-hotfix');
+  await save('tasks.md', '- [ ] T1 — Fix UI', 'inv-hotfix');
+  // Cổng 1 (verify-spec) bắt buộc phải duyệt trước khi sang apply
+  await rejects(sep.handleChuyenTrangThai({ tenChange: 'inv-hotfix', trangThai: 'apply' }), /chưa được duyệt/);
+  await sep.handleDuyetBuoc({ tenChange: 'inv-hotfix', buoc: 'verify-spec', quyetDinh: 'approve', tomTat: 'Chốt spec' });
+  await sep.handleChuyenTrangThai({ tenChange: 'inv-hotfix', trangThai: 'apply' });
+  await save('tasks.md', '- [x] T1 — Fix UI', 'inv-hotfix');
+  // Không cần approve apply, lưu thẳng test-report.md được nhưng phải duyệt Cổng 2 (test) trước khi archive
+  await save('test-report.md', '---\nverdict: PASS\n---\n# Pass', 'inv-hotfix');
+  await rejects(sep.handleChuyenTrangThai({ tenChange: 'inv-hotfix', trangThai: 'archived' }), /chưa được duyệt/);
+  await sep.handleDuyetBuoc({ tenChange: 'inv-hotfix', buoc: 'test', quyetDinh: 'approve', tomTat: 'Pass test' });
+  await sep.handleChuyenTrangThai({ tenChange: 'inv-hotfix', trangThai: 'archived' });
+});
+
+await test('parseSpecsScenarios đọc được cả GIVEN thường lẫn **GIVEN** in đậm', () => {
+  const scns = parseSpecsScenarios(`### Requirement: REQ-01 Test
+#### Scenario: Thường
+- GIVEN có đơn hàng
+- WHEN bấm lưu
+- THEN trả 200
+#### Scenario: Đậm
+- **GIVEN**: có giỏ hàng
+- **WHEN**: bấm thanh toán
+- **THEN**: trừ tồn FEFO`);
+  assert.equal(scns.length, 2);
+  assert.equal(scns[0].given, 'có đơn hàng');
+  assert.equal(scns[0].then, 'trả 200');
+  assert.equal(scns[1].given, 'có giỏ hàng');
+  assert.equal(scns[1].then, 'trừ tồn FEFO');
 });
 
 fs.rmSync(tmp, { recursive: true, force: true });

@@ -551,7 +551,8 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         case 'sep_tao_change': {
           const p = args as {
             moTa: string; tenChange?: string; assignee?: string; mode?: SepMode;
-            schema?: SchemaKey; capability?: string; taoCapabilityMoi?: boolean; project?: string;
+            schema?: SchemaKey; capability?: string; taoCapabilityMoi?: boolean;
+            taoChangeMoiKhiTrung?: boolean; project?: string;
           };
           return { content: [{ type: 'text' as const, text: await sep.handleTaoChange(p) }] };
         }
@@ -577,6 +578,7 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
             delta: string;
             tomTat: string;
             reqsDaChot?: string[];
+            tasksBoSung?: string[];
           };
           return { content: [{ type: 'text' as const, text: await sep.handleCapNhatCapability(p) }] };
         }
@@ -597,7 +599,7 @@ async function callTool(name: string, rawArgs: Record<string, unknown> | undefin
         }
 
         case 'sep_danh_sach_change': {
-          const p = (args ?? {}) as { assignee?: string };
+          const p = (args ?? {}) as { assignee?: string; includeArchived?: boolean };
           return { content: [{ type: 'text' as const, text: await sep.handleDanhSachChange(p) }] };
         }
 

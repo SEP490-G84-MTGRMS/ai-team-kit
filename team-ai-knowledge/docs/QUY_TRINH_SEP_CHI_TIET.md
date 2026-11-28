@@ -17,10 +17,9 @@ Quy trình **SEP (Software Engineering Process)** trong `ai-team-kit` được t
    - *Phẫu thuật (Surgical)*: Chỉ can thiệp đúng phạm vi task, không tự tiện refactor hay đổi format code xung quanh.
    - *Xác minh bằng mục tiêu*: Chỉ báo hoàn thành khi đã có kết quả build, lint và test thật.
 3. **Cơ chế Cổng Duyệt (Human-in-the-Loop Gate)**: AI không bao giờ được tự chuyển trạng thái hoặc tự duyệt bước. Mỗi bước (từ 1 đến 5) bắt buộc phải có xác nhận rõ ràng **Approve / Reject** từ con người.
-4. **Bảo toàn Cấu trúc & Tối giản (Single Source of Truth)**:
-   - Toàn bộ các Change nằm trực tiếp tại `openspec/changes/<tên-change>/`.
-   - Không duy trì thư mục `openspec/specs/` baseline riêng biệt hay thư mục `openspec/archive/` tĩnh.
-   - Khi change kết thúc bước 6 (`/sep-archive`), change được tự động đổi tên thêm hậu tố `-archived-YYYY-MM-DD` ngay tại `openspec/changes/`.
+4. **Vòng đời khép kín (Living Spec + Clean Changes)**:
+   - Các Change đang thực hiện nằm tại `openspec/changes/<tên-change>/`. Một capability tại một thời điểm ưu tiên có 1 change mở duy nhất (nếu phát sinh sửa đổi nhỏ thì cập nhật vào change đang mở bằng `/sep-refactor`, đổi thiết kế lớn thì lùi bằng `/sep-back`).
+   - Khi change kết thúc bước 6 (`/sep-archive`), hệ thống **tự động merge Delta `specs.md` vào Spec gốc `openspec/specs/<capability>/spec.md`** (làm nền cho các đợt bug-fix/nâng cấp kế tiếp) và **chuyển thư mục change sang `openspec/archive/<tên-change>-archived-YYYY-MM-DD/`**.
 
 ---
 
@@ -237,16 +236,15 @@ flowchart TD
 
 ---
 
-### Bước 6: `/sep-archive` — Lưu Trữ Change & Thu Hoạch Tri Thức
+### Bước 6: `/sep-archive` — Merge Spec Gốc, Lưu Trữ Change & Thu Hoạch Tri Thức
 
-- **Mục tiêu**: Đóng change, đánh dấu đã hoàn thành và lưu giữ tri thức giá trị vào Knowledge Base.
+- **Mục tiêu**: Đóng change, cập nhật Spec gốc của phân hệ và lưu giữ tri thức giá trị vào Knowledge Base.
 - **Lệnh thực thi**: `/sep-archive [tên-change]`
 - **Cơ chế Archive**:
   1. Kiểm tra điều kiện: Change bắt buộc phải có `test-report.md` với `verdict: PASS` và đã được Approve ở bước 5.
-  2. Cập nhật `.status = archived` và lưu mốc thời gian `archivedAt`.
-  3. **Tự động đổi tên thư mục**: Thư mục `openspec/changes/<name>` được đổi tên thành `openspec/changes/<name>-archived-YYYY-MM-DD/`.
-  4. **Không tạo rác**: Không merge hay sinh file thừa vào `openspec/specs/` hay `openspec/archive/`.
-  5. **Thu hoạch tri thức**:
+  2. **Tự động Merge vào Spec gốc**: Phần Delta (`ADDED` / `MODIFIED` / `REMOVED`) trong `specs.md` được merge vào `openspec/specs/<capability>/spec.md`.
+  3. Cập nhật `.status = archived`, lưu mốc thời gian `archivedAt` và **chuyển thư mục sang `openspec/archive/<name>-archived-YYYY-MM-DD/`** (giữ `openspec/changes/` chỉ chứa các change đang làm).
+  4. **Thu hoạch tri thức**:
      - Lưu bài học kinh nghiệm (`luu_bai_hoc`) nếu gặp bug hoặc bài toán hóc búa.
      - Lưu quyết định kiến trúc (`xem_quyet_dinh` / ADR) nếu có pattern mới.
      - Lưu phiên làm việc (`luu_phien_lam_viec`).

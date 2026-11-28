@@ -7,7 +7,7 @@ import {
   HOOK_SCRIPT, IDE, KB_ROOT, MCP_DIR, MCP_ENTRY, SEP_HOME, SERVER_NAME,
   isGitWorkTree, loadMcp, readJson, tryOutput,
 } from './lib.js';
-import { readPersonas, readSkills } from './render.js';
+import { readPersonas, readRules, readSkills } from './render.js';
 import { readInstallConfig } from './install.js';
 
 const REQUIRED_PERSONAS = ['sep-skeptic', 'sep-guardian', 'sep-advocate', 'sep-codebase'];
@@ -192,12 +192,21 @@ export async function doctor() {
   check(Boolean(cfg.user), `Đã cài cho @${cfg.user ?? '?'} (${(cfg.ides ?? []).join(', ') || 'chưa cài'})`, 'npm run sep -- install');
   const skills = readSkills().map(s => s.name);
   const personas = readPersonas().map(p => p.name);
+  const rules = readRules().map(r => r.name);
 
   for (const key of cfg.ides ?? []) {
     const t = IDE[key];
     console.log(`\n▶ ${t.label}`);
     const missingSkills = skills.filter(s => !fs.existsSync(path.join(t.skills, s, 'SKILL.md')));
     check(!missingSkills.length, `Skills /sep-* (${skills.length - missingSkills.length}/${skills.length})`, `Thiếu: ${missingSkills.join(', ')} → cài lại`);
+    if (t.rules) {
+      const badRules = rules.filter(r => {
+        const f = path.join(t.rules, `sep-kit-${r}.md`);
+        if (!fs.existsSync(f)) return true;
+        return !fs.readFileSync(f, 'utf8').includes('trigger:');
+      });
+      check(!badRules.length, `Global rules SEP (${rules.length - badRules.length}/${rules.length})`, `Thiếu hoặc sai frontmatter: ${badRules.join(', ')} → chạy npm run sep -- install`);
+    }
     if (t.agents) {
       const missing = personas.filter(p => !fs.existsSync(path.join(t.agents, `${p}.md`)));
       check(!missing.length, `Persona sub-agent (${personas.length - missing.length}/${personas.length})`, 'cài lại');

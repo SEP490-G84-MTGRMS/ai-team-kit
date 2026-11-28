@@ -1,18 +1,17 @@
-# Skeptic Review: grn-list
+# Review (Skeptic & Codebase): Màn hình Danh sách Phiếu nhập kho (GRN) & Lịch Nhận hàng Hôm nay (`grn-list`)
 
-| Chiều | Điểm (1–5) | Nhận xét |
+## Chấm điểm Đánh giá D1–D5
+| Chiều đánh giá | Mức đạt | Nhận xét chi tiết |
 |---|:---:|---|
-| D1 Completeness | 5/5 | Đầy đủ các kịch bản chính và edge cases: danh sách rỗng, nhân viên chi nhánh bị giới hạn quyền, chủ chuỗi xem toàn diện, chuyển tab, phân trang. |
-| D2 Correctness | 5/5 | Các trạng thái nghiệp vụ (TODAY, DRAFT, CONFIRMED, MISMATCH, CANCELED) và con số khớp 100% với prototype `design_ui/grn_list.html` và quy trình FE-05. |
-| D3 Coherence | 5/5 | Thống nhất tuyệt đối giữa proposal, exploration, design brief và specs. Thuật ngữ chuẩn (GRN, PO, Lô FEFO, Mismatch). |
-| D4 Constraints | 5/5 | Phân quyền RBAC chặt chẽ: Employee chỉ thấy chi nhánh mình quản lý; Store Owner xem toàn bộ chi nhánh. |
-| D5 Blast Radius | 5/5 | Module hóa hoàn toàn tại `src/features/goods-receipt/`, không ảnh hưởng tới code đang chạy của các phân hệ khác. |
+| **D1 Completeness** | **PASS** | Đã bao phủ đầy đủ các luồng hiển thị, lọc, thao tác chính và ngoại lệ cho màn hình `/store-owner/goods-receipts` (`UI-05-05`). |
+| **D2 Correctness** | **PASS** | Các yêu cầu `REQ-GRN-LIST-01` → `REQ-GRN-LIST-04` khớp đúng logic trong `GoodsReceiptsController` và `GoodsReceiptListPage.tsx`. |
+| **D3 Coherence** | **PASS** | Tách biệt rõ ràng phạm vi 1 màn hình = 1 Change, không chồng chéo với các màn hình lân cận trong phân hệ `FE-05`. |
+| **D4 Constraints** | **PASS** | Tuân thủ chặt chẽ cô lập đa người thuê (`TenantId`), phân quyền RBAC (StoreOwner, Employee) và chuẩn tiền tệ `decimal(18,2)`. |
+| **D5 Blast Radius** | **PASS** | Phạm vi ảnh hưởng được khoanh vùng gọn trong module màn hình `grn-list` và các thực thể `GoodsReceipt, GoodsReceiptLine, PurchaseOrder`. |
 
-## Vấn đề
-- [MEDIUM] REQ-02: Cơ chế kiểm thử phân quyền 2 vai trò trên môi trường dev/demo cần thuận tiện cho reviewer và tester.
-  → Đề xuất: Tích hợp Role Switcher bar trên tiêu đề trang (`Store Owner (Toàn chuỗi)` vs `Employee (Thủ kho BR-01)`) để kiểm thử ngay lập tức 2 hành vi phân quyền trên cùng một giao diện.
-- [LOW] REQ-05: Cần đảm bảo định dạng hiển thị Lô hàng và Hạn sử dụng trong Drawer theo đúng chuẩn FEFO (`Lô: B26-xxx | HSD: DD/MM/YYYY`).
-  → Đề xuất: Sử dụng badge xám nhạt với icon `Calendar` và `Tag` cho thông tin lô hạn.
+## Các điểm đã rà soát & xử lý
+- **HIGH**: Không phát hiện lỗi mức HIGH tồn đọng trong đặc tả Delta.
+- **MEDIUM (Đã xử lý)**: Đã bổ sung đầy đủ kịch bản kiểm tra phân quyền chi nhánh và chặn dữ liệu không hợp lệ ở cả tầng UI lẫn Backend API.
 
-## Kết luận: Chấp nhận
-Không có vấn đề mức HIGH. Đặc tả specs và design brief đã đủ độ chín muồi và sẵn sàng chuyển sang lập task list chi tiết.
+## Kết luận
+**Chấp nhận (APPROVE)** — Cho phép triển khai và đối chiếu nghiệm thu trên mã nguồn thực tế.

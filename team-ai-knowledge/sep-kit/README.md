@@ -10,14 +10,16 @@ Cuối mỗi bước, agent dừng lại hỏi **Approve / Reject** — chỉ kh
 | 3 | `/sep-verify-spec` | Verify Spec | `review/skeptic.md`, `tasks.md` | đủ file, tasks có checklist + Approve |
 | 4 | `/sep-apply` | Apply | code + tick `tasks.md` | mọi task `- [x]` + Approve |
 | 5 | `/sep-test` | Test | `test-report.md` | `verdict: PASS` + Approve |
-| 6 | `/sep-archive` | Archive | đổi `.status` + rename folder `-archived-YYYY-MM-DD` | **không** merge `openspec/specs/` |
+| 6 | `/sep-archive` | Archive | merge delta `specs.md` vào `openspec/specs/<capability>/spec.md` + chuyển sang `openspec/archive/<ten>-archived-YYYY-MM-DD/` | hoàn tất 6/6 bước |
 
-Lệnh ngoài pipeline:
+Lệnh ngoài pipeline & Ma trận phân loại:
 
-| Lệnh | Việc |
+| Lệnh | Khi nào dùng |
 |---|---|
-| `/sep-refactor <mô tả>` | Tìm đúng **change** trong `openspec/changes/`, confirm, merge delta vào `specs.md` của change. **Không tạo change mới, không ghi openspec/specs/.** |
-| `/sep-status` | Change đang làm, bước hiện tại, việc tiếp theo (`sep_chon_change` để đổi). |
+| `/sep-spec <mô tả>` | Tạo change mới khi capability **chưa có change đang mở**, hoặc làm đợt nâng cấp/bug-fix tiếp theo sau khi change cũ đã `archived` (hỗ trợ `mode: "fast"` cho bug-fix/refactor nhỏ). |
+| `/sep-refactor <mô tả>` | Cập nhật Delta `specs.md` (+ `tasks.md` nếu cần) trên một **change đang mở** (`status != archived`), giữ nguyên chuẩn Delta & mở lại cổng `apply`/`test` để đi tiếp pipeline. |
+| `/sep-back [bước]` | Quay lại bước trước (`brainstorm`, `verify-spec`, ...) khi cần đổi thiết kế/spec lớn mà vẫn giữ nguyên mọi file đã viết. |
+| `/sep-status` | Change đang mở, bước hiện tại, việc tiếp theo (`sep_chon_change` để đổi). |
 
 **Chỉ `/sep-spec` được gọi `sep_tao_change`.** Chat thường không tự tạo change.
 
@@ -59,7 +61,7 @@ npm run sep -- install --ide=antigravity --user=<github-username> --push
   Xem cấu hình: **View raw config** (chính là `~/.gemini/config/mcp_config.json`).
 - Gõ `/sep-spec …` trong chat — lệnh đến từ skill ở `~/.gemini/config/skills/`. Kit không còn sinh Workflow
   vì Antigravity ngừng hỗ trợ Workflow từ 1/11/2026; `install` tự dọn workflow `/sep-*` do bản cũ tạo.
-- Antigravity không có sub-agent tuỳ biến: ở `/sep-verify-spec` agent tự đóng vai lần lượt từng persona (lấy qua `sep_xem_persona`).
+- Trên Antigravity: ở `/sep-verify-spec`, agent dùng `invoke_subagent` (`TypeName: "research"`) chạy song song các persona độc lập lấy từ `sep_xem_persona`.
 
 | Tuỳ chọn `install` | Ý nghĩa |
 |---|---|

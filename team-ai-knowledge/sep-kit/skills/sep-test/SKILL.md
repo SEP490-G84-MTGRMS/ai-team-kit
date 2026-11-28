@@ -22,7 +22,7 @@ Tên change = phần chữ user gõ sau `/sep-test`; bỏ trống = change đang
 ## Các bước
 1. Đọc `specs.md` — liệt kê mọi REQ và Scenario (GIVEN/WHEN/THEN).
 2. Với mỗi Scenario: tìm test đã có hoặc viết test mới theo framework sẵn có của repo
-   (backend: xUnit `SGMS.UnitTests` / `SGMS.IntegrationTests`; frontend: framework đang dùng). Không có framework → hỏi user trước khi thêm.
+   (backend: xUnit `MT_GRMS.UnitTests` / `MT_GRMS.IntegrationTests`; frontend: Vitest / TypeScript build đang dùng). Không có framework → hỏi user trước khi thêm.
 3. Chạy test + build/lint (VD `dotnet test`, `npm run lint`, `npm run build`). Ghi lại lệnh và kết quả thật — **không bịa kết quả**.
    Scenario không tự động hoá được → hướng dẫn user test tay và hỏi kết quả.
 4. Kiểm tra đối chiếu (verify change): code có làm đủ mọi REQ? có thay đổi ngoài phạm vi specs? review HIGH đã xử lý hết?
